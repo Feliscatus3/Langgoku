@@ -49,7 +49,7 @@ export default function Home() {
   return (
     <div className="bg-white">
       {/* Hero Section with Gradient Background */}
-      <div className="relative bg-gradient-to-br from-blue-50 via-white to-amber-50 py-16 md:py-24">
+      <div className="relative bg-gradient-to-br from-blue-50 via-white to-amber-50 section-wrapper">
         <div className="container-custom">
           <div className="max-w-3xl mx-auto text-center mb-12">
             <div className="mb-6 inline-block">
@@ -105,7 +105,7 @@ export default function Home() {
       </div>
 
       {/* Products Section */}
-      <div className="container-custom py-16 md:py-24">
+      <div className="container-custom section-wrapper">
         {/* Section Header */}
         <div className="mb-16">
           <div className="flex items-center justify-between mb-12">
@@ -161,7 +161,7 @@ export default function Home() {
       </div>
 
       {/* Features Section */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white py-16 md:py-24">
+      <div className="hero-card text-white section-wrapper">
         <div className="container-custom">
           <h2 className="text-4xl md:text-5xl font-bold text-center mb-16">Mengapa Memilih Langgoku?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
