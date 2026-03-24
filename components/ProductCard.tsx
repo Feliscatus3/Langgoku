@@ -73,30 +73,5 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
       </div>
     </Link>
-          >
-            {isAvailable ? '✅ Tersedia' : '❌ Habis'}
-          </span>
-          <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2.5 py-1.5 rounded-full border border-gray-300 flex items-center gap-1">
-            📦 {product.stock}
-          </span>
-        </div>
-
-        {/* Button - Modern */}
-        <button
-          className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 transform group-hover:shadow-lg flex items-center justify-center gap-2 text-sm md:text-base ${
-            isAvailable
-              ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white hover:scale-105'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-          disabled={!isAvailable}
-        >
-          {isAvailable ? ( <>
-            <span>🛒</span> Beli Sekarang
-          </> ) : (
-            'Stok Habis'
-          )}
-        </button>
-      </div>
-    </Link>
   )
 }
