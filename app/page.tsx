@@ -231,22 +231,3 @@ export default function Home() {
     </div>
   )
 }
-                  Menampilkan <span className="font-bold text-blue-600 text-lg">{filteredProducts.length}</span> dari <span className="font-bold text-blue-600 text-lg">{products.length}</span> produk
-                </p>
-              </div>
-            </div>
-            <ProductGrid products={filteredProducts} />
-          </div>
-        )}
-
-        {/* No Results */}
-        {!loading && !error && products.length > 0 && filteredProducts.length === 0 && (
-          <EmptyState 
-            title="Produk Tidak Ditemukan"
-            description={`Tidak ada produk yang sesuai dengan pencarian "${searchTerm}". Coba cari dengan kata kunci lain.`}
-          />
-        )}
-      </div>
-    </div>
-  )
-}
