@@ -206,7 +206,7 @@ export default function AdminSettings() {
         <h4 className="font-medium text-blue-900 mb-2">Perlu bantuan setup?</h4>
         <ul className="text-xs text-blue-800 space-y-1">
           <li>1. Buat Google Sheet baru atau gunakan yang sudah ada</li>
-          <li>2. Buat sheet dengan nama "Products" untuk daftar produk</li>
+          <li>2. Buat sheet dengan nama &quot;Products&quot; untuk daftar produk</li>
           <li>3. Copy Spreadsheet ID dari URL, paste di form atas</li>
           <li>4. Simpan pengaturan</li>
         </ul>
