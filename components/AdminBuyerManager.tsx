@@ -530,7 +530,7 @@ export default function AdminBuyerManager() {
         <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200">
           <div className="text-6xl mb-4">📭</div>
           <p className="text-gray-600 text-lg font-medium">Belum ada data pembeli</p>
-          <p className="text-gray-500 text-sm mt-2">Klik tombol "Tambah Pembeli" untuk memulai</p>
+          <p className="text-gray-500 text-sm mt-2">Klik tombol &quot;Tambah Pembeli&quot; untuk memulai</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-gray-300 shadow-lg bg-white">

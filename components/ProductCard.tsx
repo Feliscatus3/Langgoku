@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface ProductCardProps {
   product: {
@@ -31,9 +32,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Product Image - Enhanced */}
         <div className="w-full h-40 md:h-48 bg-gradient-to-br from-blue-50 via-white to-amber-50 rounded-2xl mb-4 md:mb-6 flex items-center justify-center overflow-hidden relative border border-gray-200 group-hover:border-blue-300">
           {product.image ? (
-            <img
+            <Image
               src={product.image}
               alt={product.name}
+              width={300}
+              height={300}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
           ) : (

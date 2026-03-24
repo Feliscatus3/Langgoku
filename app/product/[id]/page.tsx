@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { formatPrice } from '@/lib/googleSheets'
@@ -26,11 +27,7 @@ export default function ProductDetail() {
   const [buyerPhone, setBuyerPhone] = useState('')
   const [showCheckout, setShowCheckout] = useState(false)
 
-  useEffect(() => {
-    fetchProduct()
-  }, [params.id])
-
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/products/${params.id}`)
@@ -48,7 +45,11 @@ export default function ProductDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id])
+
+  useEffect(() => {
+    fetchProduct()
+  }, [fetchProduct])
 
   const handleCheckout = () => {
     if (!buyerName.trim() || !buyerPhone.trim()) {
@@ -104,10 +105,13 @@ export default function ProductDetail() {
           <div className="flex items-center justify-center">
             <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-amber-50 rounded-3xl flex items-center justify-center overflow-hidden shadow-lg border border-gray-200">
               {product.image ? (
-                <img
+                <Image
                   src={product.image}
                   alt={product.name}
+                  width={500}
+                  height={500}
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                  priority
                 />
               ) : (
                 <div className="text-9xl">📱</div>
