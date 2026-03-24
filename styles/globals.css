@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Modern Reset & Defaults */
+/* ====== RESET & TYPOGRAPHY ====== */
 * {
   margin: 0;
   padding: 0;
@@ -17,14 +17,18 @@ html, body {
 
 html {
   scroll-behavior: smooth;
+  font-size: 16px;
 }
 
 body {
-  background: #ffffff;
-  color: #1f2937;
+  background: #fafafa;
+  color: #374151;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #__next {
@@ -33,79 +37,133 @@ body {
   min-height: 100vh;
 }
 
-/* Modern Typography */
-h1 { @apply font-bold text-4xl tracking-tight text-gray-900; }
-h2 { @apply font-bold text-3xl tracking-tight text-gray-900; }
-h3 { @apply font-bold text-2xl tracking-tight text-gray-800; }
+/* Professional Typography Hierarchy */
+h1 { 
+  @apply font-medium text-4xl md:text-5xl tracking-normal text-gray-950 leading-tight;
+}
+
+h2 { 
+  @apply font-medium text-3xl md:text-4xl tracking-normal text-gray-900 leading-snug;
+}
+
+h3 { 
+  @apply font-semibold text-2xl text-gray-800 leading-relaxed;
+}
+
+p {
+  @apply text-gray-600 text-base leading-relaxed;
+}
 
 /* Container */
 .container-custom {
   @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
 }
 
-/* Modern Button Styles with Enhanced Gradient */
+/* ====== BUTTON STYLES (Professional, Not Flashy) ====== */
 .btn-primary {
-  @apply bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 hover:from-blue-700 hover:via-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:-translate-y-1 active:scale-95 shadow-lg hover:shadow-2xl;
+  @apply inline-flex items-center justify-center px-5 py-2.5 font-medium text-white text-sm;
+  @apply bg-blue-600 hover:bg-blue-700 active:bg-blue-800;
+  @apply rounded-lg transition-colors duration-200;
+  @apply shadow-sm hover:shadow-md active:shadow-sm;
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  @apply cursor-pointer;
 }
 
 .btn-primary:disabled {
-  @apply bg-gray-400 cursor-not-allowed hover:bg-gray-400 hover:shadow-none transform-none hover:scale-100 hover:translate-y-0;
+  @apply bg-gray-400 text-gray-200 cursor-not-allowed shadow-none hover:shadow-none;
 }
 
 .btn-secondary {
-  @apply bg-white hover:bg-gray-50 text-gray-900 font-bold py-3 px-6 rounded-xl border-2 border-gray-400 transition-all duration-300 ease-in-out hover:border-gray-600 hover:shadow-lg;
+  @apply inline-flex items-center justify-center px-5 py-2.5 font-medium text-gray-700 text-sm;
+  @apply bg-white hover:bg-gray-50 active:bg-gray-100;
+  @apply border border-gray-300 hover:border-gray-400;
+  @apply rounded-lg transition-colors duration-200;
+  @apply shadow-sm hover:shadow-md;
+  @apply focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
+  @apply cursor-pointer;
 }
 
 .btn-accent {
-  @apply bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 ease-in-out shadow-lg hover:shadow-2xl;
+  @apply inline-flex items-center justify-center px-5 py-2.5 font-medium text-white text-sm;
+  @apply bg-orange-600 hover:bg-orange-700 active:bg-orange-800;
+  @apply rounded-lg transition-colors duration-200;
+  @apply shadow-sm hover:shadow-md active:shadow-sm;
+  @apply focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2;
+  @apply cursor-pointer;
 }
 
-/* Modern Card Styles with Enhanced Effects */
+/* ====== CARD STYLES (Subtle, Professional) ====== */
 .card {
-  @apply bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200/80 backdrop-blur-sm;
+  @apply bg-white rounded-lg border border-gray-200 shadow-sm transition-all duration-200;
+}
+
+.card:hover {
+  @apply shadow-md border-gray-300;
 }
 
 .card-hover {
-  @apply hover:border-gray-300 transform hover:scale-105 hover:-translate-y-2;
+  @apply hover:border-gray-300 hover:shadow-md;
 }
 
-/* Modern Input Styles */
+/* ====== INPUT STYLES (Clean & Accessible) ====== */
 .input-field {
-  @apply w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all duration-300 placeholder:text-gray-400 text-gray-900 font-medium shadow-sm;
+  @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg;
+  @apply focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500;
+  @apply bg-white text-gray-900 placeholder:text-gray-400;
+  @apply text-base font-normal leading-normal;
+  @apply transition-colors duration-150;
+  @apply shadow-sm;
 }
 
-.input-field:focus {
-  @apply border-blue-500 bg-white shadow-lg ring-4 ring-blue-200;
+.input-field:disabled {
+  @apply bg-gray-100 text-gray-500 cursor-not-allowed;
 }
 
-/* Badge Styles with Modern Design */
+/* ====== BADGE STYLES (Refined) ====== */
 .badge-success {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-900 font-bold text-sm border border-green-300 shadow-sm;
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-md;
+  @apply bg-emerald-50 text-emerald-700 text-xs font-medium;
+  @apply border border-emerald-200;
 }
 
 .badge-danger {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-100 to-pink-100 text-red-900 font-bold text-sm border border-red-300 shadow-sm;
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-md;
+  @apply bg-red-50 text-red-700 text-xs font-medium;
+  @apply border border-red-200;
 }
 
 .badge-warning {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-900 font-bold text-sm border border-yellow-300 shadow-sm;
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-md;
+  @apply bg-amber-50 text-amber-700 text-xs font-medium;
+  @apply border border-amber-200;
 }
 
-/* Gradient Text - Enhanced */
+/* ====== TEXT UTILITIES ====== */
 .text-gradient {
-  @apply bg-gradient-to-r from-blue-600 via-purple-600 to-amber-500 bg-clip-text text-transparent font-bold;
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(135deg, #1f2937 0%, #374151 100%);
 }
 
-/* Glass Effect - Modern */
-.glass {
-  @apply bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl;
+/* ====== FORM LAYOUTS ====== */
+.form-group {
+  @apply mb-6;
 }
 
-/* Animations */
-@keyframes fadeIn {
+.form-group label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  @apply w-full;
+}
+
+/* ====== TRANSITIONS & ANIMATIONS ====== */
+@keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -113,49 +171,40 @@ h3 { @apply font-bold text-2xl tracking-tight text-gray-800; }
   }
 }
 
-@keyframes slideIn {
+@keyframes fadeInSmooth {
   from {
     opacity: 0;
-    transform: translateX(-20px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
   }
 }
 
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
 }
 
-.fade-in {
-  animation: fadeIn 0.5s ease-in-out;
+.animate-fade-in {
+  animation: fadeInSmooth 0.3s ease-out;
 }
 
-.slide-in {
-  animation: slideIn 0.5s ease-in-out;
-}
-
-.animate-bounce {
-  animation: bounce 2s infinite;
-}
-
-/* Scrollbar Styling */
+/* ====== SCROLLBAR (Refined) ====== */
 ::-webkit-scrollbar {
-  @apply w-2 h-2;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gradient-to-b from-blue-500 to-purple-500 rounded-full hover:bg-gradient-to-b hover:from-blue-600 hover:to-purple-600;
+  @apply bg-gray-300 rounded-full;
+  transition: background-color 200ms ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
 }
 
 /* Responsive Improvements */

@@ -272,10 +272,10 @@ export default function AdminBuyerManager() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">👥 Manajemen Pembeli</h2>
-          <p className="text-gray-600 text-xs md:text-sm mt-2">Kelola semua data pembeli, langganan, dan kirim notifikasi</p>
+          <h2 className="text-2xl md:text-3xl font-medium text-gray-950">Manajemen Pembeli</h2>
+          <p className="text-gray-500 text-sm mt-2">Kelola data pembeli dan langganan</p>
         </div>
         {!showForm && (
           <button
@@ -283,9 +283,9 @@ export default function AdminBuyerManager() {
               setEditingId(null)
               setShowForm(true)
             }}
-            className="btn-primary whitespace-nowrap shadow-lg hover:shadow-xl transition-all"
+            className="btn-primary whitespace-nowrap"
           >
-            ➕ Tambah Pembeli
+            Tambah Pembeli
           </button>
         )}
       </div>
@@ -345,13 +345,13 @@ export default function AdminBuyerManager() {
 
       {/* Form */}
       {showForm && (
-        <div className="card p-8 mb-8 border-2 border-purple-300 bg-gradient-to-br from-white to-purple-50 shadow-xl">
-          <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-6 flex items-center gap-2">
-            {editingId ? '✏️ Edit Data Pembeli' : '➕ Input Data Pembeli Baru'}
+        <div className="card p-8 mb-8 shadow-md">
+          <h3 className="text-2xl font-medium text-gray-950 mb-6">
+            {editingId ? 'Edit Data Pembeli' : 'Tambah Data Pembeli'}
           </h3>
           <form onSubmit={handleAddBuyer} className="space-y-6">
             <div>
-              <p className="text-sm font-semibold text-gray-700 mb-3">📝 Informasi Pembeli</p>
+              <p className="text-sm font-medium text-gray-700 mb-3">Informasi Pembeli</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="text"
@@ -373,7 +373,7 @@ export default function AdminBuyerManager() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-700 mb-3">🛍️ Informasi Produk & Langganan</p>
+              <p className="text-sm font-medium text-gray-700 mb-3">Produk & Langganan</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="text"
@@ -433,17 +433,17 @@ export default function AdminBuyerManager() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-700 mb-3">💳 Informasi Pembayaran & Admin</p>
+              <p className="text-sm font-medium text-gray-700 mb-3">Pembayaran & Admin</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <select
                   value={formData.paymentMethod}
                   onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
                   className="input-field w-full"
                 >
-                  <option value="QRIS">💳 QRIS</option>
-                  <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
-                  <option value="E_WALLET">📱 E-Wallet</option>
-                  <option value="PULSA">📞 Pulsa</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="E_WALLET">E-Wallet</option>
+                  <option value="PULSA">Pulsa</option>
                 </select>
                 <input
                   type="text"
@@ -463,7 +463,7 @@ export default function AdminBuyerManager() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-700 mb-3">📅 Tanggal Langganan</p>
+              <p className="text-sm font-medium text-gray-700 mb-3">Tanggal Langganan</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="date"
@@ -527,57 +527,56 @@ export default function AdminBuyerManager() {
 
       {/* Buyers List */}
       {buyers.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200">
-          <div className="text-6xl mb-4">📭</div>
+        <div className="text-center py-20 bg-white shadow-sm border border-gray-200 rounded-lg">
           <p className="text-gray-600 text-lg font-medium">Belum ada data pembeli</p>
-          <p className="text-gray-500 text-sm mt-2">Klik tombol &quot;Tambah Pembeli&quot; untuk memulai</p>
+          <p className="text-gray-500 text-sm mt-2">Klik tombol "Tambah Pembeli" untuk memulai</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-300 shadow-lg bg-white">
+        <div className="overflow-x-auto border border-gray-200 bg-white rounded-lg">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+            <thead className="bg-gray-950 text-white">
               <tr>
-                <th className="px-4 py-4 text-left font-semibold text-sm">👤 Nama</th>
-                <th className="px-4 py-4 text-left font-semibold text-sm hidden lg:table-cell">📱 No WA</th>
-                <th className="px-4 py-4 text-left font-semibold text-sm">🛍️ Produk</th>
-                <th className="px-4 py-4 text-left font-semibold text-sm hidden md:table-cell">⏱️ Durasi</th>
-                <th className="px-4 py-4 text-left font-semibold text-sm hidden xl:table-cell">📅 Mulai</th>
-                <th className="px-4 py-4 text-left font-semibold text-sm">📆 Selesai</th>
-                <th className="px-4 py-4 text-left font-semibold text-sm">📊 Status</th>
-                <th className="px-4 py-4 text-center font-semibold text-sm">⚙️ Aksi</th>
+                <th className="px-4 py-3 text-left font-medium text-sm">Nama</th>
+                <th className="px-4 py-3 text-left font-medium text-sm hidden lg:table-cell">WhatsApp</th>
+                <th className="px-4 py-3 text-left font-medium text-sm">Produk</th>
+                <th className="px-4 py-3 text-left font-medium text-sm hidden md:table-cell">Durasi</th>
+                <th className="px-4 py-3 text-left font-medium text-sm hidden xl:table-cell">Mulai</th>
+                <th className="px-4 py-3 text-left font-medium text-sm">Selesai</th>
+                <th className="px-4 py-3 text-left font-medium text-sm">Status</th>
+                <th className="px-4 py-3 text-center font-medium text-sm">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {buyers.map((buyer) => {
                 const statusBadge = getStatusBadge(buyer.status, buyer.remainingDays)
                 return (
-                  <tr key={buyer.id} className="hover:bg-gradient-to-r hover:from-purple-50 to-pink-50 transition-colors duration-300 group">
-                    <td className="px-4 py-4 text-gray-900 font-bold text-sm group-hover:text-purple-700">{buyer.name}</td>
-                    <td className="px-4 py-4 text-gray-600 text-sm hidden lg:table-cell font-mono">{buyer.phone}</td>
-                    <td className="px-4 py-4 text-gray-600 text-sm font-medium">{buyer.product}</td>
-                    <td className="px-4 py-4 text-gray-600 text-sm hidden md:table-cell">{buyer.duration}</td>
-                    <td className="px-4 py-4 text-gray-600 text-sm hidden xl:table-cell">{buyer.startDate}</td>
-                    <td className="px-4 py-4 text-gray-900 text-sm font-semibold">{buyer.endDate}</td>
-                    <td className="px-4 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusBadge.class}`}>
+                  <tr key={buyer.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-gray-900 text-sm">{buyer.name}</td>
+                    <td className="px-4 py-3 text-gray-600 text-sm hidden lg:table-cell">{buyer.phone}</td>
+                    <td className="px-4 py-3 text-gray-700 text-sm">{buyer.product}</td>
+                    <td className="px-4 py-3 text-gray-600 text-sm hidden md:table-cell">{buyer.duration}</td>
+                    <td className="px-4 py-3 text-gray-600 text-sm hidden xl:table-cell">{buyer.startDate}</td>
+                    <td className="px-4 py-3 text-gray-700 text-sm">{buyer.endDate}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${statusBadge.class}`}>
                         {statusBadge.text}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleEditBuyer(buyer)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all text-sm font-bold"
-                          title="Edit pembeli"
+                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          title="Edit"
                         >
-                          ✏️
+                          Edit
                         </button>
                         <button
                           onClick={() => handleDeleteBuyer(buyer.id)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all text-sm font-bold hover:scale-110"
-                          title="Hapus data pembeli ini"
+                          className="text-red-600 hover:text-red-700 text-sm font-medium"
+                          title="Hapus"
                         >
-                          🗑️
+                          Hapus
                         </button>
                       </div>
                     </td>

@@ -46,37 +46,37 @@ export default function Home() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-white">
-      <div className="container-custom py-6 md:py-12 lg:py-16">
+    <div className="bg-white">
+      <div className="container-custom py-12 md:py-20">
         {/* Hero Section */}
-        <div className="mb-12 md:mb-16 text-center max-w-4xl mx-auto px-2 sm:px-4">
-          <div className="mb-4 md:mb-6 inline-block">
-            <span className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl drop-shadow-lg animate-bounce">🚀</span>
+        <div className="mb-16 md:mb-20">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium text-gray-950 mb-4 leading-tight">
+              Langgoku
+            </h1>
+            <p className="text-lg md:text-xl text-gray-600 mb-6">
+              Belanja akun premium digital terpercaya dengan harga terjangkau
+            </p>
+            <p className="text-gray-500 text-base">
+              Netflix, Canva, CapCut, dan layanan premium lainnya tersedia dengan berbagai durasi langganan
+            </p>
           </div>
-          <h1 className="text-4xl xs:text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-amber-600 bg-clip-text text-transparent mb-3 md:mb-6 leading-tight break-words">
-            Langgoku
-          </h1>
-          <p className="text-base sm:text-lg md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">
-            🎯 Premium Digital Store
-          </p>
-          <p className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed max-w-2xl mx-auto px-1 sm:px-0">
-            Belanja akun premium terpercaya dan aman dengan berbagai pilihan: <span className="font-bold text-blue-600 inline-block">🎬 Netflix</span>, <span className="font-bold text-purple-600 inline-block">🎨 Canva</span>, <span className="font-bold text-pink-600 inline-block">✂️ CapCut</span>, dan lainnya
-          </p>
-          <div className="mt-6 md:mt-8 h-1 w-20 sm:w-24 md:w-32 bg-gradient-to-r from-blue-600 via-purple-600 to-amber-500 rounded-full mx-auto"></div>
-        </div>
 
-        {/* Search Bar */}
-        <div className="mb-12 md:mb-16 flex justify-center px-4">
-          <div className="max-w-2xl w-full">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl">🔍</span>
-              <input
-                type="text"
-                placeholder="Cari produk premium Anda..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field w-full text-base md:text-lg py-3 md:py-4 pl-12"
-              />
+          {/* Search Bar */}
+          <div className="flex justify-center px-4">
+            <div className="max-w-2xl w-full">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Cari produk..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input-field w-full pl-11"
+                />
+                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
