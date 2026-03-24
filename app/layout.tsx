@@ -23,29 +23,52 @@ export default function RootLayout({
       <body className="bg-gray-50">
         <Navbar />
         <main>{children}</main>
-        <footer className="bg-gray-900 text-white py-8 mt-16">
-          <div className="container-custom">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <footer className="bg-gradient-primary text-white py-16 mt-20">
+          <div className="container-custom mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
               <div>
-                <h3 className="text-xl font-bold mb-4">Langgoku</h3>
-                <p className="text-gray-400">Toko digital premium terpercaya</p>
+                <h3 className="text-3xl font-bold mb-2 flex items-center gap-2">
+                  🚀 Langgoku
+                </h3>
+                <p className="text-primary-100 text-lg leading-relaxed">Toko digital premium terpercaya dengan berbagai pilihan akun subscription</p>
               </div>
               <div>
-                <h4 className="text-lg font-semibold mb-4">Layanan</h4>
-                <ul className="text-gray-400 space-y-2">
-                  <li><a href="/" className="hover:text-white transition">Produk</a></li>
-                  <li><a href="/about" className="hover:text-white transition">Tentang</a></li>
-                  <li><a href="/contact" className="hover:text-white transition">Kontak</a></li>
+                <h4 className="text-lg font-bold mb-6 text-primary-50">📌 Layanan</h4>
+                <ul className="text-primary-100 space-y-3">
+                  <li><a href="/" className="hover:text-white transition-colors duration-300 font-medium">→ Produk</a></li>
+                  <li><a href="/about" className="hover:text-white transition-colors duration-300 font-medium">→ Tentang</a></li>
+                  <li><a href="/contact" className="hover:text-white transition-colors duration-300 font-medium">→ Kontak</a></li>
+                  <li><a href="/admin" className="hover:text-white transition-colors duration-300 font-medium">→ Admin</a></li>
                 </ul>
               </div>
               <div>
-                <h4 className="text-lg font-semibold mb-4">Kontak</h4>
-                <p className="text-gray-400">Email: support@langgoku.com</p>
-                <p className="text-gray-400">WhatsApp: +62 xxx-xxxx-xxxx</p>
+                <h4 className="text-lg font-bold mb-6 text-primary-50">📞 Kontak</h4>
+                <div className="text-primary-100 space-y-3">
+                  <p className="font-medium">📧 Email: support@langgoku.com</p>
+                  <p className="font-medium">💬 WhatsApp: +62 xxx-xxxx-xxxx</p>
+                  <p className="font-medium">⏰ Jam Operasional: 08:00 - 22:00</p>
+                </div>
               </div>
             </div>
-            <hr className="border-gray-700 mb-4" />
-            <p className="text-center text-gray-400">&copy; 2026 Langgoku. All rights reserved.</p>
+            <div className="border-t border-primary-300 my-8"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+              <div>
+                <p className="font-bold text-primary-50">Aman & Terpercaya</p>
+                <p className="text-primary-100 text-sm">Pembayaran terenkripsi</p>
+              </div>
+              <div>
+                <p className="font-bold text-primary-50">Dukungan 24/7</p>
+                <p className="text-primary-100 text-sm">Siap membantu Anda</p>
+              </div>
+              <div>
+                <p className="font-bold text-primary-50">Pengiriman Cepat</p>
+                <p className="text-primary-100 text-sm">5-15 menit</p>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-primary-300 pt-8">
+            <p className="text-center text-primary-100 font-medium">&copy; 2026 Langgoku. All rights reserved.</p>
+            <p className="text-center text-primary-200 text-sm mt-2">Dibuat dengan ❤️ menggunakan Next.js & Google Sheets</p>
           </div>
         </footer>
       </body>

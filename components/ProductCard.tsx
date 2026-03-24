@@ -27,61 +27,67 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/product/${product.id}`}>
-      <div className="card p-4 h-full cursor-pointer hover:scale-105 transition-transform duration-300">
-        {/* Product Image */}
-        <div className="w-full h-32 bg-gray-200 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+      <div className="card p-6 h-full cursor-pointer overflow-hidden group">
+        {/* Product Image - Enhanced */}
+        <div className="w-full h-40 bg-gradient-to-br from-primary-100 to-accent-100 rounded-2xl mb-6 flex items-center justify-center overflow-hidden relative">
           {product.image ? (
             <img
               src={product.image}
               alt={product.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
           ) : (
-            <div className="text-4xl">📱</div>
+            <div className="text-6xl group-hover:scale-125 transition-transform duration-500">📱</div>
           )}
+          <div className="absolute inset-0 bg-gradient-primary/0 group-hover:bg-gradient-primary/20 transition-all duration-300"></div>
         </div>
 
         {/* Product Name */}
-        <h3 className="font-bold text-lg text-gray-900 mb-2 truncate">
+        <h3 className="font-bold text-lg text-primary-900 mb-2 truncate group-hover:text-primary-700 transition-colors">
           {product.name}
         </h3>
 
         {/* Duration */}
-        <p className="text-sm text-gray-600 mb-3">
-          Durasi: <span className="font-semibold">{product.duration}</span>
+        <p className="text-sm text-primary-600 mb-4 flex items-center gap-2">
+          <span className="text-xs bg-primary-100 px-3 py-1 rounded-full font-semibold text-primary-700">
+            {product.duration}
+          </span>
         </p>
 
-        {/* Price */}
-        <p className="text-2xl font-bold text-blue-600 mb-4">
-          {formattedPrice}
-        </p>
+        {/* Price - Highlighted */}
+        <div className="mb-4 p-4 bg-gradient-to-r from-accent-50 to-primary-50 rounded-xl border border-accent-200">
+          <p className="text-xs text-primary-600 font-medium mb-1">Harga</p>
+          <p className="text-2xl font-bold text-gradient">
+            {formattedPrice}
+          </p>
+        </div>
 
-        {/* Status */}
-        <div className="flex items-center justify-between">
+        {/* Status & Stock */}
+        <div className="flex items-center justify-between mb-4">
           <span
-            className={`px-3 py-1 rounded-full text-sm font-semibold ${
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
               isAvailable
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+                ? 'badge-success shadow-lg'
+                : 'badge-danger shadow-lg'
             }`}
           >
-            {isAvailable ? 'Tersedia' : 'Habis'}
+            {isAvailable ? '✓ Tersedia' : '✗ Habis'}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs font-semibold text-primary-600 bg-primary-100 px-3 py-1.5 rounded-full">
             Stok: {product.stock}
           </span>
         </div>
 
-        {/* Button */}
+        {/* Button - Modern */}
         <button
-          className={`w-full mt-4 py-2 rounded-lg font-semibold transition ${
+          className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 transform group-hover:shadow-lg ${
             isAvailable
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              ? 'btn-primary'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
           disabled={!isAvailable}
         >
-          {isAvailable ? 'Lihat Detail' : 'Stok Habis'}
+          {isAvailable ? '→ Lihat Detail' : 'Stok Habis'}
         </button>
       </div>
     </Link>

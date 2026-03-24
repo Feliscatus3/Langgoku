@@ -81,15 +81,15 @@ export default function AdminBuyerManager() {
 
   const getStatusBadge = (status: string, remainingDays: number) => {
     const badgeClasses: Record<string, string> = {
-      active: 'bg-green-100 text-green-800',
-      expiring: 'bg-yellow-100 text-yellow-800',
-      expired: 'bg-red-100 text-red-800',
+      active: 'badge-success',
+      expiring: 'badge-warning',
+      expired: 'badge-danger',
     }
 
     const statusTexts: Record<string, string> = {
-      active: 'Aktif',
-      expiring: `Hampir Habis (${remainingDays} hari)`,
-      expired: 'Expired',
+      active: '✓ Aktif',
+      expiring: `⚠️ Hampir Habis (${remainingDays} hari)`,
+      expired: '✕ Expired',
     }
 
     return {
@@ -100,8 +100,11 @@ export default function AdminBuyerManager() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Manajemen Pembeli</h2>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-gradient">👥 Manajemen Pembeli</h2>
+          <p className="text-primary-600 text-sm mt-1">Kelola semua data pembeli dan langganan</p>
+        </div>
         <button
           onClick={() => setShowForm(!showForm)}
           className="btn-primary"
@@ -112,9 +115,9 @@ export default function AdminBuyerManager() {
 
       {/* Form */}
       {showForm && (
-        <div className="card p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Input Data Pembeli</h3>
-          <form onSubmit={handleAddBuyer} className="space-y-4">
+        <div className="card p-8 mb-8 border border-accent-200">
+          <h3 className="text-2xl font-bold text-gradient mb-6">➕ Input Data Pembeli</h3>
+          <form onSubmit={handleAddBuyer} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 type="text"
@@ -122,7 +125,7 @@ export default function AdminBuyerManager() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
-                className="input-field"
+                className="input-field w-full"
               />
               <input
                 type="tel"
@@ -130,7 +133,7 @@ export default function AdminBuyerManager() {
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
-                className="input-field"
+                className="input-field w-full"
               />
               <input
                 type="text"
@@ -138,12 +141,12 @@ export default function AdminBuyerManager() {
                 value={formData.product}
                 onChange={(e) => setFormData({ ...formData, product: e.target.value })}
                 required
-                className="input-field"
+                className="input-field w-full"
               />
               <select
                 value={formData.duration}
                 onChange={(e) => handleDurationChange(e.target.value)}
-                className="input-field"
+                className="input-field w-full"
               >
                 {durations.map((d) => (
                   <option key={d} value={d}>{d}</option>
@@ -154,26 +157,26 @@ export default function AdminBuyerManager() {
                 value={formData.startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
                 required
-                className="input-field"
+                className="input-field w-full"
               />
               <input
                 type="date"
                 value={formData.endDate}
                 readOnly
-                className="input-field"
+                className="input-field w-full"
                 disabled
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3 pt-4">
               <button type="submit" className="btn-primary flex-1">
-                Simpan
+                ✓ Simpan
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
                 className="btn-secondary flex-1"
               >
-                Batal
+                ✕ Batal
               </button>
             </div>
           </form>
@@ -182,36 +185,37 @@ export default function AdminBuyerManager() {
 
       {/* Buyers List */}
       {buyers.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-600">Belum ada data pembeli</p>
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">📭</div>
+          <p className="text-primary-600 text-lg font-medium">Belum ada data pembeli</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-2xl border border-primary-200 shadow-lg">
           <table className="w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gradient-primary text-white">
               <tr>
-                <th className="px-4 py-2 text-left font-semibold text-gray-900">Nama</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-900">No WA</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-900">Produk</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-900">Durasi</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-900">Tanggal Mulai</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-900">Tanggal Selesai</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-900">Status</th>
+                <th className="px-6 py-4 text-left font-semibold text-sm">Nama</th>
+                <th className="px-6 py-4 text-left font-semibold text-sm">No WA</th>
+                <th className="px-6 py-4 text-left font-semibold text-sm">Produk</th>
+                <th className="px-6 py-4 text-left font-semibold text-sm">Durasi</th>
+                <th className="px-6 py-4 text-left font-semibold text-sm">Tanggal Mulai</th>
+                <th className="px-6 py-4 text-left font-semibold text-sm">Tanggal Selesai</th>
+                <th className="px-6 py-4 text-left font-semibold text-sm">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-primary-100">
               {buyers.map((buyer) => {
                 const statusBadge = getStatusBadge(buyer.status, buyer.remainingDays)
                 return (
-                  <tr key={buyer.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-semibold">{buyer.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{buyer.phone}</td>
-                    <td className="px-4 py-3 text-gray-600">{buyer.product}</td>
-                    <td className="px-4 py-3 text-gray-600">{buyer.duration}</td>
-                    <td className="px-4 py-3 text-gray-600">{buyer.startDate}</td>
-                    <td className="px-4 py-3 text-gray-600">{buyer.endDate}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusBadge.class}`}>
+                  <tr key={buyer.id} className="hover:bg-primary-50 transition-colors duration-300">
+                    <td className="px-6 py-4 text-primary-900 font-semibold">{buyer.name}</td>
+                    <td className="px-6 py-4 text-primary-600">{buyer.phone}</td>
+                    <td className="px-6 py-4 text-primary-600">{buyer.product}</td>
+                    <td className="px-6 py-4 text-primary-600">{buyer.duration}</td>
+                    <td className="px-6 py-4 text-primary-600">{buyer.startDate}</td>
+                    <td className="px-6 py-4 text-primary-600">{buyer.endDate}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-2 rounded-full text-xs font-semibold ${statusBadge.class}`}>
                         {statusBadge.text}
                       </span>
                     </td>

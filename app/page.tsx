@@ -46,56 +46,71 @@ export default function Home() {
   )
 
   return (
-    <div className="container-custom py-8">
-      {/* Hero Section */}
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Langgoku - Premium Digital Store
-        </h1>
-        <p className="text-xl text-gray-600">
-          Dapatkan akun premium Netflix, Canva, CapCut, dan layanan lainnya dengan harga terjangkau
-        </p>
-      </div>
-
-      {/* Search Bar */}
-      <div className="mb-8">
-        <input
-          type="text"
-          placeholder="Cari produk..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="input-field max-w-md w-full"
-        />
-      </div>
-
-      {/* Loading State */}
-      {loading && <LoadingSpinner />}
-
-      {/* Error/Empty State */}
-      {!loading && error && (
-        <EmptyState 
-          title="Produk Belum Tersedia"
-          description={error}
-        />
-      )}
-
-      {/* Products Grid */}
-      {!loading && !error && products.length > 0 && (
-        <div>
-          <p className="text-gray-600 mb-6">
-            Menampilkan {filteredProducts.length} dari {products.length} produk
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+      <div className="container-custom py-12">
+        {/* Hero Section */}
+        <div className="mb-16 text-center max-w-4xl mx-auto">
+          <div className="mb-6 inline-block">
+            <span className="text-6xl">🚀</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-bold text-gradient mb-6">
+            Langgoku
+          </h1>
+          <p className="text-2xl font-bold text-primary-900 mb-4">
+            Premium Digital Store
           </p>
-          <ProductGrid products={filteredProducts} />
+          <p className="text-lg text-primary-600 leading-relaxed">
+            Dapatkan akun premium <span className="font-semibold text-primary-700">Netflix, Canva, CapCut</span>, dan layanan lainnya dengan harga terjangkau
+          </p>
+          <div className="mt-6 h-1 w-20 bg-gradient-to-r from-primary-400 to-accent-400 rounded-full mx-auto"></div>
         </div>
-      )}
 
-      {/* No Results */}
-      {!loading && !error && products.length > 0 && filteredProducts.length === 0 && (
-        <EmptyState 
-          title="Produk Tidak Ditemukan"
-          description={`Tidak ada produk yang sesuai dengan pencarian "${searchTerm}"`}
-        />
-      )}
+        {/* Search Bar */}
+        <div className="mb-12 flex justify-center">
+          <div className="max-w-2xl w-full">
+            <input
+              type="text"
+              placeholder="🔍 Cari produk premium Anda..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input-field w-full text-lg py-4"
+            />
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading && <LoadingSpinner />}
+
+        {/* Error/Empty State */}
+        {!loading && error && (
+          <EmptyState 
+            title="Produk Belum Tersedia"
+            description={error}
+          />
+        )}
+
+        {/* Products Grid */}
+        {!loading && !error && products.length > 0 && (
+          <div>
+            <div className="mb-8 flex justify-between items-center">
+              <div>
+                <p className="text-primary-600 font-medium text-lg">
+                  Menampilkan <span className="font-bold text-primary-700">{filteredProducts.length}</span> dari <span className="font-bold text-primary-700">{products.length}</span> produk
+                </p>
+              </div>
+            </div>
+            <ProductGrid products={filteredProducts} />
+          </div>
+        )}
+
+        {/* No Results */}
+        {!loading && !error && products.length > 0 && filteredProducts.length === 0 && (
+          <EmptyState 
+            title="Produk Tidak Ditemukan"
+            description={`Tidak ada produk yang sesuai dengan pencarian "${searchTerm}"`}
+          />
+        )}
+      </div>
     </div>
   )
 }

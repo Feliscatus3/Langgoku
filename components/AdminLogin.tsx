@@ -45,26 +45,27 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="max-w-md w-full space-y-8 card p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-accent-50 py-12 px-4">
+      <div className="max-w-md w-full space-y-8 card p-8 backdrop-blur-sm border border-primary-200 shadow-2xl">
         <div>
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-2">
-            Admin Panel
+          <h2 className="text-4xl font-bold text-center text-gradient mb-3">
+            🔐 Admin Panel
           </h2>
-          <p className="text-center text-gray-600">
+          <p className="text-center text-primary-600 font-medium">
             Masukkan kredensial admin Anda
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+              <span>⚠️</span>
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="username" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="username" className="block text-sm font-semibold text-primary-900 mb-2">
               Username
             </label>
             <input
@@ -73,13 +74,13 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="adminku"
-              className="input-field"
+              className="input-field w-full"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="password" className="block text-sm font-semibold text-primary-900 mb-2">
               Password
             </label>
             <input
@@ -88,7 +89,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="input-field"
+              className="input-field w-full"
               disabled={loading}
             />
           </div>
@@ -96,9 +97,9 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="btn-primary w-full"
+            className="btn-primary w-full py-3 text-lg font-semibold mt-6"
           >
-            {loading ? 'Loading...' : 'Masuk'}
+            {loading ? '⏳ Loading...' : '→ Masuk'}
           </button>
         </form>
       </div>

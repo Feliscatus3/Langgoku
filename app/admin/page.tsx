@@ -30,7 +30,19 @@ export default function AdminPage() {
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center mb-4">
+            <div className="relative inline-flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-gradient-primary/20 blur-xl animate-pulse"></div>
+              <div className="relative animate-spin rounded-full h-16 w-16 border-4 border-primary-200 border-t-primary-600 shadow-glow-primary"></div>
+            </div>
+          </div>
+          <p className="text-primary-600 font-medium text-lg">Memuat admin panel...</p>
+        </div>
+      </div>
+    )
   }
 
   return isAuthenticated ? (
