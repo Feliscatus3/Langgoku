@@ -529,7 +529,7 @@ export default function AdminBuyerManager() {
       {buyers.length === 0 ? (
         <div className="text-center py-20 bg-white shadow-sm border border-gray-200 rounded-lg">
           <p className="text-gray-600 text-lg font-medium">Belum ada data pembeli</p>
-          <p className="text-gray-500 text-sm mt-2">Klik tombol "Tambah Pembeli" untuk memulai</p>
+          <p className="text-gray-500 text-sm mt-2">Klik tombol &quot;Tambah Pembeli&quot; untuk memulai</p>
         </div>
       ) : (
         <div className="overflow-x-auto border border-gray-200 bg-white rounded-lg">
