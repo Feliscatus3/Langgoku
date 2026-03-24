@@ -20,55 +20,38 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className="bg-gray-50">
+      <body className="bg-white min-h-screen flex flex-col">
         <Navbar />
-        <main>{children}</main>
-        <footer className="bg-blue-600 text-white py-16 mt-20">
-          <div className="container-custom mb-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              <div>
-                <h3 className="text-3xl font-bold mb-2 flex items-center gap-2">
-                  🚀 Langgoku
+        <main className="flex-1">{children}</main>
+        <footer className="bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 text-white py-12 md:py-16 mt-16 md:mt-20">
+          <div className="container-custom">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8">
+              <div className="text-center md:text-left">
+                <h3 className="text-2xl md:text-3xl font-bold mb-2 flex items-center justify-center md:justify-start gap-2">
+                  <span className="text-3xl">🚀</span> Langgoku
                 </h3>
-                <p className="text-blue-100 text-lg leading-relaxed">Toko digital premium terpercaya dengan berbagai pilihan akun subscription</p>
+                <p className="text-blue-100 text-sm md:text-base leading-relaxed">Toko digital premium terpercaya dengan berbagai pilihan akun subscription berkualitas tinggi</p>
               </div>
-              <div>
-                <h4 className="text-lg font-bold mb-6 text-blue-50">📌 Layanan</h4>
-                <ul className="text-blue-100 space-y-3">
-                  <li><a href="/" className="hover:text-white transition-colors duration-300 font-medium">→ Produk</a></li>
-                  <li><a href="/about" className="hover:text-white transition-colors duration-300 font-medium">→ Tentang</a></li>
-                  <li><a href="/contact" className="hover:text-white transition-colors duration-300 font-medium">→ Kontak</a></li>
-                  <li><a href="/admin" className="hover:text-white transition-colors duration-300 font-medium">→ Admin</a></li>
+              <div className="text-center">
+                <h4 className="text-lg font-bold mb-4 text-blue-50">📌 Layanan</h4>
+                <ul className="text-blue-100 space-y-3 text-sm md:text-base">
+                  <li><a href="/" className="hover:text-white transition-colors duration-300 font-medium hover:translate-x-1 inline-block">→ Belanja Produk</a></li>
+                  <li><a href="/about" className="hover:text-white transition-colors duration-300 font-medium hover:translate-x-1 inline-block">→ Tentang Kami</a></li>
+                  <li><a href="/admin" className="hover:text-white transition-colors duration-300 font-medium hover:translate-x-1 inline-block">→ Admin Panel</a></li>
                 </ul>
               </div>
-              <div>
-                <h4 className="text-lg font-bold mb-6 text-blue-50">📞 Kontak</h4>
-                <div className="text-blue-100 space-y-3">
-                  <p className="font-medium">📧 Email: support@langgoku.com</p>
-                  <p className="font-medium">💬 WhatsApp: +62 xxx-xxxx-xxxx</p>
-                  <p className="font-medium">⏰ Jam Operasional: 08:00 - 22:00</p>
+              <div className="text-center md:text-right">
+                <h4 className="text-lg font-bold mb-4 text-blue-50">📞 Hubungi Kami</h4>
+                <div className="text-blue-100 space-y-3 text-sm md:text-base">
+                  <p className="font-medium">📧 support@langgoku.com</p>
+                  <p className="font-medium">💬 WhatsApp: +62 812-3456-7890</p>
+                  <p className="font-medium">⏰ 08:00 - 22:00 WIB (Setiap Hari)</p>
                 </div>
               </div>
             </div>
-            <div className="border-t border-blue-400 my-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-              <div>
-                <p className="font-bold text-blue-50">Aman & Terpercaya</p>
-                <p className="text-blue-100 text-sm">Pembayaran terenkripsi</p>
-              </div>
-              <div>
-                <p className="font-bold text-blue-50">Dukungan 24/7</p>
-                <p className="text-blue-100 text-sm">Siap membantu Anda</p>
-              </div>
-              <div>
-                <p className="font-bold text-blue-50">Pengiriman Cepat</p>
-                <p className="text-blue-100 text-sm">5-15 menit</p>
-              </div>
+            <div className="border-t border-blue-800 pt-8">
+              <p className="text-center text-blue-200 font-medium text-xs md:text-sm">&copy; 2026 Langgoku. All rights reserved. | Dibuat dengan ❤️ untuk kemudahan berbelanja Anda</p>
             </div>
-          </div>
-          <div className="border-t border-blue-400 pt-8">
-            <p className="text-center text-blue-100 font-medium">&copy; 2026 Langgoku. All rights reserved.</p>
-            <p className="text-center text-blue-200 text-sm mt-2">Dibuat dengan ❤️ menggunakan Next.js & Google Sheets</p>
           </div>
         </footer>
       </body>
