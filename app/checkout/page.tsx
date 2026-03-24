@@ -50,40 +50,40 @@ export default function CheckoutPage() {
   if (!checkoutData) {
     return (
       <div className="container-custom py-16">
-        <p className="text-primary-600 font-medium">Memuat...</p>
+        <p className="text-blue-600 font-medium">Memuat...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+    <div className="min-h-screen bg-white">
       <div className="container-custom py-12">
         <h1 className="text-4xl font-bold text-gradient mb-12 text-center">✓ Konfirmasi Pembayaran</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Order Summary */}
-          <div className="card p-8 border border-primary-200">
+          <div className="card p-8 border border-gray-200">
             <h2 className="text-3xl font-bold text-gradient mb-8">📋 Ringkasan Pesanan</h2>
             
             <div className="space-y-5 mb-8">
-              <div className="border-b border-primary-100 pb-4">
-                <p className="text-primary-600 text-sm font-semibold mb-1">Produk</p>
-                <p className="text-2xl font-bold text-primary-900">{checkoutData.productName}</p>
+              <div className="border-b border-gray-100 pb-4">
+                <p className="text-gray-600 text-sm font-semibold mb-1">Produk</p>
+                <p className="text-2xl font-bold text-gray-900">{checkoutData.productName}</p>
               </div>
 
-              <div className="border-b border-primary-100 pb-4">
-                <p className="text-primary-600 text-sm font-semibold mb-1">Nama Pembeli</p>
-                <p className="text-xl font-semibold text-primary-900">{checkoutData.buyerName}</p>
+              <div className="border-b border-gray-100 pb-4">
+                <p className="text-gray-600 text-sm font-semibold mb-1">Nama Pembeli</p>
+                <p className="text-xl font-semibold text-gray-900">{checkoutData.buyerName}</p>
               </div>
 
-              <div className="border-b border-primary-100 pb-4">
-                <p className="text-primary-600 text-sm font-semibold mb-1">No. WhatsApp</p>
-                <p className="text-xl font-semibold text-primary-700">{checkoutData.buyerPhone}</p>
+              <div className="border-b border-gray-100 pb-4">
+                <p className="text-gray-600 text-sm font-semibold mb-1">No. WhatsApp</p>
+                <p className="text-xl font-semibold text-gray-700">{checkoutData.buyerPhone}</p>
               </div>
 
               <div>
-                <p className="text-primary-600 text-sm font-semibold mb-3">💳 Kode Pembayaran Unik</p>
-                <div className="flex items-center gap-2 bg-gradient-to-r from-accent-50 to-primary-50 p-4 rounded-2xl border border-accent-200">
+                <p className="text-gray-600 text-sm font-semibold mb-3">💳 Kode Pembayaran Unik</p>
+                <div className="flex items-center gap-2 bg-gradient-to-r from-amber-50 to-gray-50 p-4 rounded-2xl border border-amber-200">
                   <input
                     type="text"
                     value={checkoutData.uniqueCode}
@@ -92,28 +92,28 @@ export default function CheckoutPage() {
                   />
                   <button
                     onClick={handleCopyCode}
-                    className="px-4 py-2 bg-gradient-primary text-white rounded-xl hover:shadow-glow-primary transition text-sm font-bold transform hover:scale-105 duration-300"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-sm font-bold transform hover:scale-105 duration-300"
                   >
                     {copied ? '✓ Salin' : 'Salin'}
                   </button>
                 </div>
-                <p className="text-xs text-primary-600 font-medium mt-3">
+                <p className="text-xs text-gray-600 font-medium mt-3">
                   ⚠️ Tambahkan kode ini ke nominal pembayaran Anda
                 </p>
               </div>
             </div>
 
             {/* Price Breakdown */}
-            <div className="bg-gradient-to-r from-primary-50 to-accent-50 p-6 rounded-2xl border border-primary-200 space-y-3">
-              <div className="flex justify-between text-primary-700 font-medium">
+            <div className="bg-gradient-to-r from-gray-50 to-amber-50 p-6 rounded-2xl border border-gray-200 space-y-3">
+              <div className="flex justify-between text-gray-700 font-medium">
                 <span>Harga Produk</span>
                 <span>{formatPrice(checkoutData.originalPrice)}</span>
               </div>
-              <div className="flex justify-between text-accent-700 font-medium">
+              <div className="flex justify-between text-amber-700 font-medium">
                 <span>Kode Unik</span>
-                <span className="text-accent-600">+{Math.round(checkoutData.finalPrice - checkoutData.originalPrice)}</span>
+                <span className="text-amber-600">+{Math.round(checkoutData.finalPrice - checkoutData.originalPrice)}</span>
               </div>
-              <div className="border-t border-primary-200 pt-3 mt-3" />
+              <div className="border-t border-gray-200 pt-3 mt-3" />
               <div className="flex justify-between text-2xl font-bold text-gradient">
                 <span>Total</span>
                 <span>{formatPrice(checkoutData.finalPrice)}</span>
@@ -124,25 +124,25 @@ export default function CheckoutPage() {
           {/* Payment Method */}
           <div className="space-y-6">
             {/* QRIS */}
-            <div className="card p-8 border border-accent-200">
+            <div className="card p-8 border border-amber-200">
               <h3 className="text-2xl font-bold text-gradient mb-6">📱 Pembayaran via QRIS</h3>
-              <div className="bg-gradient-to-br from-primary-100 to-accent-100 p-6 rounded-2xl flex items-center justify-center h-64 mb-6 border border-primary-200">
+              <div className="bg-gradient-to-br from-gray-100 to-amber-50 p-6 rounded-2xl flex items-center justify-center h-64 mb-6 border border-gray-200">
                 <div className="text-center">
-                  <p className="text-primary-700 font-bold mb-2">QR Code</p>
-                  <p className="text-sm text-primary-600">(Tempatkan qris.png di /public/images/)</p>
+                  <p className="text-gray-700 font-bold mb-2">QR Code</p>
+                  <p className="text-sm text-gray-600">(Tempatkan qris.png di /public/images/)</p>
                 </div>
               </div>
-              <p className="text-sm text-primary-600 text-center font-medium mb-4">
+              <p className="text-sm text-gray-600 text-center font-medium mb-4">
                 Scan QRIS dengan aplikasi pembayaran Anda
               </p>
             </div>
 
             {/* Instructions */}
-            <div className="bg-gradient-to-br from-accent-50 to-yellow-50 border-2 border-accent-300 rounded-2xl p-6">
-              <h4 className="font-bold text-accent-900 mb-4 text-lg flex items-center gap-2">
+            <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-2xl p-6">
+              <h4 className="font-bold text-amber-900 mb-4 text-lg flex items-center gap-2">
                 🚀 Cara Pembayaran
               </h4>
-              <ol className="text-sm text-accent-900 space-y-3 list-decimal list-inside font-medium">
+              <ol className="text-sm text-amber-900 space-y-3 list-decimal list-inside font-medium">
                 <li>Scan QRIS atau transfer manual ke nomor yang tertera</li>
                 <li>Masukkan kode unik di akhir nominal pembayaran</li>
                 <li>Konfirmasi pembayaran melalui WhatsApp</li>

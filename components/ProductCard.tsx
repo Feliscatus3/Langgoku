@@ -29,7 +29,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     <Link href={`/product/${product.id}`}>
       <div className="card p-6 h-full cursor-pointer overflow-hidden group">
         {/* Product Image - Enhanced */}
-        <div className="w-full h-40 bg-gradient-to-br from-primary-100 to-accent-100 rounded-2xl mb-6 flex items-center justify-center overflow-hidden relative">
+        <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-amber-50 rounded-2xl mb-6 flex items-center justify-center overflow-hidden relative">
           {product.image ? (
             <img
               src={product.image}
@@ -39,24 +39,24 @@ export default function ProductCard({ product }: ProductCardProps) {
           ) : (
             <div className="text-6xl group-hover:scale-125 transition-transform duration-500">📱</div>
           )}
-          <div className="absolute inset-0 bg-gradient-primary/0 group-hover:bg-gradient-primary/20 transition-all duration-300"></div>
+          <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/10 transition-all duration-300"></div>
         </div>
 
         {/* Product Name */}
-        <h3 className="font-bold text-lg text-primary-900 mb-2 truncate group-hover:text-primary-700 transition-colors">
+        <h3 className="font-bold text-lg text-gray-900 mb-2 truncate group-hover:text-blue-600 transition-colors">
           {product.name}
         </h3>
 
         {/* Duration */}
-        <p className="text-sm text-primary-600 mb-4 flex items-center gap-2">
-          <span className="text-xs bg-primary-100 px-3 py-1 rounded-full font-semibold text-primary-700">
+        <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
+          <span className="text-xs bg-gray-100 px-3 py-1 rounded-full font-semibold text-gray-700">
             {product.duration}
           </span>
         </p>
 
         {/* Price - Highlighted */}
-        <div className="mb-4 p-4 bg-gradient-to-r from-accent-50 to-primary-50 rounded-xl border border-accent-200">
-          <p className="text-xs text-primary-600 font-medium mb-1">Harga</p>
+        <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-gray-50 rounded-xl border border-amber-200">
+          <p className="text-xs text-gray-600 font-medium mb-1">Harga</p>
           <p className="text-2xl font-bold text-gradient">
             {formattedPrice}
           </p>
@@ -73,7 +73,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           >
             {isAvailable ? '✓ Tersedia' : '✗ Habis'}
           </span>
-          <span className="text-xs font-semibold text-primary-600 bg-primary-100 px-3 py-1.5 rounded-full">
+          <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
             Stok: {product.stock}
           </span>
         </div>

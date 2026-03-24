@@ -93,16 +93,16 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+    <div className="min-h-screen bg-white">
       <div className="container-custom py-10">
-        <Link href="/" className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-10 font-semibold transition-colors">
+        <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-10 font-semibold transition-colors">
           ← Kembali ke Produk
         </Link>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Product Image */}
           <div className="flex items-center justify-center">
-            <div className="w-full aspect-square bg-gradient-to-br from-primary-100 to-accent-100 rounded-3xl flex items-center justify-center overflow-hidden shadow-lg border border-primary-200">
+            <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-amber-50 rounded-3xl flex items-center justify-center overflow-hidden shadow-lg border border-gray-200">
               {product.image ? (
                 <img
                   src={product.image}
@@ -118,23 +118,23 @@ export default function ProductDetail() {
           {/* Product Details */}
           <div className="flex flex-col justify-center">
             <h1 className="text-5xl font-bold text-gradient mb-4">{product.name}</h1>
-            <p className="text-lg text-primary-600 mb-8 leading-relaxed">{product.description || 'Produk premium digital eksklusif'}</p>
+            <p className="text-lg text-gray-600 mb-8 leading-relaxed">{product.description || 'Produk premium digital eksklusif'}</p>
 
             {/* Price - Highlighted Box */}
-            <div className="mb-8 p-6 bg-gradient-to-r from-accent-50 to-primary-50 rounded-2xl border-2 border-accent-200">
-              <p className="text-sm text-primary-600 font-medium mb-2">Harga Spesial</p>
+            <div className="mb-8 p-6 bg-gradient-to-r from-amber-50 to-gray-50 rounded-2xl border-2 border-amber-200">
+              <p className="text-sm text-gray-600 font-medium mb-2">Harga Spesial</p>
               <p className="text-5xl font-bold text-gradient">{formatPrice(product.price)}</p>
             </div>
 
             {/* Duration & Stock */}
             <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="card p-6 border-l-4 border-primary-500">
-                <p className="text-primary-600 text-sm font-semibold mb-2">Durasi</p>
-                <p className="text-3xl font-bold text-primary-900">{product.duration}</p>
+              <div className="card p-6 border-l-4 border-blue-600">
+                <p className="text-gray-600 text-sm font-semibold mb-2">Durasi</p>
+                <p className="text-3xl font-bold text-gray-900">{product.duration}</p>
               </div>
-              <div className="card p-6 border-l-4 border-accent-500">
-                <p className="text-accent-600 text-sm font-semibold mb-2">Stok Tersedia</p>
-                <p className="text-3xl font-bold text-accent-700">{product.stock}</p>
+              <div className="card p-6 border-l-4 border-amber-500">
+                <p className="text-amber-600 text-sm font-semibold mb-2">Stok Tersedia</p>
+                <p className="text-3xl font-bold text-amber-700">{product.stock}</p>
               </div>
             </div>
 

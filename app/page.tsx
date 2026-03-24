@@ -46,7 +46,7 @@ export default function Home() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+    <div className="min-h-screen bg-white">
       <div className="container-custom py-12">
         {/* Hero Section */}
         <div className="mb-16 text-center max-w-4xl mx-auto">
@@ -56,13 +56,13 @@ export default function Home() {
           <h1 className="text-5xl md:text-6xl font-bold text-gradient mb-6">
             Langgoku
           </h1>
-          <p className="text-2xl font-bold text-primary-900 mb-4">
+          <p className="text-2xl font-bold text-gray-900 mb-4">
             Premium Digital Store
           </p>
-          <p className="text-lg text-primary-600 leading-relaxed">
-            Dapatkan akun premium <span className="font-semibold text-primary-700">Netflix, Canva, CapCut</span>, dan layanan lainnya dengan harga terjangkau
+          <p className="text-lg text-gray-600 leading-relaxed">
+            Dapatkan akun premium <span className="font-semibold text-blue-600">Netflix, Canva, CapCut</span>, dan layanan lainnya dengan harga terjangkau
           </p>
-          <div className="mt-6 h-1 w-20 bg-gradient-to-r from-primary-400 to-accent-400 rounded-full mx-auto"></div>
+          <div className="mt-6 h-1 w-20 bg-gradient-to-r from-blue-600 to-amber-500 rounded-full mx-auto"></div>
         </div>
 
         {/* Search Bar */}
@@ -94,8 +94,8 @@ export default function Home() {
           <div>
             <div className="mb-8 flex justify-between items-center">
               <div>
-                <p className="text-primary-600 font-medium text-lg">
-                  Menampilkan <span className="font-bold text-primary-700">{filteredProducts.length}</span> dari <span className="font-bold text-primary-700">{products.length}</span> produk
+                <p className="text-gray-600 font-medium text-lg">
+                  Menampilkan <span className="font-bold text-blue-600">{filteredProducts.length}</span> dari <span className="font-bold text-blue-600">{products.length}</span> produk
                 </p>
               </div>
             </div>
