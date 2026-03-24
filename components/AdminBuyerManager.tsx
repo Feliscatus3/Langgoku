@@ -27,12 +27,20 @@ export default function AdminBuyerManager() {
     endDate: '',
   })
 
-  const durations = ['1 bulan', '3 bulan', '6 bulan', '1 tahun']
+  const durations = ['1 hari', '2 hari', '3 hari', '1 minggu', '1 bulan', '3 bulan', '6 bulan', '1 tahun']
 
   const calculateEndDate = (startDate: string, duration: string) => {
     const start = new Date(startDate)
-    const months = parseInt(duration)
-    start.setMonth(start.getMonth() + months)
+    if (duration.includes('hari')) {
+      const days = parseInt(duration)
+      start.setDate(start.getDate() + days)
+    } else if (duration.includes('minggu')) {
+      const weeks = parseInt(duration)
+      start.setDate(start.getDate() + weeks * 7)
+    } else {
+      const months = parseInt(duration)
+      start.setMonth(start.getMonth() + months)
+    }
     return start.toISOString().split('T')[0]
   }
 
@@ -98,6 +106,23 @@ export default function AdminBuyerManager() {
     }
   }
 
+  const getExpiringBuyers = () => {
+    const today = new Date()
+    return buyers.filter(buyer => {
+      const endDate = new Date(buyer.endDate)
+      const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      return daysLeft <= 3 && daysLeft > 0
+    })
+  }
+
+  const getExpiredBuyers = () => {
+    const today = new Date()
+    return buyers.filter(buyer => {
+      const endDate = new Date(buyer.endDate)
+      return endDate < today
+    })
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -112,6 +137,42 @@ export default function AdminBuyerManager() {
           + Tambah Pembeli
         </button>
       </div>
+
+      {/* Reminder Alerts */}
+      {getExpiredBuyers().length > 0 && (
+        <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-6 mb-8">
+          <h4 className="font-bold text-red-700 mb-3 text-lg flex items-center gap-2">
+            ⚠️ Pembeli dengan Langganan Expired ({getExpiredBuyers().length})
+          </h4>
+          <ul className="space-y-2 text-red-700 text-sm">
+            {getExpiredBuyers().map(buyer => (
+              <li key={buyer.id} className="flex items-center gap-2">
+                <span>• {buyer.name}</span>
+                <span className="text-xs bg-red-100 px-2 py-1 rounded">Kadaluarsa: {buyer.endDate}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {getExpiringBuyers().length > 0 && (
+        <div className="bg-yellow-50 border-2 border-yellow-400 rounded-2xl p-6 mb-8">
+          <h4 className="font-bold text-yellow-700 mb-3 text-lg flex items-center gap-2">
+            ⏰ Pembeli dengan Langganan Hampir Habis ({getExpiringBuyers().length})
+          </h4>
+          <ul className="space-y-2 text-yellow-700 text-sm">
+            {getExpiringBuyers().map(buyer => {
+              const daysLeft = Math.ceil((new Date(buyer.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+              return (
+                <li key={buyer.id} className="flex items-center gap-2">
+                  <span>• {buyer.name} ({buyer.product})</span>
+                  <span className="text-xs bg-yellow-100 px-2 py-1 rounded font-bold">{daysLeft} hari lagi</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (
@@ -148,9 +209,21 @@ export default function AdminBuyerManager() {
                 onChange={(e) => handleDurationChange(e.target.value)}
                 className="input-field w-full"
               >
-                {durations.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
+                <option value="">-- Pilih Durasi --</option>
+                <optgroup label="Pendek (Hari)">
+                  <option value="1 hari">1 Hari</option>
+                  <option value="2 hari">2 Hari</option>
+                  <option value="3 hari">3 Hari</option>
+                </optgroup>
+                <optgroup label="Sedang">
+                  <option value="1 minggu">1 Minggu</option>
+                  <option value="1 bulan">1 Bulan</option>
+                  <option value="3 bulan">3 Bulan</option>
+                </optgroup>
+                <optgroup label="Panjang">
+                  <option value="6 bulan">6 Bulan</option>
+                  <option value="1 tahun">1 Tahun</option>
+                </optgroup>
               </select>
               <input
                 type="date"
