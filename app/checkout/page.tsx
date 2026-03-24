@@ -58,12 +58,12 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="container-custom py-12">
-        <h1 className="text-4xl font-bold text-gradient mb-12 text-center">✓ Konfirmasi Pembayaran</h1>
+        <h1 className="text-4xl font-bold text-gradient mb-12 text-center">Konfirmasi Pembayaran</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Order Summary */}
           <div className="card p-8 border border-gray-200">
-            <h2 className="text-3xl font-bold text-gradient mb-8">📋 Ringkasan Pesanan</h2>
+            <h2 className="text-3xl font-bold text-gradient mb-8">Ringkasan Pesanan</h2>
             
             <div className="space-y-5 mb-8">
               <div className="border-b border-gray-100 pb-4">
@@ -82,7 +82,7 @@ export default function CheckoutPage() {
               </div>
 
               <div>
-                <p className="text-gray-600 text-sm font-semibold mb-3">💳 Kode Pembayaran Unik</p>
+                <p className="text-gray-600 text-sm font-semibold mb-3">Kode Pembayaran Unik</p>
                 <div className="flex items-center gap-2 bg-gradient-to-r from-amber-50 to-gray-50 p-4 rounded-2xl border border-amber-200">
                   <input
                     type="text"
@@ -94,7 +94,7 @@ export default function CheckoutPage() {
                     onClick={handleCopyCode}
                     className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-sm font-bold transform hover:scale-105 duration-300"
                   >
-                    {copied ? '✓ Salin' : 'Salin'}
+                    {copied ? 'Salin' : 'Salin'}
                   </button>
                 </div>
                 <p className="text-xs text-gray-600 font-medium mt-3">

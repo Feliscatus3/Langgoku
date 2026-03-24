@@ -17,7 +17,16 @@ export default function AdminProductManager() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState<Partial<Product>>({})
+  const [showForm, setShowForm] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [formData, setFormData] = useState<Partial<Product>>({
+    name: '',
+    price: 0,
+    duration: '',
+    stock: 0,
+    image: '',
+    description: ''
+  })
 
   useEffect(() => {
     fetchProducts()
@@ -25,6 +34,7 @@ export default function AdminProductManager() {
 
   const fetchProducts = async () => {
     try {
+      setLoading(true)
       const response = await fetch('/api/products')
       const data = await response.json()
       if (data.success && data.data) {
@@ -32,26 +42,100 @@ export default function AdminProductManager() {
       }
     } catch (err) {
       console.error('Error fetching products:', err)
+      alert('Gagal memuat produk')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAddProduct = async () => {
+    if (!formData.name || !formData.price || !formData.duration || formData.stock == null) {
+      alert('Harap isi semua field yang diperlukan (*)') 
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      if (editingId) {
+        // Update existing product
+        const response = await fetch(`/api/products/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        const data = await response.json()
+        
+        if (data.success) {
+          setProducts(products.map(p =>
+            p.id === editingId ? { ...p, ...formData } as Product : p
+          ))
+          alert('Produk berhasil diperbarui')
+        } else {
+          alert('Gagal memperbarui produk: ' + data.message)
+        }
+      } else {
+        // Add new product
+        const response = await fetch('/api/products/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        const data = await response.json()
+        
+        if (data.success) {
+          setProducts([...products, data.data])
+          alert('Produk berhasil ditambahkan')
+        } else {
+          alert('Gagal menambahkan produk: ' + data.message)
+        }
+      }
+      resetForm()
+    } catch (err) {
+      console.error('Error saving product:', err)
+      alert('Terjadi kesalahan saat menyimpan produk')
+    } finally {
+      setSubmitting(false)
     }
   }
 
   const handleEdit = (product: Product) => {
     setEditingId(product.id)
     setFormData(product)
+    setShowForm(true)
   }
 
-  const handleSave = async () => {
-    console.log('Saving product:', formData)
-    // This would connect to a backend API to update Google Sheets
-    setEditingId(null)
-    setFormData({})
+  const handleDelete = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return
+
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        setProducts(products.filter(p => p.id !== id))
+        alert('Produk berhasil dihapus')
+      } else {
+        alert('Gagal menghapus produk: ' + data.message)
+      }
+    } catch (err) {
+      console.error('Error deleting product:', err)
+      alert('Terjadi kesalahan saat menghapus produk')
+    }
   }
 
-  const handleCancel = () => {
+  const resetForm = () => {
     setEditingId(null)
-    setFormData({})
+    setShowForm(false)
+    setFormData({
+      name: '',
+      price: 0,
+      duration: '',
+      stock: 0,
+      image: '',
+      description: ''
+    })
   }
 
   if (loading) return (
@@ -64,88 +148,274 @@ export default function AdminProductManager() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-gradient mb-1">📦 Manajemen Produk</h2>
-          <p className="text-gray-600 text-sm">Kelola semua produk digital premium Anda</p>
+          <h2 className="text-3xl font-bold text-gray-950 mb-1">Manajemen Produk</h2>
+          <p className="text-gray-600 text-sm">Kelola catalog produk premium Anda</p>
         </div>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="btn-primary whitespace-nowrap"
+          >
+            + Tambah Produk
+          </button>
+        )}
       </div>
 
-      {products.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-6xl mb-4">📋</div>
-          <p className="text-gray-600 text-lg font-medium">Tidak ada produk. Hubungkan Google Sheets terlebih dahulu.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="card p-6 flex justify-between items-center hover:shadow-lg transition-all duration-300 group"
-            >
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600">{product.name}</h3>
-                <p className="text-gray-600 text-sm mt-2 flex items-center gap-4">
-                  <span className="badge-success text-xs">{formatPrice(product.price)}</span>
-                  <span className="text-gray-500">{product.duration}</span>
-                  <span className="text-gray-500">Stok: {product.stock}</span>
-                </p>
+      {/* Add/Edit Form */}
+      {showForm && (
+        <div className="card p-8 mb-8 shadow-lg border border-gray-200">
+          <h3 className="text-2xl font-bold text-gray-950 mb-6">
+            {editingId ? 'Edit Produk' : 'Tambah Produk Baru'}
+          </h3>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Produk *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Netflix Premium 4K"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="input-field w-full"
+                />
               </div>
-              <button
-                onClick={() => handleEdit(product)}
-                className="btn-primary ml-4"
-              >
-                ✎ Edit
-              </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Harga (IDR) *
+                </label>
+                <input
+                  type="number"
+                  placeholder="Contoh: 99000"
+                  value={formData.price || 0}
+                  onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                  className="input-field w-full"
+                />
+              </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Edit Modal */}
-      {editingId && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card p-8 max-w-md w-full shadow-2xl border border-gray-200">
-            <h3 className="text-2xl font-bold text-gradient mb-6">✎ Edit Produk</h3>
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nama"
-                value={formData.name || ''}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="input-field w-full"
-              />
-              <input
-                type="number"
-                placeholder="Harga"
-                value={formData.price || 0}
-                onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
-                className="input-field w-full"
-              />
-              <input
-                type="text"
-                placeholder="Durasi"
-                value={formData.duration || ''}
-                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                className="input-field w-full"
-              />
-              <input
-                type="number"
-                placeholder="Stok"
-                value={formData.stock || 0}
-                onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
-                className="input-field w-full"
-              />
-              <div className="flex gap-3 pt-4">
-                <button onClick={handleSave} className="btn-primary flex-1">
-                  ✓ Simpan
-                </button>
-                <button onClick={handleCancel} className="btn-secondary flex-1">
-                  ✕ Batal
-                </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Durasi Langganan *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 1 Bulan"
+                  value={formData.duration || ''}
+                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                  className="input-field w-full"
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Stok *
+                </label>
+                <input
+                  type="number"
+                  placeholder="Jumlah stok"
+                  value={formData.stock || 0}
+                  onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                  className="input-field w-full"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                URL Gambar
+              </label>
+              <input
+                type="text"
+                placeholder="https://example.com/image.jpg atau /images/foto/nama-file.jpg"
+                value={formData.image || ''}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                className="input-field w-full"
+              />
+              <p className="text-gray-500 text-xs mt-1">Gunakan foto yang ada di public/images/foto/</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Deskripsi Produk
+              </label>
+              <textarea
+                placeholder="Deskripsi detail produk..."
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
+                className="input-field w-full"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={handleAddProduct}
+                disabled={submitting}
+                className="btn-primary flex-1"
+              >
+                {submitting ? (editingId ? 'Menyimpan...' : 'Menambahkan...') : (editingId ? 'Update Produk' : 'Tambah Produk')}
+              </button>
+              <button
+                onClick={resetForm}
+                disabled={submitting}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Products List */}
+      {products.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-gray-600 mb-4">Belum ada produk</p>
+          <button
+            onClick={() => setShowForm(true)}
+            className="btn-primary"
+          >
+            Tambah Produk Pertama
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map(product => (
+            <div key={product.id} className="card p-6 shadow-sm hover:shadow-md transition-shadow">
+              {product.image && (
+                <div className="w-full h-40 bg-gray-200 rounded-lg mb-4 overflow-hidden">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <h3 className="font-bold text-lg text-gray-950 mb-2">{product.name}</h3>
+              <div className="space-y-2 mb-4 text-sm text-gray-600">
+                <p>Harga: <span className="font-semibold text-gray-950">{formatPrice(product.price)}</span></p>
+                <p>Durasi: {product.duration}</p>
+                <p>Stok: {product.stock}</p>
+              </div>
+              {product.description && (
+                <p className="text-xs text-gray-600 mb-4 line-clamp-2">{product.description}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEdit(product)}
+                  className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm font-medium transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(product.id)}
+                  className="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-medium transition-colors"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
+}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Deskripsi
+              </label>
+              <textarea
+                placeholder="Deskripsi produk (opsional)"
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                className="input-field w-full"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-6 border-t border-gray-200">
+              <button
+                onClick={handleAddProduct}
+                className="btn-primary flex-1"
+              >
+                {editingId ? 'Update Produk' : 'Tambah Produk'}
+              </button>
+              <button
+                onClick={resetForm}
+                className="btn-secondary flex-1"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Products List */}
+      {products.length === 0 ? (
+        <div className="text-center py-16 card p-8 border border-gray-200">
+          <p className="text-gray-600 text-lg font-medium">Belum ada produk</p>
+          <p className="text-gray-500 text-sm mt-2">Klik tombol "Tambah Produk" untuk menambahkan produk baru</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="card p-6 hover:shadow-lg transition-all duration-300 border border-gray-200"
+            >
+              {product.image && (
+                <div className="mb-4 h-40 bg-gray-100 rounded-lg overflow-hidden">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <h3 className="font-bold text-lg text-gray-900 mb-2">{product.name}</h3>
+              <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
+              
+              <div className="space-y-1 mb-4 text-sm">
+                <p className="flex justify-between">
+                  <span className="text-gray-600">Harga:</span>
+                  <span className="font-bold text-blue-600">{formatPrice(product.price)}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-gray-600">Durasi:</span>
+                  <span className="font-medium">{product.duration}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-gray-600">Stok:</span>
+                  <span className={`font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {product.stock > 0 ? `${product.stock} tersedia` : 'Habis'}
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => handleEdit(product)}
+                  className="btn-primary flex-1 text-sm py-2"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(product.id)}
+                  className="btn-secondary flex-1 text-sm py-2 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 }

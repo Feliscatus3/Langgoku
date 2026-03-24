@@ -24,15 +24,19 @@ export default function Navbar() {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8 lg:gap-12">
             <Link href="/" className="text-white/90 hover:text-white font-medium transition-colors duration-300 relative group">
-              🏠 Produk
+              Produk
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 rounded-full transition-all duration-300 group-hover:w-full"></span>
             </Link>
             <Link href="/about" className="text-white/90 hover:text-white font-medium transition-colors duration-300 relative group">
-              ℹ️ Tentang
+              Tentang
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 rounded-full transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+            <Link href="/blog" className="text-white/90 hover:text-white font-medium transition-colors duration-300 relative group">
+              Blog
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 rounded-full transition-all duration-300 group-hover:w-full"></span>
             </Link>
             <Link href="/admin" className="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-105 transform">
-              🔐 Admin
+              Panel Admin
             </Link>
           </div>
 
@@ -40,6 +44,7 @@ export default function Navbar() {
           <button
             className="md:hidden p-2 hover:bg-white/20 rounded-lg transition-colors duration-300"
             onClick={() => setIsOpen(!isOpen)}
+            aria-label="Toggle menu"
           >
             <svg
               className="w-6 h-6 text-white"
@@ -61,13 +66,16 @@ export default function Navbar() {
         {isOpen && (
           <div className="md:hidden py-4 border-t border-blue-500 space-y-2 bg-blue-700">
             <Link href="/" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
-              🏠 Produk
+              Produk
             </Link>
             <Link href="/about" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
-              ℹ️ Tentang
+              Tentang
+            </Link>
+            <Link href="/blog" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
+              Blog
             </Link>
             <Link href="/admin" className="block py-3 px-4 text-white hover:bg-amber-500 rounded-lg transition-colors duration-300 font-medium bg-blue-600">
-              🔐 Admin Panel
+              Panel Admin
             </Link>
           </div>
         )}

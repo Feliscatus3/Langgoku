@@ -1,39 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGoogleSheetsData } from '@/lib/googleSheets'
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const products = await getGoogleSheetsData()
-    const product = products.find((p: any) => p.id === params.id)
-
-    if (!product) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Produk tidak ditemukan',
-        },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: product,
-    })
-  } catch (error) {
-    console.error('Error fetching product:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Gagal mengambil data produk',
-      },
-      { status: 500 }
-    )
-  }
-}
 
 export async function PUT(
   request: NextRequest,
@@ -55,9 +20,8 @@ export async function PUT(
       )
     }
 
-    // TODO: Integrate dengan Google Sheets API atau database untuk update
-    // Saat ini return success response untuk placeholder
-    // Implementation akan menggunakan Google Sheets API dengan write access
+    // TODO: Update di Google Sheets atau database
+    // Untuk sekarang, return success response
 
     return NextResponse.json({
       success: true,
@@ -101,9 +65,8 @@ export async function DELETE(
       )
     }
 
-    // TODO: Integrate dengan Google Sheets API atau database untuk delete
-    // Saat ini return success response untuk placeholder
-    // Implementation akan menggunakan Google Sheets API dengan write access
+    // TODO: Hapus dari Google Sheets atau database
+    // Untuk sekarang, return success response
 
     return NextResponse.json({
       success: true,
