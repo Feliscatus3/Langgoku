@@ -66,13 +66,11 @@ p {
   @apply inline-flex items-center justify-center px-5 py-2.5 font-medium text-white text-sm;
   @apply bg-gradient-to-r from-primary-500 to-blue-600 hover:from-primary-600 hover:to-blue-700 active:from-primary-700 active:to-blue-800;
   @apply rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl active:shadow-lg;
-  @apply focus:outline-none focus:ring-4 focus:ring-primary-500/30 focus:ring-offset-2 focus:ring-offset-transparent dark:focus:ring-offset-slate-900;
+  @apply focus:outline-none focus:ring-4 focus:ring-primary-500/30 focus:ring-offset-2 focus:ring-offset-transparent;
   @apply cursor-pointer transform hover:-translate-y-0.5;
 }
 
-.btn-primary.dark {
-  @apply from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500;
-}
+/* dark mode disabled, .btn-primary.dark removed */
 
 .btn-primary:disabled {
   @apply bg-gray-400 text-gray-200 cursor-not-allowed shadow-none hover:shadow-none;
@@ -99,7 +97,7 @@ p {
 
 /* ====== CARD STYLES (Subtle, Professional) ====== */
 .card {
-  @apply bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all duration-300;
+  @apply bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300;
 }
 
 .card:hover {
@@ -107,11 +105,11 @@ p {
 }
 
 .glass {
-  @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/30 dark:border-slate-700/50;
+  @apply bg-white/80 backdrop-blur-md border border-white/30;
 }
 
 .glass:hover {
-  @apply bg-white/90 dark:bg-slate-900/90 shadow-xl;
+  @apply bg-white/90 shadow-xl;
 }
 
 .card-hover {
@@ -234,21 +232,14 @@ body {
   background: linear-gradient(135deg, #f8fafc 0%, #f8fafc 45%, #eff6ff 100%);
 }
 
-body.dark {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #334155 100%);
-  color: #f1f5f9;
-}
-
-[data-theme="dark"] {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #334155 100%);
-}
+/* dark mode removed */
 
 .section-wrapper {
   @apply py-16 md:py-24;
 }
 
 .section-card {
-  @apply card p-6 md:p-8 border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-slate-900/80;
+  @apply card p-6 md:p-8 border-gray-200 bg-white/90;
 }
 
 .section-heading {
@@ -256,7 +247,7 @@ body.dark {
 }
 
 .section-subtitle {
-  @apply text-gray-600 dark:text-gray-300 text-base md:text-lg;
+  @apply text-gray-600 text-base md:text-lg;
 }
 
 /* ====== GLOBAL CTA BUTTONS ====== */
