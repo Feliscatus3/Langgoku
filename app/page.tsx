@@ -52,8 +52,8 @@ export default function Home() {
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
 
-        {/* Floating Logo Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Floating Logo Elements - Desktop Only */}
+        <div className="hidden md:block absolute inset-0 overflow-hidden pointer-events-none md:h-full">
           {/* Canva - Top Left */}
           <div className="absolute top-12 left-8 w-20 h-20 animate-float" style={{animationDelay: '0s'}}>
             <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
@@ -159,7 +159,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="container-custom relative z-10 py-16 md:py-24">
+        <div className="container-custom relative z-10 py-12 md:py-24">
           <div className="max-w-4xl mx-auto text-center">
             {/* Badge */}
             <div className="mb-8 inline-block animate-fade-in-up">
@@ -190,8 +190,8 @@ export default function Home() {
             </div>
 
             {/* Services Showcase */}
-            <div className="mb-12 animate-fade-in-up" style={{animationDelay: '0.6s'}}>
-              <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            <div className="mb-8 md:mb-12 animate-fade-in-up" style={{animationDelay: '0.6s'}}>
+              <div className="flex flex-wrap justify-center gap-2 md:gap-6">
                 {[
                   { name: 'Netflix', color: 'from-red-500 to-red-600' },
                   { name: 'Canva', color: 'from-blue-500 to-blue-600' },
@@ -200,31 +200,12 @@ export default function Home() {
                   { name: 'Disney+', color: 'from-blue-600 to-purple-600' }
                 ].map((service, index) => (
                   <div key={service.name} className="group">
-                    <div className={`bg-gradient-to-r ${service.color} px-4 py-2 rounded-full text-white font-semibold text-sm shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl border border-white/20`}>
+                    <div className={`bg-gradient-to-r ${service.color} px-3 md:px-4 py-2 rounded-full text-white font-semibold text-xs md:text-sm shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl border border-white/20`}>
                       {service.name}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up" style={{animationDelay: '0.8s'}}>
-              {[
-                { number: `${products.length}+`, label: 'Produk Premium', icon: '📦', color: 'from-cyan-400 to-blue-500' },
-                { number: '100%', label: 'Terpercaya & Aman', icon: '🛡️', color: 'from-green-400 to-emerald-500' },
-                { number: '24/7', label: 'Dukungan Pelanggan', icon: '💬', color: 'from-purple-400 to-pink-500' }
-              ].map((stat, index) => (
-                <div key={index} className="group">
-                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 shadow-xl transform transition-all duration-300 hover:scale-105 hover:bg-white/15">
-                    <div className="text-4xl mb-3">{stat.icon}</div>
-                    <div className={`text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r ${stat.color} mb-2`}>
-                      {stat.number}
-                    </div>
-                  <p className="text-gray-200 font-medium text-sm md:text-base">{stat.label}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -234,6 +215,34 @@ export default function Home() {
           <svg viewBox="0 0 1440 120" className="w-full h-12 md:h-16 lg:h-20">
             <path fill="#ffffff" d="M0,32L48,37.3C96,43,192,53,288,58.7C384,64,480,64,576,58.7C672,53,768,43,864,48C960,53,1056,75,1152,80C1248,85,1344,75,1392,69.3L1440,64L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
           </svg>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="bg-white py-16 md:py-24">
+        <div className="container-custom">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
+            {/* Stat 1 */}
+            <div className="group text-center p-8 md:p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:shadow-lg transition-all duration-300 border border-blue-100 hover:border-blue-300">
+              <div className="text-4xl md:text-5xl mb-4">📦</div>
+              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Produk Premium</h3>
+              <p className="text-gray-600 text-sm md:text-base">Koleksi lengkap produk dan layanan berkualitas tinggi pilihan terbaik</p>
+            </div>
+
+            {/* Stat 2 */}
+            <div className="group text-center p-8 md:p-6 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 hover:shadow-lg transition-all duration-300 border border-green-100 hover:border-green-300">
+              <div className="text-4xl md:text-5xl mb-4">🛡️</div>
+              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Terpercaya & Aman</h3>
+              <p className="text-gray-600 text-sm md:text-base">Transaksi aman dengan sistem enkripsi terkini dan jaminan kepuasan pelanggan</p>
+            </div>
+
+            {/* Stat 3 */}
+            <div className="group text-center p-8 md:p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-lg transition-all duration-300 border border-purple-100 hover:border-purple-300">
+              <div className="text-4xl md:text-5xl mb-4">💬</div>
+              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Dukungan Pelanggan</h3>
+              <p className="text-gray-600 text-sm md:text-base">Tim support responsif siap membantu Anda 24/7 untuk kepuasan maksimal</p>
+            </div>
+          </div>
         </div>
       </div>
 
