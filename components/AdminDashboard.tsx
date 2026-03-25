@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react'
 import AdminProductManager from './AdminProductManager'
 import AdminBuyerManager from './AdminBuyerManager'
-import AdminBlogManager from './AdminBlogManager'
 import AdminSettings from './AdminSettings'
 
 interface AdminDashboardProps {
   onLogout: () => void
 }
 
-type TabType = 'products' | 'buyers' | 'blog' | 'settings'
+type TabType = 'products' | 'buyers' | 'settings'
 
 export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('products')
@@ -33,7 +32,6 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const navItems = [
     { id: 'products', label: 'Produk', icon: 'Box' },
     { id: 'buyers', label: 'Pembeli', icon: 'Users' },
-    { id: 'blog', label: 'Blog', icon: 'FileText' },
     { id: 'settings', label: 'Pengaturan', icon: 'Settings' },
   ]
 
@@ -113,7 +111,6 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <h1 className="text-2xl font-medium text-gray-950">
                 {activeTab === 'products' && 'Manajemen Produk'}
                 {activeTab === 'buyers' && 'Manajemen Pembeli'}
-                {activeTab === 'blog' && 'Manajemen Blog'}
                 {activeTab === 'settings' && 'Pengaturan Toko'}
               </h1>
               <p className="text-sm text-gray-500 mt-1">Kelola data toko Anda</p>
@@ -126,7 +123,6 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
           <div className="max-w-7xl mx-auto">
             {activeTab === 'products' && <AdminProductManager />}
             {activeTab === 'buyers' && <AdminBuyerManager />}
-            {activeTab === 'blog' && <AdminBlogManager />}
             {activeTab === 'settings' && <AdminSettings />}
           </div>
         </div>

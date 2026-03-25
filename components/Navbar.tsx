@@ -52,10 +52,6 @@ export default function Navbar() {
               Tentang
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 rounded-full transition-all duration-300 group-hover:w-full"></span>
             </Link>
-            <Link href="/blog" className="text-white/90 hover:text-white font-medium transition-colors duration-300 relative group">
-              Blog
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 rounded-full transition-all duration-300 group-hover:w-full"></span>
-            </Link>
             <Link href="/admin" className="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-105 transform">
               Panel Admin
             </Link>
@@ -108,9 +104,7 @@ export default function Navbar() {
             <Link href="/about" className="block py-3 px-4 text-white hover:bg-white/10 dark:hover:bg-slate-200/10 rounded-lg transition-colors duration-300 font-medium">
               Tentang
             </Link>
-            <Link href="/blog" className="block py-3 px-4 text-white hover:bg-white/10 dark:hover:bg-slate-200/10 rounded-lg transition-colors duration-300 font-medium">
-              Blog
-            </Link>
+
             <Link href="/admin" className="block py-3 px-4 text-white hover:bg-amber-500 rounded-lg transition-colors duration-300 font-medium bg-blue-600 dark:bg-slate-600">
               Panel Admin
             </Link>

@@ -196,27 +196,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Blog Section */}
-      <div className="container-custom py-16 md:py-24">
-        <div className="mb-16">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-950 mb-3">Artikel Blog Terbaru</h2>
-              <p className="text-gray-600 text-lg">Tips dan trik menggunakan layanan premium</p>
-            </div>
-            <Link href="/blog" className="text-blue-600 hover:text-blue-700 font-bold text-lg hidden md:block">
-              Baca Blog →
-            </Link>
-          </div>
-
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-8 md:p-12 rounded-2xl border border-gray-200 text-center">
-            <p className="text-gray-600 text-lg mb-6">Blog kami penuh dengan artikel menarik dan berguna</p>
-            <Link href="/blog" className="btn-primary inline-block">
-              Jelajahi Blog Kami
-            </Link>
-          </div>
-        </div>
-      </div>
 
       {/* Footer CTA */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 md:py-20">
