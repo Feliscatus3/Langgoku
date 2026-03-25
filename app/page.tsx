@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import ProductGrid from '@/components/ProductGrid'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import EmptyState from '@/components/EmptyState'
@@ -51,10 +52,112 @@ export default function Home() {
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
 
-        {/* Floating Elements */}
-        <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full opacity-20 animate-bounce" style={{animationDelay: '1s'}}></div>
-        <div className="absolute bottom-32 left-1/4 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
+        {/* Floating Logo Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Canva - Top Left */}
+          <div className="absolute top-12 left-8 w-20 h-20 animate-float" style={{animationDelay: '0s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/canva.jfif"
+                alt="Canva"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* CapCut - Top Right */}
+          <div className="absolute top-20 right-12 w-24 h-24 animate-bounce" style={{animationDelay: '0.5s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/capcut.png"
+                alt="CapCut"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Alightmotion - Middle Left */}
+          <div className="absolute top-1/3 left-4 w-16 h-16 animate-pulse">
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/alightmotion.png"
+                alt="Alightmotion"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Zoom - Middle Right */}
+          <div className="absolute top-2/5 right-8 w-20 h-20 animate-float" style={{animationDelay: '1.5s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/zoom.png"
+                alt="Zoom"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Spotify - Bottom Left */}
+          <div className="absolute bottom-32 left-6 w-20 h-20 animate-bounce" style={{animationDelay: '1s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/spotify.png"
+                alt="Spotify"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Netflix - Bottom Right */}
+          <div className="absolute bottom-28 right-12 w-24 h-24 animate-float" style={{animationDelay: '2s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/netflix.png"
+                alt="Netflix"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* ChatGPT - Bottom Center Left */}
+          <div className="absolute bottom-40 left-1/4 w-16 h-16 animate-pulse" style={{animationDelay: '1.5s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/chatgpt.png"
+                alt="ChatGPT"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Gemini - Bottom Center Right */}
+          <div className="absolute bottom-44 right-1/4 w-20 h-20 animate-float" style={{animationDelay: '0.8s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+              <Image
+                src="/images/gemini.png"
+                alt="Gemini"
+                fill
+                className="object-contain p-1 rounded-full"
+                priority
+              />
+            </div>
+          </div>
+        </div>
 
         <div className="container-custom relative z-10 py-16 md:py-24">
           <div className="max-w-4xl mx-auto text-center">

@@ -214,6 +214,25 @@ p {
 .animate-fade-in-up {
   animation: fade-in-up 0.8s ease-out forwards;
 }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(-12px) translateX(-2px);
+  }
+  50% {
+    transform: translateY(-8px) translateX(2px);
+  }
+  75% {
+    transform: translateY(-14px) translateX(-1px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
 .float-animation {
   animation: float 3s ease-in-out infinite;
 }
