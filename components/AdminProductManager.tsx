@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { formatPrice } from '@/lib/googleSheets'
 
 interface Product {
@@ -285,11 +286,12 @@ export default function AdminProductManager() {
           {products.map(product => (
             <div key={product.id} className="card p-6 shadow-sm hover:shadow-md transition-shadow">
               {product.image && (
-                <div className="w-full h-40 bg-gray-200 rounded-lg mb-4 overflow-hidden">
-                  <img
+                <div className="w-full h-40 bg-gray-200 rounded-lg mb-4 overflow-hidden relative">
+                  <Image
                     src={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
               )}

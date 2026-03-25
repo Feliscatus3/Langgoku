@@ -112,7 +112,7 @@ export default function TestimoniesSlider() {
 
               {/* Text */}
               <p className="text-lg md:text-xl text-gray-700 mb-8 leading-relaxed italic">
-                "{currentTestimony.text}"
+                &ldquo;{currentTestimony.text}&rdquo;
               </p>
 
               {/* Author */}
