@@ -78,7 +78,7 @@ export default function Home() {
 
             {/* Subtitle */}
             <div className="mb-8 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
-              <p className="text-xl md:text-2xl text-gray-300 mb-6 font-medium leading-relaxed max-w-2xl mx-auto">
+              <p className="text-xl md:text-2xl text-gray-200 mb-6 font-medium leading-relaxed max-w-2xl mx-auto">
                 Platform terpercaya untuk membeli akun premium digital dengan harga terjangkau
               </p>
               <p className="text-lg md:text-xl text-cyan-200 font-light">
@@ -118,7 +118,7 @@ export default function Home() {
                     <div className={`text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r ${stat.color} mb-2`}>
                       {stat.number}
                     </div>
-                    <p className="text-gray-300 font-medium text-sm md:text-base">{stat.label}</p>
+                  <p className="text-gray-200 font-medium text-sm md:text-base">{stat.label}</p>
                   </div>
                 </div>
               ))}

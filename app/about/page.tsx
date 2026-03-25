@@ -91,7 +91,7 @@ export default function AboutPage() {
           <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 md:p-12 text-white">
             <div className="text-center mb-8">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Langgoku dalam Angka</h2>
-              <p className="text-gray-300">Pencapaian dan kepercayaan yang telah diraih</p>
+              <p className="text-gray-200">Pencapaian dan kepercayaan yang telah diraih</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
@@ -104,7 +104,7 @@ export default function AboutPage() {
                   <div className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 mb-2">
                     {stat.number}
                   </div>
-                  <p className="text-gray-300 font-medium">{stat.label}</p>
+                  <p className="text-gray-200 font-medium">{stat.label}</p>
                 </div>
               ))}
             </div>
