@@ -11,7 +11,6 @@ export default function Home() {
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     fetchProducts()
@@ -43,10 +42,6 @@ export default function Home() {
     }
   }
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
   return (
     <div className="bg-white">
       {/* Hero Section with Gradient Background */}
@@ -67,24 +62,6 @@ export default function Home() {
             <p className="text-gray-600 text-base md:text-lg">
               Netflix, Canva, CapCut, dan lebih dari 50+ layanan premium tersedia
             </p>
-          </div>
-
-          {/* Search Bar with Icon */}
-          <div className="flex justify-center px-4 mb-12">
-            <div className="max-w-2xl w-full">
-              <div className="relative shadow-lg rounded-full overflow-hidden bg-white border-2 border-blue-100">
-                <input
-                  type="text"
-                  placeholder="Cari produk premium impianmu..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="input-field w-full pl-12 pr-4 py-3 border-0 focus:ring-0"
-                />
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
           </div>
 
           {/* Stats Row */}
@@ -135,18 +112,7 @@ export default function Home() {
           {/* Products Grid */}
           {!loading && !error && products.length > 0 && (
             <div>
-              <ProductGrid products={filteredProducts} />
-              {searchTerm && filteredProducts.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-gray-600 text-lg">Produk tidak ditemukan</p>
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="text-blue-600 hover:text-blue-700 font-medium mt-2"
-                  >
-                    Hapus filter pencarian
-                  </button>
-                </div>
-              )}
+              <ProductGrid products={products} />
             </div>
           )}
         </div>

@@ -11,12 +11,12 @@ export default function Navbar() {
       <div className="container-custom">
         <div className="flex justify-between items-center h-20 md:h-24">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-110">
-              <span className="text-white font-bold text-lg md:text-xl">L</span>
+          <Link href="/" className="flex items-center gap-2 md:gap-3 group">
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-110">
+              <span className="text-white font-bold text-base md:text-xl">L</span>
             </div>
-            <div className="hidden sm:flex flex-col">
-              <span className="font-bold text-xl md:text-2xl text-white tracking-tight">Langgoku</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-lg md:text-2xl text-white tracking-tight">Langgoku</span>
               <span className="text-xs md:text-sm text-blue-100 font-medium">Premium Digital</span>
             </div>
           </Link>
