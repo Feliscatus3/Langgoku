@@ -30,9 +30,9 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   }, [])
 
   const navItems = [
-    { id: 'products', label: 'Produk', icon: 'Box' },
-    { id: 'buyers', label: 'Pembeli', icon: 'Users' },
-    { id: 'settings', label: 'Pengaturan', icon: 'Settings' },
+    { id: 'products', label: 'Produk', icon: '📦' },
+    { id: 'buyers', label: 'Pembeli', icon: '👥' },
+    { id: 'settings', label: 'Pengaturan', icon: '⚙️' },
   ]
 
   return (
