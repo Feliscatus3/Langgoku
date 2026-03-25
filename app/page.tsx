@@ -58,7 +58,7 @@ export default function Home() {
           <div className="absolute top-12 left-8 w-20 h-20 animate-float" style={{animationDelay: '0s'}}>
             <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
-                src="/images/canva.jfif"
+                src="/images/canva.png"
                 alt="Canva"
                 fill
                 className="object-contain p-1 rounded-full"
