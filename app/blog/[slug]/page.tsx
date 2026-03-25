@@ -4,20 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import LoadingSpinner from '@/components/LoadingSpinner'
-
-interface BlogPost {
-  id: string
-  title: string
-  slug: string
-  excerpt: string
-  content: string
-  image: string
-  author: string
-  category: string
-  createdAt: string
-  published: boolean
-  views: number
-}
+import { BlogPost } from '@/types/blog'
 
 export default function BlogPostPage({ params }: { params: { slug: string } }) {
   const [post, setPost] = useState<BlogPost | null>(null)
@@ -25,33 +12,33 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([])
 
   useEffect(() => {
+    const fetchPost = async () => {
+      try {
+        const response = await fetch('/api/blog')
+        const data = await response.json()
+
+        if (data.success && data.data) {
+          const allPosts: BlogPost[] = data.data
+          const foundPost = allPosts.find((p: BlogPost) => p.slug === params.slug && p.published)
+
+          if (foundPost) {
+            setPost(foundPost)
+            setRelatedPosts(
+              allPosts
+                .filter((p: BlogPost) => p.category === foundPost.category && p.id !== foundPost.id && p.published)
+                .slice(0, 3)
+            )
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching blog post:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchPost()
   }, [params.slug])
-
-  const fetchPost = async () => {
-    try {
-      const response = await fetch('/api/blog')
-      const data = await response.json()
-      
-      if (data.success && data.data) {
-        const allPosts = data.data
-        const foundPost = allPosts.find((p: BlogPost) => p.slug === params.slug && p.published)
-        
-        if (foundPost) {
-          setPost(foundPost)
-          setRelatedPosts(
-            allPosts
-              .filter((p: BlogPost) => p.category === foundPost.category && p.id !== foundPost.id && p.published)
-              .slice(0, 3)
-          )
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching blog post:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading) return (
     <>

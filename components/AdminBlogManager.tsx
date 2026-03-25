@@ -1,19 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-
-interface BlogPost {
-  id: string
-  title: string
-  slug: string
-  content: string
-  excerpt: string
-  image?: string
-  category: string
-  author: string
-  publishedAt: string
-  createdAt?: string
-}
+import { BlogPost } from '@/types/blog'
 
 const categories = ['Tips & Trik', 'Tutorial', 'Berita', 'Review', 'Lainnya']
 
