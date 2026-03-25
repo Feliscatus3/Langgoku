@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
-import { BlogPost } from '@/types/blog' // Create this if needed
+import { BlogPost } from '@/types/blog'
 
 export default function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([])
@@ -12,22 +12,28 @@ export default function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState('Semua')
 
   useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('/api/blog')
+        const data = await response.json()
+        if (data.success && data.data) {
+          const normalizedPosts: BlogPost[] = data.data.map((post: any) => ({
+            ...post,
+            views: post.views ?? 0,
+            published: post.published ?? true,
+            createdAt: post.createdAt ?? new Date().toISOString(),
+          }))
+          setPosts(normalizedPosts.filter((post: BlogPost) => post.published))
+        }
+      } catch (err) {
+        console.error('Error fetching blog posts:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchPosts()
   }, [])
-
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch('/api/blog')
-      const data = await response.json()
-      if (data.success && data.data) {
-        setPosts(data.data.filter((post: BlogPost) => post.published))
-      }
-    } catch (err) {
-      console.error('Error fetching blog posts:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const categories = ['Semua', ...new Set(posts.map(p => p.category))]
   const filteredPosts = selectedCategory === 'Semua' 
@@ -117,7 +123,7 @@ export default function BlogPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        {post.views.toLocaleString()} views
+                        {(post.views ?? 0).toLocaleString()} views
                       </div>
                       <button className="mt-1 px-4 py-2 btn-secondary text-xs">
                         Baca Selengkapnya →

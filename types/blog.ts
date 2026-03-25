@@ -8,7 +8,7 @@ export interface BlogPost {
   author: string
   category: string
   createdAt: string
-  published?: boolean
+  published: boolean
   publishedAt?: string
-  views?: number
+  views: number
 }

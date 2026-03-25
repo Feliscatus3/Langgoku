@@ -69,6 +69,8 @@ export default function AdminBlogManager() {
           image: formData.image,
           author: formData.author || 'Admin',
           category: formData.category || 'Umum',
+          published: true,
+          views: 0,
           publishedAt: formData.publishedAt || new Date().toISOString().split('T')[0],
           createdAt: new Date().toISOString(),
         }
