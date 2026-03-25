@@ -57,6 +57,8 @@ const testimonies: Testimony[] = [
 export default function TestimoniesSlider() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAutoPlay, setIsAutoPlay] = useState(true)
+  const [touchStartX, setTouchStartX] = useState(0)
+  const [touchEndX, setTouchEndX] = useState(0)
 
   useEffect(() => {
     if (!isAutoPlay) return
@@ -83,6 +85,23 @@ export default function TestimoniesSlider() {
     setIsAutoPlay(false)
   }
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX)
+    setIsAutoPlay(false)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setTouchEndX(e.changedTouches[0].clientX)
+    const deltaX = touchStartX - touchEndX
+    if (Math.abs(deltaX) > 50) {
+      if (deltaX > 0) {
+        nextSlide()
+      } else {
+        prevSlide()
+      }
+    }
+  }
+
   const currentTestimony = testimonies[currentIndex]
 
   return (
@@ -97,7 +116,11 @@ export default function TestimoniesSlider() {
         </div>
 
         {/* Slider Container */}
-        <div className="relative max-w-4xl mx-auto">
+        <div 
+          className="relative max-w-4xl mx-auto"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {/* Main Slide */}
           <div className="mb-8">
             <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border border-gray-100 transition-all duration-500">
