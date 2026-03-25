@@ -120,7 +120,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
         {/* Content Area */}
         <div className="flex-1 p-4 md:p-8 overflow-auto">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             {activeTab === 'products' && <AdminProductManager />}
             {activeTab === 'buyers' && <AdminBuyerManager />}
             {activeTab === 'settings' && <AdminSettings />}
