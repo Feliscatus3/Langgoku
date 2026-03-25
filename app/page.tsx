@@ -44,41 +44,93 @@ export default function Home() {
 
   return (
     <div className="bg-white">
-      {/* Hero Section with Gradient Background */}
-      <div className="relative bg-gradient-to-br from-blue-50 via-white to-amber-50 section-wrapper">
-        <div className="container-custom">
-          <div className="max-w-3xl mx-auto text-center mb-12">
-            <div className="mb-6 inline-block">
-              <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold">
-                Belanja Smart, Hemat Budget
-              </span>
-            </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-950 mb-6 leading-tight">
-              Langgoku
-            </h1>
-            <p className="text-lg md:text-xl text-gray-700 mb-4">
-              Platform terpercaya untuk membeli akun premium digital dengan harga terjangkau
-            </p>
-            <p className="text-gray-600 text-base md:text-lg">
-              Netflix, Canva, CapCut, dan lebih dari 50+ layanan premium tersedia
-            </p>
-          </div>
+      {/* Hero Section with Modern Design */}
+      <div className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-20" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }}></div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">
-            <div className="text-center py-4">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{products.length}+</div>
-              <p className="text-gray-700 font-medium">Produk Premium</p>
+        {/* Floating Elements */}
+        <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full opacity-20 animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full opacity-20 animate-bounce" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-32 left-1/4 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
+
+        <div className="container-custom relative z-10 py-16 md:py-24">
+          <div className="max-w-4xl mx-auto text-center">
+            {/* Badge */}
+            <div className="mb-8 inline-block animate-fade-in-up">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur-lg opacity-50"></div>
+                <span className="relative bg-gradient-to-r from-cyan-400 to-blue-500 text-white px-6 py-3 rounded-full text-sm font-bold tracking-wide shadow-lg border border-white/20">
+                  🛍️ Belanja Smart, Hemat Budget
+                </span>
+              </div>
             </div>
-            <div className="text-center py-4">
-              <div className="text-3xl font-bold text-blue-600 mb-2">100%</div>
-              <p className="text-gray-700 font-medium">Terpercaya & Aman</p>
+
+            {/* Main Heading */}
+            <div className="mb-8 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+              <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-blue-200 mb-4 leading-none tracking-tight">
+                LANGGOKU
+              </h1>
+              <div className="w-24 h-1 bg-gradient-to-r from-cyan-400 to-blue-500 mx-auto rounded-full"></div>
             </div>
-            <div className="text-center py-4">
-              <div className="text-3xl font-bold text-blue-600 mb-2">24/7</div>
-              <p className="text-gray-700 font-medium">Dukungan Pelanggan</p>
+
+            {/* Subtitle */}
+            <div className="mb-8 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+              <p className="text-xl md:text-2xl text-gray-300 mb-6 font-medium leading-relaxed max-w-2xl mx-auto">
+                Platform terpercaya untuk membeli akun premium digital dengan harga terjangkau
+              </p>
+              <p className="text-lg md:text-xl text-cyan-200 font-light">
+                Netflix, Canva, CapCut, dan lebih dari 50+ layanan premium tersedia
+              </p>
+            </div>
+
+            {/* Services Showcase */}
+            <div className="mb-12 animate-fade-in-up" style={{animationDelay: '0.6s'}}>
+              <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+                {[
+                  { name: 'Netflix', color: 'from-red-500 to-red-600' },
+                  { name: 'Canva', color: 'from-blue-500 to-blue-600' },
+                  { name: 'CapCut', color: 'from-green-500 to-green-600' },
+                  { name: 'Spotify', color: 'from-green-400 to-green-500' },
+                  { name: 'Disney+', color: 'from-blue-600 to-purple-600' }
+                ].map((service, index) => (
+                  <div key={service.name} className="group">
+                    <div className={`bg-gradient-to-r ${service.color} px-4 py-2 rounded-full text-white font-semibold text-sm shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl border border-white/20`}>
+                      {service.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up" style={{animationDelay: '0.8s'}}>
+              {[
+                { number: `${products.length}+`, label: 'Produk Premium', icon: '📦', color: 'from-cyan-400 to-blue-500' },
+                { number: '100%', label: 'Terpercaya & Aman', icon: '🛡️', color: 'from-green-400 to-emerald-500' },
+                { number: '24/7', label: 'Dukungan Pelanggan', icon: '💬', color: 'from-purple-400 to-pink-500' }
+              ].map((stat, index) => (
+                <div key={index} className="group">
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 shadow-xl transform transition-all duration-300 hover:scale-105 hover:bg-white/15">
+                    <div className="text-4xl mb-3">{stat.icon}</div>
+                    <div className={`text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r ${stat.color} mb-2`}>
+                      {stat.number}
+                    </div>
+                    <p className="text-gray-300 font-medium text-sm md:text-base">{stat.label}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+        </div>
+
+        {/* Bottom Wave */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" className="w-full h-12 md:h-16 lg:h-20">
+            <path fill="#ffffff" d="M0,32L48,37.3C96,43,192,53,288,58.7C384,64,480,64,576,58.7C672,53,768,43,864,48C960,53,1056,75,1152,80C1248,85,1344,75,1392,69.3L1440,64L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
+          </svg>
         </div>
       </div>
 
@@ -105,7 +157,7 @@ export default function Home() {
           {!loading && error && (
             <EmptyState 
               title="Produk Belum Tersedia"
-              description={error}
+              description={error || "Terjadi kesalahan saat memuat produk"}
             />
           )}
 

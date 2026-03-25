@@ -200,7 +200,20 @@ p {
   0%, 100% { box-shadow: 0 0 20px rgba(14, 165, 233, 0.3); }
   50% { box-shadow: 0 0 30px rgba(14, 165, 233, 0.6); }
 }
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
 .float-animation {
   animation: float 3s ease-in-out infinite;
 }
