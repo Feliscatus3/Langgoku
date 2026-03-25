@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className="bg-white min-h-screen flex flex-col">
+<body className="bg-white dark:bg-slate-900 min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1">{children}</main>
         <footer className="bg-gray-900 text-gray-100 py-12 md:py-16 mt-16 md:mt-20">
