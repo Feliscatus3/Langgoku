@@ -34,7 +34,7 @@ const SHEETS = {
  * Handle GET requests untuk membaca data
  */
 function doGet(e) {
-  const action = e.parameter.action;
+  const action = e && e.parameter ? e.parameter.action : null;
   
   try {
     switch (action) {
@@ -43,9 +43,9 @@ function doGet(e) {
       case 'getBuyers':
         return getBuyers();
       case 'getProduct':
-        return getProduct(e.parameter.id);
+        return getProduct(e && e.parameter ? e.parameter.id : null);
       case 'getBuyer':
-        return getBuyer(e.parameter.id);
+        return getBuyer(e && e.parameter ? e.parameter.id : null);
       case 'getStats':
         return getStats();
       default:
