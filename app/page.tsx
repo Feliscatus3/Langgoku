@@ -52,77 +52,48 @@ export default function Home() {
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
 
-        {/* Mobile Floating Icons - More elegant and transparent */}
-        <div className="flex md:hidden justify-center items-center gap-3 py-8 px-4 relative z-10">
-          <div className="w-10 h-10 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5">
-            <Image src="/images/netflix.png" alt="Netflix" fill className="object-contain opacity-80" />
-          </div>
-          <div className="w-10 h-10 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5">
-            <Image src="/images/spotify.png" alt="Spotify" fill className="object-contain opacity-80" />
-          </div>
-          <div className="w-10 h-10 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5">
-            <Image src="/images/canva.png" alt="Canva" fill className="object-contain opacity-80" />
-          </div>
-          <div className="w-10 h-10 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5">
-            <Image src="/images/youtube.png" alt="YouTube" fill className="object-contain opacity-80" />
-          </div>
-        </div>
-
-        {/* Desktop Floating Icons - More elegant and transparent */}
-        <div className="hidden md:block absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Canva - Top Left */}
-          <div className="absolute top-12 left-8 w-20 h-20 animate-float" style={{animationDelay: '0s'}}>
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2">
-              <Image src="/images/canva.png" alt="Canva" fill className="object-contain opacity-80" priority />
+        {/* Floating Icons - Consistent on Mobile and Desktop */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Row 1 - Top */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-full px-4 md:px-8 flex justify-center gap-4 md:gap-6">
+            <div className="w-12 h-12 md:w-16 md:h-16 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5 md:p-2">
+              <Image src="/images/canva.png" alt="Canva" fill className="object-contain opacity-80" />
+            </div>
+            <div className="w-14 h-14 md:w-20 md:h-20 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5 md:p-2 animate-pulse">
+              <Image src="/images/capcut.png" alt="CapCut" fill className="object-contain opacity-80" />
+            </div>
+            <div className="w-12 h-12 md:w-16 md:h-16 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5 md:p-2">
+              <Image src="/images/chatgpt.png" alt="ChatGPT" fill className="object-contain opacity-80" />
             </div>
           </div>
 
-          {/* CapCut - Top Right */}
-          <div className="absolute top-20 right-12 w-24 h-24 animate-bounce" style={{animationDelay: '0.5s'}}>
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2">
-              <Image src="/images/capcut.png" alt="CapCut" fill className="object-contain opacity-80" priority />
+          {/* Row 2 - Middle */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full px-4 md:px-8 flex justify-center gap-6 md:gap-8">
+            <div className="w-16 h-16 md:w-24 md:h-24 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2 md:p-3 animate-bounce" style={{animationDelay: '0.3s'}}>
+              <Image src="/images/alightmotion.png" alt="Alightmotion" fill className="object-contain opacity-80" />
+            </div>
+            <div className="w-16 h-16 md:w-24 md:h-24 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2 md:p-3 animate-float">
+              <Image src="/images/zoom.png" alt="Zoom" fill className="object-contain opacity-80" />
             </div>
           </div>
 
-          {/* Alightmotion - Middle Left */}
-          <div className="absolute top-1/3 left-4 w-16 h-16 animate-pulse">
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5">
-              <Image src="/images/alightmotion.png" alt="Alightmotion" fill className="object-contain opacity-80" priority />
+          {/* Row 3 - Bottom */}
+          <div className="absolute bottom-20 md:bottom-28 left-1/2 -translate-x-1/2 w-full px-4 md:px-8 flex justify-center gap-4 md:gap-6">
+            <div className="w-12 h-12 md:w-16 md:h-16 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5 md:p-2">
+              <Image src="/images/spotify.png" alt="Spotify" fill className="object-contain opacity-80" />
+            </div>
+            <div className="w-14 h-14 md:w-20 md:h-20 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5 md:p-2 animate-bounce" style={{animationDelay: '0.7s'}}>
+              <Image src="/images/netflix.png" alt="Netflix" fill className="object-contain opacity-80" />
+            </div>
+            <div className="w-12 h-12 md:w-16 md:h-16 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5 md:p-2">
+              <Image src="/images/gemini.png" alt="Gemini" fill className="object-contain opacity-80" />
             </div>
           </div>
 
-          {/* Zoom - Middle Right */}
-          <div className="absolute top-2/5 right-8 w-20 h-20 animate-float" style={{animationDelay: '1.5s'}}>
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2">
-              <Image src="/images/zoom.png" alt="Zoom" fill className="object-contain opacity-80" priority />
-            </div>
-          </div>
-
-          {/* Spotify - Bottom Left */}
-          <div className="absolute bottom-32 left-6 w-20 h-20 animate-bounce" style={{animationDelay: '1s'}}>
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2">
-              <Image src="/images/spotify.png" alt="Spotify" fill className="object-contain opacity-80" priority />
-            </div>
-          </div>
-
-          {/* Netflix - Bottom Right */}
-          <div className="absolute bottom-28 right-12 w-24 h-24 animate-float" style={{animationDelay: '2s'}}>
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2">
-              <Image src="/images/netflix.png" alt="Netflix" fill className="object-contain opacity-80" priority />
-            </div>
-          </div>
-
-          {/* ChatGPT - Bottom Center Left */}
-          <div className="absolute bottom-40 left-1/4 w-16 h-16 animate-pulse" style={{animationDelay: '1.5s'}}>
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1.5">
-              <Image src="/images/chatgpt.png" alt="ChatGPT" fill className="object-contain opacity-80" priority />
-            </div>
-          </div>
-
-          {/* Gemini - Bottom Center Right */}
-          <div className="absolute bottom-44 right-1/4 w-20 h-20 animate-float" style={{animationDelay: '0.8s'}}>
-            <div className="relative w-full h-full aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-2">
-              <Image src="/images/gemini.png" alt="Gemini" fill className="object-contain opacity-80" priority />
+          {/* Row 4 - Bottom Edge */}
+          <div className="absolute bottom-8 md:bottom-16 left-1/2 -translate-x-1/2 w-full px-4 md:px-8 flex justify-center gap-4 md:gap-6">
+            <div className="w-10 h-10 md:w-14 md:h-14 aspect-square rounded-full bg-white/[0.05] backdrop-blur-sm border border-white/10 p-1 md:p-1.5">
+              <Image src="/images/youtube.png" alt="YouTube" fill className="object-contain opacity-80" />
             </div>
           </div>
         </div>
