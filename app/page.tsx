@@ -168,8 +168,7 @@ export default function Home() {
                   { name: 'Netflix', color: 'from-red-500 to-red-600' },
                   { name: 'Canva', color: 'from-blue-500 to-blue-600' },
                   { name: 'CapCut', color: 'from-green-500 to-green-600' },
-                  { name: 'Spotify', color: 'from-green-400 to-green-500' },
-                  { name: 'Disney+', color: 'from-blue-600 to-purple-600' }
+                  { name: 'Spotify', color: 'from-green-400 to-green-500' }
                 ].map((service) => (
                   <div key={service.name} className="group">
                     <div className={`bg-gradient-to-r ${service.color} px-3 md:px-4 py-2 rounded-full text-white font-semibold text-xs md:text-sm shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl border border-white/20`}>
