@@ -23,7 +23,7 @@ export default function Navbar() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8 lg:gap-12">
-            <Link href="/" className="text-white/90 hover:text-white font-medium transition-colors duration-300 relative group">
+            <Link href="/products" className="text-white/90 hover:text-white font-medium transition-colors duration-300 relative group">
               Produk
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 rounded-full transition-all duration-300 group-hover:w-full"></span>
             </Link>
@@ -73,7 +73,7 @@ export default function Navbar() {
               </div>
             </div>
             
-            <Link href="/" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
+            <Link href="/products" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
               Produk
             </Link>
             <Link href="/about" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
