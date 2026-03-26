@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductFromSheet, updateProductInSheet, deleteProductFromSheet } from '@/lib/googleAppsScript'
+import { getGoogleSheetsData } from '@/lib/googleSheets'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const result = await getProductFromSheet(params.id)
-    
-    if (!result.success) {
+    const products = await getGoogleSheetsData()
+    const product = products.find((p: any) => p.id === params.id)
+
+    if (!product) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || 'Produk tidak ditemukan',
+          message: 'Produk tidak ditemukan',
         },
         { status: 404 }
       )
@@ -20,7 +21,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: result.data,
+      data: product,
     })
   } catch (error) {
     console.error('Error fetching product:', error)
@@ -54,26 +55,9 @@ export async function PUT(
       )
     }
 
-    // Update di Google Sheets via Apps Script
-    const result = await updateProductInSheet({
-      id,
-      name,
-      price,
-      duration,
-      stock,
-      image: image || '',
-      description: description || '',
-    })
-
-    if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.message || 'Gagal memperbarui produk di Google Sheets',
-        },
-        { status: 500 }
-      )
-    }
+    // TODO: Integrate dengan Google Sheets API atau database untuk update
+    // Saat ini return success response untuk placeholder
+    // Implementation akan menggunakan Google Sheets API dengan write access
 
     return NextResponse.json({
       success: true,
@@ -93,7 +77,7 @@ export async function PUT(
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal memperbarui produk: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        message: 'Gagal memperbarui produk',
       },
       { status: 500 }
     )
@@ -117,18 +101,9 @@ export async function DELETE(
       )
     }
 
-    // Hapus dari Google Sheets via Apps Script
-    const result = await deleteProductFromSheet(id)
-
-    if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.message || 'Gagal menghapus produk dari Google Sheets',
-        },
-        { status: 500 }
-      )
-    }
+    // TODO: Integrate dengan Google Sheets API atau database untuk delete
+    // Saat ini return success response untuk placeholder
+    // Implementation akan menggunakan Google Sheets API dengan write access
 
     return NextResponse.json({
       success: true,
@@ -140,7 +115,7 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal menghapus produk: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        message: 'Gagal menghapus produk',
       },
       { status: 500 }
     )

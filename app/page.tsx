@@ -46,113 +46,113 @@ export default function Home() {
   return (
     <div className="bg-white">
       {/* Hero Section with Modern Design */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden pb-12 md:pb-16 lg:pb-20">
+      <div className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
 
 
-        <div className="absolute inset-0 overflow-hidden pointer-events-none md:h-full">
+        <div className="hidden md:block absolute inset-0 overflow-hidden pointer-events-none md:h-full">
           {/* Canva - Top Left */}
-          <div className="absolute top-10 sm:top-12 left-4 sm:left-8 w-14 h-14 sm:w-20 sm:h-20 animate-float" style={{animationDelay: '0s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute top-12 left-8 w-20 h-20 animate-float" style={{animationDelay: '0s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/canva.png"
                 alt="Canva"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
           </div>
 
           {/* CapCut - Top Right */}
-          <div className="absolute top-14 sm:top-20 right-4 sm:right-12 w-16 h-16 sm:w-24 sm:h-24 animate-bounce" style={{animationDelay: '0.5s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute top-20 right-12 w-24 h-24 animate-bounce" style={{animationDelay: '0.5s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/capcut.png"
                 alt="CapCut"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
           </div>
 
           {/* Alightmotion - Middle Left */}
-          <div className="absolute top-1/3 left-3 sm:left-4 w-12 h-12 sm:w-16 sm:h-16 animate-pulse">
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute top-1/3 left-4 w-16 h-16 animate-pulse">
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/alightmotion.png"
                 alt="Alightmotion"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
           </div>
 
           {/* Zoom - Middle Right */}
-          <div className="absolute top-2/5 right-4 sm:right-8 w-14 h-14 sm:w-20 sm:h-20 animate-float" style={{animationDelay: '1.5s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute top-2/5 right-8 w-20 h-20 animate-float" style={{animationDelay: '1.5s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/zoom.png"
                 alt="Zoom"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
           </div>
 
           {/* Spotify - Bottom Left */}
-          <div className="absolute bottom-24 sm:bottom-32 left-2 sm:left-6 w-14 h-14 sm:w-20 sm:h-20 animate-bounce" style={{animationDelay: '1s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute bottom-32 left-6 w-20 h-20 animate-bounce" style={{animationDelay: '1s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/spotify.png"
                 alt="Spotify"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
           </div>
 
           {/* Netflix - Bottom Right */}
-          <div className="absolute bottom-24 sm:bottom-28 right-2 sm:right-12 w-16 h-16 sm:w-24 sm:h-24 animate-float" style={{animationDelay: '2s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute bottom-28 right-12 w-24 h-24 animate-float" style={{animationDelay: '2s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/netflix.png"
                 alt="Netflix"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
           </div>
 
           {/* ChatGPT - Bottom Center Left */}
-          <div className="absolute bottom-28 sm:bottom-40 left-1/4 w-12 h-12 sm:w-16 sm:h-16 animate-pulse" style={{animationDelay: '1.5s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute bottom-40 left-1/4 w-16 h-16 animate-pulse" style={{animationDelay: '1.5s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/chatgpt.png"
                 alt="ChatGPT"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
           </div>
 
           {/* Gemini - Bottom Center Right */}
-          <div className="absolute bottom-28 sm:bottom-44 right-1/4 w-14 h-14 sm:w-20 sm:h-20 animate-float" style={{animationDelay: '0.8s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+          <div className="absolute bottom-44 right-1/4 w-20 h-20 animate-float" style={{animationDelay: '0.8s'}}>
+            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/gemini.png"
                 alt="Gemini"
                 fill
-                className="object-contain p-1 rounded-full opacity-90"
+                className="object-contain p-1 rounded-full"
                 priority
               />
             </div>
@@ -211,8 +211,8 @@ export default function Home() {
         </div>
 
         {/* Bottom Wave */}
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
-          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="w-full h-12 md:h-16 lg:h-20">
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" className="w-full h-12 md:h-16 lg:h-20">
             <path fill="#ffffff" d="M0,32L48,37.3C96,43,192,53,288,58.7C384,64,480,64,576,58.7C672,53,768,43,864,48C960,53,1056,75,1152,80C1248,85,1344,75,1392,69.3L1440,64L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
           </svg>
         </div>
@@ -256,7 +256,7 @@ export default function Home() {
               <p className="text-gray-600 text-lg">Layanan premium terbaik dengan harga kompetitif</p>
             </div>
             {!loading && !error && products.length > 0 && (
-              <Link href="/products" className="text-blue-600 hover:text-blue-700 font-bold text-lg hidden md:block">
+              <Link href="/shop" className="text-blue-600 hover:text-blue-700 font-bold text-lg hidden md:block">
                 Lihat Semua →
               </Link>
             )}
@@ -284,7 +284,7 @@ export default function Home() {
         {/* CTA Section */}
         {!loading && !error && products.length > 0 && (
           <div className="mt-12 flex justify-center">
-            <Link href="/products" className="btn-primary text-lg px-12 py-4 md:hidden">
+            <Link href="/shop" className="btn-primary text-lg px-12 py-4 md:hidden">
               Lihat Semua Produk
             </Link>
           </div>

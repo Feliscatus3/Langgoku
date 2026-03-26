@@ -39,17 +39,7 @@ export default function AdminProductManager() {
       const response = await fetch('/api/products')
       const data = await response.json()
       if (data.success && data.data) {
-        // Normalize product data from Google Sheets column names
-        const normalized = data.data.map((p: any) => ({
-          id: p.id || p.ID || `product-${Date.now()}`,
-          name: p.name || p['Nama Produk'] || '',
-          price: typeof p.price === 'number' ? p.price : (parseInt(String(p.price || p.Harga || '0').replace(/\D/g, '')) || 0),
-          duration: p.duration || p.Durasi || '',
-          stock: parseInt(p.stock || p.Stok || '0') || 0,
-          image: p.image || p['Gambar URL'] || '',
-          description: p.description || p.Deskripsi || '',
-        })).filter((p: any) => p.name)
-        setProducts(normalized)
+        setProducts(data.data)
       }
     } catch (err) {
       console.error('Error fetching products:', err)
@@ -77,8 +67,9 @@ export default function AdminProductManager() {
         const data = await response.json()
         
         if (data.success) {
-          // Refresh dari API untuk mendapatkan data terbaru
-          await fetchProducts()
+          setProducts(products.map(p =>
+            p.id === editingId ? { ...p, ...formData } as Product : p
+          ))
           alert('Produk berhasil diperbarui')
         } else {
           alert('Gagal memperbarui produk: ' + data.message)
@@ -93,8 +84,7 @@ export default function AdminProductManager() {
         const data = await response.json()
         
         if (data.success) {
-          // Refresh dari API untuk mendapatkan data terbaru
-          await fetchProducts()
+          setProducts([...products, data.data])
           alert('Produk berhasil ditambahkan')
         } else {
           alert('Gagal menambahkan produk: ' + data.message)
@@ -125,8 +115,7 @@ export default function AdminProductManager() {
       const data = await response.json()
       
       if (data.success) {
-        // Refresh dari API untuk mendapatkan data terbaru
-        await fetchProducts()
+        setProducts(products.filter(p => p.id !== id))
         alert('Produk berhasil dihapus')
       } else {
         alert('Gagal menghapus produk: ' + data.message)

@@ -1,21 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductsFromSheet } from '@/lib/googleAppsScript'
 import { getGoogleSheetsData } from '@/lib/googleSheets'
 
 export async function GET(request: NextRequest) {
   try {
-    // Ambil produk dari Google Sheets via Apps Script
-    const result = await getProductsFromSheet()
-    
-    if (result.success && result.data && result.data.length > 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'Produk berhasil diambil',
-        data: result.data,
-      })
-    }
-
-    // Fallback ke Google Sheets API langsung jika Apps Script gagal atau kosong
     const products = await getGoogleSheetsData()
     
     if (!products || products.length === 0) {
@@ -31,30 +18,66 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Produk berhasil diambil (fallback)',
+      message: 'Produk berhasil diambil',
       data: products,
     })
   } catch (error) {
     console.error('Error fetching products:', error)
-    
-    // Fallback ke Google Sheets API langsung
-    try {
-      const products = await getGoogleSheetsData()
-      return NextResponse.json({
-        success: true,
-        message: 'Produk berhasil diambil (fallback)',
-        data: products || [],
-      })
-    } catch (fallbackError) {
-      console.error('Fallback also failed:', fallbackError)
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Gagal mengambil data produk',
+        data: [],
+      },
+      { status: 200 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { name, price, duration, stock, image, description } = body
+
+    // Validasi required fields
+    if (!name || price === undefined || !duration || stock === undefined) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Gagal mengambil data produk',
-          data: [],
+          message: 'Field wajib: name, price, duration, stock',
         },
-        { status: 200 }
+        { status: 400 }
       )
     }
+
+    // Generate unique ID
+    const id = `product-${Date.now()}`
+
+    // TODO: Simpan ke Google Sheets atau database
+    // Untuk sekarang, return success response
+    // Di production, integrate dengan Google Sheets API atau database
+
+    return NextResponse.json({
+      success: true,
+      message: 'Produk berhasil ditambahkan',
+      data: {
+        id,
+        name,
+        price,
+        duration,
+        stock,
+        image,
+        description,
+      },
+    })
+  } catch (error) {
+    console.error('Error creating product:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Gagal menambahkan produk',
+      },
+      { status: 500 }
+    )
   }
 }
