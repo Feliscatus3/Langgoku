@@ -1,49 +1,130 @@
+const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL
+
 export async function getGoogleSheetsData() {
   try {
-    const sheetsUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEET_ID
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY
-
-    if (!sheetsUrl || !apiKey) {
-      console.warn('Google Sheets credentials not configured')
+    if (!APPS_SCRIPT_URL) {
+      console.warn('Google Apps Script URL not configured')
       return []
     }
 
-    // Menggunakan Google Sheets API v4
-    // Format: https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{range}?key={apiKey}
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetsUrl}/values/Products!A2:H1000?key=${apiKey}`
-
+    const url = `${APPS_SCRIPT_URL}?action=getProducts`
     const response = await fetch(url, { next: { revalidate: 60 } })
     
     if (!response.ok) {
-      console.error('Failed to fetch from Google Sheets:', response.status)
+      console.error('Failed to fetch from Google Apps Script:', response.status)
       return []
     }
 
     const data = await response.json()
     
-    if (!data.values || data.values.length === 0) {
-      console.warn('No data found in Google Sheets')
+    if (!data.success) {
+      console.warn('Google Apps Script returned error:', data.message)
       return []
     }
 
-    // Transform data from Google Sheets format to Product format
-    const products = data.values.map((row: any[], index: number) => ({
-      id: row[0] || `product-${index}`,
-      name: row[1] || 'Unknown',
-      price: parsePrice(row[2]) || 0,
-      duration: row[3] || '1 bulan',
-      stock: parseInt(row[4]) || 0,
-      image: row[5] || '',
-      description: row[6] || '',
-      // Optional: jika kolom ke-8 (H) ada, gunakan sebagai kategori.
-      // Format kolom saat ini masih kompatibel untuk sheet yang belum punya kategori.
-      category: row[7] || '',
-    })).filter((p: any) => p.name && p.price > 0)
-
-    return products
+    return data.data || []
   } catch (error) {
-    console.error('Error fetching Google Sheets data:', error)
+    console.error('Error fetching Google Apps Script data:', error)
     return []
+  }
+}
+
+export async function addProductToGoogleSheets(product: {
+  name: string
+  price: number
+  duration: string
+  stock: number
+  image?: string
+  description?: string
+}) {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      throw new Error('Google Apps Script URL not configured')
+    }
+
+    const url = `${APPS_SCRIPT_URL}?action=addProduct`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(product),
+    })
+
+    const data = await response.json()
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to add product')
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error adding product:', error)
+    throw error
+  }
+}
+
+export async function updateProductInGoogleSheets(product: {
+  id: string
+  name: string
+  price: number
+  duration: string
+  stock: number
+  image?: string
+  description?: string
+}) {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      throw new Error('Google Apps Script URL not configured')
+    }
+
+    const url = `${APPS_SCRIPT_URL}?action=updateProduct`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(product),
+    })
+
+    const data = await response.json()
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to update product')
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error updating product:', error)
+    throw error
+  }
+}
+
+export async function deleteProductFromGoogleSheets(id: string) {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      throw new Error('Google Apps Script URL not configured')
+    }
+
+    const url = `${APPS_SCRIPT_URL}?action=deleteProduct`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({ id }),
+    })
+
+    const data = await response.json()
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to delete product')
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error deleting product:', error)
+    throw error
   }
 }
 
