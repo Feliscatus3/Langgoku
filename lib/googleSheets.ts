@@ -1,31 +1,44 @@
 // Support both local and Vercel environment variables
+// For Vercel, use NEXT_PUBLIC_ prefix to expose to client-side
+// For server-side, use GOOGLE_APPS_SCRIPT_URL (server-only)
 const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
+
+// Debug log in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('[GoogleSheets] APPS_SCRIPT_URL:', APPS_SCRIPT_URL ? 'SET' : 'NOT SET')
+}
 
 export async function getGoogleSheetsData() {
   try {
     if (!APPS_SCRIPT_URL) {
-      console.warn('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
+      console.error('[GoogleSheets] URL not configured. Set GOOGLE_APPS_SCRIPT_URL in Vercel Environment Variables.')
       return []
     }
 
+    console.log('[GoogleSheets] Fetching from:', `${APPS_SCRIPT_URL}?action=getProducts`)
+    
     const url = `${APPS_SCRIPT_URL}?action=getProducts`
-    const response = await fetch(url, { next: { revalidate: 60 } })
+    const response = await fetch(url, { 
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(30000) // 30 second timeout
+    })
     
     if (!response.ok) {
-      console.error('Failed to fetch from Google Apps Script:', response.status)
+      console.error('[GoogleSheets] HTTP Error:', response.status, response.statusText)
       return []
     }
 
     const data = await response.json()
     
     if (!data.success) {
-      console.warn('Google Apps Script returned error:', data.message)
+      console.warn('[GoogleSheets] API Error:', data.message)
       return []
     }
 
+    console.log('[GoogleSheets] Products fetched:', data.data?.length || 0)
     return data.data || []
   } catch (error) {
-    console.error('Error fetching Google Apps Script data:', error)
+    console.error('[GoogleSheets] Fetch error:', error)
     return []
   }
 }
@@ -38,31 +51,31 @@ export async function addProductToGoogleSheets(product: {
   image?: string
   description?: string
 }) {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      throw new Error('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
-    }
-
-    const url = `${APPS_SCRIPT_URL}?action=addProduct`
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      body: JSON.stringify(product),
-    })
-
-    const data = await response.json()
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to add product')
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error adding product:', error)
-    throw error
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured in Vercel Environment Variables')
   }
+
+  console.log('[GoogleSheets] Adding product:', product.name)
+  
+  const url = `${APPS_SCRIPT_URL}?action=addProduct`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify(product),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    console.error('[GoogleSheets] Add product error:', data.message)
+    throw new Error(data.message || 'Failed to add product')
+  }
+
+  console.log('[GoogleSheets] Product added successfully:', data.data)
+  return data
 }
 
 export async function updateProductInGoogleSheets(product: {
@@ -74,66 +87,57 @@ export async function updateProductInGoogleSheets(product: {
   image?: string
   description?: string
 }) {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      throw new Error('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
-    }
-
-    const url = `${APPS_SCRIPT_URL}?action=updateProduct`
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      body: JSON.stringify(product),
-    })
-
-    const data = await response.json()
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to update product')
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error updating product:', error)
-    throw error
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured in Vercel Environment Variables')
   }
+
+  const url = `${APPS_SCRIPT_URL}?action=updateProduct`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify(product),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to update product')
+  }
+
+  return data
 }
 
 export async function deleteProductFromGoogleSheets(id: string) {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      throw new Error('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
-    }
-
-    const url = `${APPS_SCRIPT_URL}?action=deleteProduct`
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      body: JSON.stringify({ id }),
-    })
-
-    const data = await response.json()
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to delete product')
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error deleting product:', error)
-    throw error
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured in Vercel Environment Variables')
   }
+
+  const url = `${APPS_SCRIPT_URL}?action=deleteProduct`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify({ id }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to delete product')
+  }
+
+  return data
 }
 
 export function parsePrice(priceStr: any): number {
   if (typeof priceStr === 'number') return priceStr
   if (!priceStr) return 0
 
-  // Remove all non-digit characters except the last 3 (for decimals if any)
   const cleaned = String(priceStr).replace(/[^\d]/g, '')
   return parseInt(cleaned, 10) || 0
 }

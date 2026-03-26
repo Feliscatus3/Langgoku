@@ -8,6 +8,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, price, duration, stock, image, description } = body
 
+    console.log('[API] Create product request:', { name, price, duration, stock })
+
     // Validasi required fields
     if (!name || price === undefined || !duration || stock === undefined) {
       return NextResponse.json(
@@ -21,14 +23,17 @@ export async function POST(request: NextRequest) {
 
     // Cek apakah GOOGLE_APPS_SCRIPT_URL sudah dikonfigurasi
     if (!APPS_SCRIPT_URL) {
+      console.error('[API] GOOGLE_APPS_SCRIPT_URL not set in environment')
       return NextResponse.json(
         {
           success: false,
-          message: 'GOOGLE_APPS_SCRIPT_URL belum dikonfigurasi. Silakan tambahkan di Vercel project settings.',
+          message: 'GOOGLE_APPS_SCRIPT_URL belum dikonfigurasi. Silakan tambahkan di Vercel project settings: https://vercel.com/dashboard → Settings → Environment Variables',
         },
         { status: 500 }
       )
     }
+
+    console.log('[API] Calling Google Apps Script:', `${APPS_SCRIPT_URL}?action=addProduct`)
 
     // Kirim data ke Google Apps Script
     const url = `${APPS_SCRIPT_URL}?action=addProduct`
@@ -45,9 +50,13 @@ export async function POST(request: NextRequest) {
         image,
         description,
       }),
+      signal: AbortSignal.timeout(30000)
     })
 
+    console.log('[API] Response status:', response.status)
+
     const result = await response.json()
+    console.log('[API] Response data:', result)
 
     if (result.success) {
       return NextResponse.json({
@@ -59,13 +68,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || 'Gagal menambahkan produk',
+          message: result.message || 'Gagal menambahkan produk. Pastikan Google Apps Script sudah di-deploy dengan benar.',
         },
         { status: 500 }
       )
     }
   } catch (error) {
-    console.error('Error creating product:', error)
+    console.error('[API] Error creating product:', error)
     return NextResponse.json(
       {
         success: false,
