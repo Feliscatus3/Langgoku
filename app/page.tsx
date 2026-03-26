@@ -56,12 +56,12 @@ export default function Home() {
         <div className="absolute inset-0 overflow-hidden pointer-events-none md:h-full">
           {/* Canva - Top Left */}
           <div className="absolute top-10 sm:top-12 left-4 sm:left-8 w-14 h-14 sm:w-20 sm:h-20 animate-float" style={{animationDelay: '0s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/canva.png"
                 alt="Canva"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
@@ -69,12 +69,12 @@ export default function Home() {
 
           {/* CapCut - Top Right */}
           <div className="absolute top-14 sm:top-20 right-4 sm:right-12 w-16 h-16 sm:w-24 sm:h-24 animate-bounce" style={{animationDelay: '0.5s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/capcut.png"
                 alt="CapCut"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
@@ -82,12 +82,12 @@ export default function Home() {
 
           {/* Alightmotion - Middle Left */}
           <div className="absolute top-1/3 left-3 sm:left-4 w-12 h-12 sm:w-16 sm:h-16 animate-pulse">
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/alightmotion.png"
                 alt="Alightmotion"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
@@ -95,12 +95,12 @@ export default function Home() {
 
           {/* Zoom - Middle Right */}
           <div className="absolute top-2/5 right-4 sm:right-8 w-14 h-14 sm:w-20 sm:h-20 animate-float" style={{animationDelay: '1.5s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/zoom.png"
                 alt="Zoom"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
@@ -108,12 +108,12 @@ export default function Home() {
 
           {/* Spotify - Bottom Left */}
           <div className="absolute bottom-24 sm:bottom-32 left-2 sm:left-6 w-14 h-14 sm:w-20 sm:h-20 animate-bounce" style={{animationDelay: '1s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/spotify.png"
                 alt="Spotify"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
@@ -121,12 +121,12 @@ export default function Home() {
 
           {/* Netflix - Bottom Right */}
           <div className="absolute bottom-24 sm:bottom-28 right-2 sm:right-12 w-16 h-16 sm:w-24 sm:h-24 animate-float" style={{animationDelay: '2s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/netflix.png"
                 alt="Netflix"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
@@ -134,12 +134,12 @@ export default function Home() {
 
           {/* ChatGPT - Bottom Center Left */}
           <div className="absolute bottom-28 sm:bottom-40 left-1/4 w-12 h-12 sm:w-16 sm:h-16 animate-pulse" style={{animationDelay: '1.5s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1 sm:p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/chatgpt.png"
                 alt="ChatGPT"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
@@ -147,12 +147,12 @@ export default function Home() {
 
           {/* Gemini - Bottom Center Right */}
           <div className="absolute bottom-28 sm:bottom-44 right-1/4 w-14 h-14 sm:w-20 sm:h-20 animate-float" style={{animationDelay: '0.8s'}}>
-            <div className="relative w-full h-full rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
+            <div className="relative w-full h-full rounded-full bg-white/5 backdrop-blur-md border border-white/20 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
               <Image
                 src="/images/gemini.png"
                 alt="Gemini"
                 fill
-                className="object-contain p-1 rounded-full"
+                className="object-contain p-1 rounded-full opacity-90"
                 priority
               />
             </div>
