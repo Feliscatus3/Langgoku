@@ -3,6 +3,9 @@ import ProductGrid from '@/components/ProductGrid'
 import EmptyState from '@/components/EmptyState'
 import { getGoogleSheetsData } from '@/lib/googleSheets'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type SearchParams = {
   category?: string | string[]
   sort?: string | string[]
