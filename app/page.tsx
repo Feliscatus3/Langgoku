@@ -256,7 +256,7 @@ export default function Home() {
               <p className="text-gray-600 text-lg">Layanan premium terbaik dengan harga kompetitif</p>
             </div>
             {!loading && !error && products.length > 0 && (
-              <Link href="/shop" className="text-blue-600 hover:text-blue-700 font-bold text-lg hidden md:block">
+              <Link href="/products" className="text-blue-600 hover:text-blue-700 font-bold text-lg hidden md:block">
                 Lihat Semua →
               </Link>
             )}
@@ -284,7 +284,7 @@ export default function Home() {
         {/* CTA Section */}
         {!loading && !error && products.length > 0 && (
           <div className="mt-12 flex justify-center">
-            <Link href="/shop" className="btn-primary text-lg px-12 py-4 md:hidden">
+            <Link href="/products" className="btn-primary text-lg px-12 py-4 md:hidden">
               Lihat Semua Produk
             </Link>
           </div>

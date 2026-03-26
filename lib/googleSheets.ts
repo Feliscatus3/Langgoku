@@ -10,9 +10,9 @@ export async function getGoogleSheetsData() {
 
     // Menggunakan Google Sheets API v4
     // Format: https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{range}?key={apiKey}
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetsUrl}/values/Products!A2:G1000?key=${apiKey}`
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetsUrl}/values/Products!A2:H1000?key=${apiKey}`
 
-    const response = await fetch(url)
+    const response = await fetch(url, { next: { revalidate: 60 } })
     
     if (!response.ok) {
       console.error('Failed to fetch from Google Sheets:', response.status)
@@ -35,6 +35,9 @@ export async function getGoogleSheetsData() {
       stock: parseInt(row[4]) || 0,
       image: row[5] || '',
       description: row[6] || '',
+      // Optional: jika kolom ke-8 (H) ada, gunakan sebagai kategori.
+      // Format kolom saat ini masih kompatibel untuk sheet yang belum punya kategori.
+      category: row[7] || '',
     })).filter((p: any) => p.name && p.price > 0)
 
     return products

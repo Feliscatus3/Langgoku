@@ -204,7 +204,7 @@ export default function TestimoniesSlider() {
         <div className="mt-16 text-center">
           <h3 className="text-3xl md:text-4xl font-bold text-gray-950 mb-4">Siap Belanja Premium?</h3>
           <p className="text-lg text-gray-600 mb-8">Bergabunglah dengan ribuan pelanggan puas kami sekarang juga</p>
-          <a href="/#products" className="inline-block bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 px-10 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
+          <a href="/products" className="inline-block bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 px-10 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
             Mulai Belanja Sekarang
           </a>
         </div>
