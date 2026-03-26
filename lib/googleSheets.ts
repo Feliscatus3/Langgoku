@@ -1,9 +1,10 @@
-const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL
+// Support both local and Vercel environment variables
+const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
 
 export async function getGoogleSheetsData() {
   try {
     if (!APPS_SCRIPT_URL) {
-      console.warn('Google Apps Script URL not configured')
+      console.warn('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
       return []
     }
 
@@ -39,7 +40,7 @@ export async function addProductToGoogleSheets(product: {
 }) {
   try {
     if (!APPS_SCRIPT_URL) {
-      throw new Error('Google Apps Script URL not configured')
+      throw new Error('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
     }
 
     const url = `${APPS_SCRIPT_URL}?action=addProduct`
@@ -75,7 +76,7 @@ export async function updateProductInGoogleSheets(product: {
 }) {
   try {
     if (!APPS_SCRIPT_URL) {
-      throw new Error('Google Apps Script URL not configured')
+      throw new Error('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
     }
 
     const url = `${APPS_SCRIPT_URL}?action=updateProduct`
@@ -103,7 +104,7 @@ export async function updateProductInGoogleSheets(product: {
 export async function deleteProductFromGoogleSheets(id: string) {
   try {
     if (!APPS_SCRIPT_URL) {
-      throw new Error('Google Apps Script URL not configured')
+      throw new Error('Google Apps Script URL not configured. Please set GOOGLE_APPS_SCRIPT_URL in Vercel project settings.')
     }
 
     const url = `${APPS_SCRIPT_URL}?action=deleteProduct`
