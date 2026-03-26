@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductFromSheet, updateProductInSheet, deleteProductFromSheet } from '@/lib/googleAppsScript'
+import { getBuyerFromSheet, updateBuyerInSheet, deleteBuyerFromSheet } from '@/lib/googleAppsScript'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const result = await getProductFromSheet(params.id)
-    
+    const result = await getBuyerFromSheet(params.id)
+
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || 'Produk tidak ditemukan',
+          message: result.message || 'Pembeli tidak ditemukan',
         },
         { status: 404 }
       )
@@ -23,11 +23,11 @@ export async function GET(
       data: result.data,
     })
   } catch (error) {
-    console.error('Error fetching product:', error)
+    console.error('Error fetching buyer:', error)
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal mengambil data produk',
+        message: 'Gagal mengambil data pembeli',
       },
       { status: 500 }
     )
@@ -41,35 +41,35 @@ export async function PUT(
   try {
     const id = params.id
     const body = await request.json()
-    const { name, price, duration, stock, image, description } = body
+    const { name, phone, product, duration, startDate, endDate } = body
 
     // Validasi required fields
-    if (!name || price === undefined || !duration || stock === undefined) {
+    if (!name || !phone || !product || !duration || !startDate) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Field wajib: name, price, duration, stock',
+          message: 'Field wajib: name, phone, product, duration, startDate',
         },
         { status: 400 }
       )
     }
 
     // Update di Google Sheets via Apps Script
-    const result = await updateProductInSheet({
+    const result = await updateBuyerInSheet({
       id,
       name,
-      price,
+      phone,
+      product,
       duration,
-      stock,
-      image: image || '',
-      description: description || '',
+      startDate,
+      endDate: endDate || '',
     })
 
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || 'Gagal memperbarui produk di Google Sheets',
+          message: result.message || 'Gagal memperbarui data pembeli di Google Sheets',
         },
         { status: 500 }
       )
@@ -77,23 +77,23 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: 'Produk berhasil diperbarui',
+      message: 'Data pembeli berhasil diperbarui',
       data: {
         id,
         name,
-        price,
+        phone,
+        product,
         duration,
-        stock,
-        image,
-        description,
+        startDate,
+        endDate,
       },
     })
   } catch (error) {
-    console.error('Error updating product:', error)
+    console.error('Error updating buyer:', error)
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal memperbarui produk: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        message: 'Gagal memperbarui pembeli: ' + (error instanceof Error ? error.message : 'Unknown error'),
       },
       { status: 500 }
     )
@@ -111,20 +111,20 @@ export async function DELETE(
       return NextResponse.json(
         {
           success: false,
-          message: 'ID produk diperlukan',
+          message: 'ID pembeli diperlukan',
         },
         { status: 400 }
       )
     }
 
     // Hapus dari Google Sheets via Apps Script
-    const result = await deleteProductFromSheet(id)
+    const result = await deleteBuyerFromSheet(id)
 
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || 'Gagal menghapus produk dari Google Sheets',
+          message: result.message || 'Gagal menghapus data pembeli dari Google Sheets',
         },
         { status: 500 }
       )
@@ -132,15 +132,15 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'Produk berhasil dihapus',
+      message: 'Data pembeli berhasil dihapus',
       data: { id },
     })
   } catch (error) {
-    console.error('Error deleting product:', error)
+    console.error('Error deleting buyer:', error)
     return NextResponse.json(
       {
         success: false,
-        message: 'Gagal menghapus produk: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        message: 'Gagal menghapus pembeli: ' + (error instanceof Error ? error.message : 'Unknown error'),
       },
       { status: 500 }
     )

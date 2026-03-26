@@ -15,12 +15,56 @@ interface Buyer {
   remainingDays: number
   notified?: boolean
   notificationSentAt?: string
+  // Mapping dari Google Sheets column names
+  'Nama'?: string
+  'No WhatsApp'?: string
+  'Produk'?: string
+  'Durasi'?: string
+  'Tanggal Mulai'?: string
+  'Tanggal Selesai'?: string
+  'Status'?: string
+  'Sisa Hari'?: number
+  'Notified'?: boolean
+  'Notified At'?: string
+  'ID'?: string
+}
+
+function normalizeBuyer(raw: any): Buyer {
+  // Handle both camelCase (local) and Google Sheets column names
+  const id = raw.id || raw.ID || ''
+  const name = raw.name || raw.Nama || ''
+  const phone = raw.phone || raw['No WhatsApp'] || ''
+  const product = raw.product || raw.Produk || ''
+  const duration = raw.duration || raw.Durasi || ''
+  const startDate = raw.startDate || raw['Tanggal Mulai'] || ''
+  const endDate = raw.endDate || raw['Tanggal Selesai'] || ''
+  const notified = raw.notified || raw.Notified || false
+  const notificationSentAt = raw.notificationSentAt || raw['Notified At'] || ''
+
+  const remainingDays = endDate ? calculateRemainingDays(new Date(endDate)) : 0
+  const status = getSubscriptionStatus(remainingDays)
+
+  return {
+    id,
+    name,
+    phone,
+    product,
+    duration,
+    startDate,
+    endDate,
+    status,
+    remainingDays,
+    notified,
+    notificationSentAt,
+  }
 }
 
 export default function AdminBuyerManager() {
   const [buyers, setBuyers] = useState<Buyer[]>([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [showCustomDuration, setShowCustomDuration] = useState(false)
   const [customDurationValue, setCustomDurationValue] = useState('')
   const [customDurationType, setCustomDurationType] = useState<'hari' | 'minggu' | 'bulan'>('hari')
@@ -37,22 +81,45 @@ export default function AdminBuyerManager() {
   const durations = ['1 hari', '2 hari', '3 hari', '1 minggu', '1 bulan', '3 bulan', '6 bulan', '1 tahun']
 
   useEffect(() => {
-    // Load buyers from localStorage
-    const savedBuyers = localStorage.getItem('langgoku_buyers')
-    if (savedBuyers) {
-      setBuyers(JSON.parse(savedBuyers))
-    }
-
-    // Load products for dropdown
+    fetchBuyers()
     loadProducts()
   }, [])
+
+  const fetchBuyers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/buyers')
+      const data = await response.json()
+      
+      if (data.success && data.data && data.data.length > 0) {
+        const normalized = data.data.map(normalizeBuyer)
+        setBuyers(normalized)
+        // Cache ke localStorage sebagai fallback
+        localStorage.setItem('langgoku_buyers', JSON.stringify(normalized))
+      } else {
+        // Fallback ke localStorage jika API gagal atau kosong
+        const savedBuyers = localStorage.getItem('langgoku_buyers')
+        if (savedBuyers) {
+          setBuyers(JSON.parse(savedBuyers))
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching buyers from API, using localStorage fallback:', err)
+      const savedBuyers = localStorage.getItem('langgoku_buyers')
+      if (savedBuyers) {
+        setBuyers(JSON.parse(savedBuyers))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const loadProducts = async () => {
     try {
       const response = await fetch('/api/products')
       const data = await response.json()
       if (data.success && data.data) {
-        setProducts(data.data.map((p: any) => p.name))
+        setProducts(data.data.map((p: any) => p.name || p['Nama Produk'] || '').filter(Boolean))
       }
     } catch (err) {
       console.error('Error loading products:', err)
@@ -115,55 +182,58 @@ export default function AdminBuyerManager() {
     })
   }
 
-  const handleAddBuyer = (e: React.FormEvent) => {
+  const handleAddBuyer = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!formData.name || !formData.phone || !formData.product) {
       alert('Harap isi semua field yang wajib diisi (*)')
       return
     }
-    
-    if (editingId) {
-      // Update existing buyer
-      const updatedBuyers = buyers.map(b =>
-        b.id === editingId
-          ? {
-              ...b,
-              name: formData.name,
-              phone: formData.phone,
-              product: formData.product,
-              duration: formData.duration,
-              startDate: formData.startDate,
-              endDate: formData.endDate,
-              remainingDays: calculateRemainingDays(new Date(formData.endDate)),
-            }
-          : b
-      )
-      setBuyers(updatedBuyers)
-      localStorage.setItem('langgoku_buyers', JSON.stringify(updatedBuyers))
-      alert('Data pembeli berhasil diperbarui')
-      setEditingId(null)
-    } else {
-      // Add new buyer
-      const newBuyer: Buyer = {
-        id: Date.now().toString(),
-        name: formData.name,
-        phone: formData.phone,
-        product: formData.product,
-        duration: formData.duration,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        status: 'active',
-        remainingDays: calculateRemainingDays(new Date(formData.endDate)),
-        notified: false,
-      }
-      const newBuyers = [...buyers, newBuyer]
-      setBuyers(newBuyers)
-      localStorage.setItem('langgoku_buyers', JSON.stringify(newBuyers))
-      alert('Data pembeli berhasil ditambahkan')
-    }
 
-    handleCancelEdit()
+    setSubmitting(true)
+
+    try {
+      if (editingId) {
+        // Update existing buyer via API
+        const response = await fetch(`/api/buyers/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        const data = await response.json()
+
+        if (data.success) {
+          // Refresh data dari API
+          await fetchBuyers()
+          alert('Data pembeli berhasil diperbarui')
+        } else {
+          alert('Gagal memperbarui pembeli: ' + (data.message || 'Unknown error'))
+        }
+      } else {
+        // Add new buyer via API
+        const response = await fetch('/api/buyers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        const data = await response.json()
+
+        if (data.success) {
+          // Refresh data dari API
+          await fetchBuyers()
+          alert('Data pembeli berhasil ditambahkan')
+        } else {
+          alert('Gagal menambahkan pembeli: ' + (data.message || 'Unknown error'))
+        }
+      }
+
+      handleCancelEdit()
+    } catch (err) {
+      console.error('Error saving buyer:', err)
+      alert('Terjadi kesalahan saat menyimpan data pembeli')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleEditBuyer = (buyer: Buyer) => {
@@ -179,12 +249,25 @@ export default function AdminBuyerManager() {
     setShowForm(true)
   }
 
-  const handleDeleteBuyer = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus data pembeli ini?')) {
-      const newBuyers = buyers.filter(b => b.id !== id)
-      setBuyers(newBuyers)
-      localStorage.setItem('langgoku_buyers', JSON.stringify(newBuyers))
-      alert('Data pembeli berhasil dihapus')
+  const handleDeleteBuyer = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus data pembeli ini?')) return
+
+    try {
+      const response = await fetch(`/api/buyers/${id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        // Refresh data dari API
+        await fetchBuyers()
+        alert('Data pembeli berhasil dihapus')
+      } else {
+        alert('Gagal menghapus pembeli: ' + (data.message || 'Unknown error'))
+      }
+    } catch (err) {
+      console.error('Error deleting buyer:', err)
+      alert('Terjadi kesalahan saat menghapus pembeli')
     }
   }
 
@@ -212,7 +295,7 @@ export default function AdminBuyerManager() {
       const whatsappUrl = `https://wa.me/${buyer.phone.replace(/\D/g, '')}?text=${message}`
       window.open(whatsappUrl, '_blank')
       
-      // Update the buyer as notified
+      // Update the buyer as notified (local state + localStorage cache)
       const updatedBuyers = buyers.map(b => 
         b.id === buyer.id 
           ? { ...b, notified: true, notificationSentAt: new Date().toISOString() }
@@ -251,6 +334,12 @@ export default function AdminBuyerManager() {
         return status
     }
   }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <div className="text-blue-600 font-medium">Memuat data pembeli...</div>
+    </div>
+  )
 
   return (
     <div>
@@ -422,13 +511,17 @@ export default function AdminBuyerManager() {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
+                disabled={submitting}
                 className="btn-primary flex-1"
               >
-                {editingId ? 'Update Pembeli' : 'Tambah Pembeli'}
+                {submitting
+                  ? (editingId ? 'Menyimpan...' : 'Menambahkan...')
+                  : (editingId ? 'Update Pembeli' : 'Tambah Pembeli')}
               </button>
               <button
                 type="button"
                 onClick={handleCancelEdit}
+                disabled={submitting}
                 className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Batal

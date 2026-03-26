@@ -19,7 +19,7 @@
 // KONFIGURASI GOOGLE SHEETS
 // ==============================
 
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // Ganti dengan ID spreadsheet Anda
+const SPREADSHEET_ID = '1P7STjDhVEfCS8y55uWpYNE1nx54o6WEChuBMhR5psOE'; // Langgoku Spreadsheet
 const SHEETS = {
   PRODUCTS: 'Produk',
   BUYERS: 'Pembeli',
