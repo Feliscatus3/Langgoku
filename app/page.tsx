@@ -110,13 +110,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* YouTube - Bottom Center, offset */}
-          <div className="absolute bottom-[15%] left-[45%] sm:left-[48%] md:left-[50%] -translate-x-1/2 animate-pulse" style={{animationDelay: '1s'}}>
-            <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-12 lg:h-12 aspect-square rounded-full p-1 sm:p-1.5">
-              <Image src="/images/youtube.png" alt="YouTube" fill className="object-contain opacity-90" />
-            </div>
-          </div>
-
           {/* Extra icons for larger screens - hidden on mobile/tablet */}
           <div className="hidden lg:block absolute top-[20%] left-[35%] animate-float" style={{animationDelay: '1.8s'}}>
             <div className="w-8 h-8 aspect-square rounded-full p-1.5">
