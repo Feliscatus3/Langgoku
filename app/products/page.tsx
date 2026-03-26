@@ -113,7 +113,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Se
               Semua Produk Premium
             </h1>
             <p className="text-blue-100 text-lg md:text-xl max-w-2xl">
-              Produk terhubung ke Google Sheets dan akan update otomatis sesuai data terbaru.
+              Produk akan update otomatis sesuai data terbaru.
             </p>
           </div>
         </div>
