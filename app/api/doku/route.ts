@@ -1,39 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import doku from 'doku-nodejs-library'
 
 // DOKU Configuration from environment
 const CLIENT_ID = process.env.DOKU_CLIENT_ID || 'BRN-0264-1774613436846'
 const SECRET_KEY = process.env.DOKU_SECRET_KEY || 'SK-caPgjJtZb9xay5wJgSrP'
 const IS_PRODUCTION = process.env.DOKU_IS_PRODUCTION === 'true'
 
-// For sandbox, we need to set up with the provided credentials
-// Note: SDK requires private/public key generation for production
-let snap: any = null
-
-// Initialize DOKU Snap (for production with proper keys)
-// For sandbox, we'll use a simplified approach
-const initializeDoku = () => {
-  try {
-    // Try to initialize if we have the required keys
-    if (process.env.DOKU_PRIVATE_KEY && process.env.DOKU_PUBLIC_KEY && process.env.DOKU_ISSUER) {
-      snap = new doku.Snap({
-        isProduction: IS_PRODUCTION,
-        privateKey: process.env.DOKU_PRIVATE_KEY,
-        clientID: CLIENT_ID,
-        publicKey: process.env.DOKU_PUBLIC_KEY,
-        dokuPublicKey: process.env.DOKU_PUBLIC_KEY,
-        issuer: process.env.DOKU_ISSUER,
-        secretKey: SECRET_KEY
-      })
-    }
-  } catch (error) {
-    console.log('[DOKU] SDK not initialized:', error)
-  }
-}
-
-initializeDoku()
-
-// Channel mapping for DOKU
+// Channel mapping for DOKU payment methods
 const CHANNEL_MAP: Record<string, string> = {
   'VIRTUAL_ACCOUNT_BCA': 'VIRTUAL_ACCOUNT_BANK_CIMB',
   'VIRTUAL_ACCOUNT_BRI': 'VIRTUAL_ACCOUNT_BANK_CIMB',
@@ -43,6 +15,15 @@ const CHANNEL_MAP: Record<string, string> = {
   'E_WALLET_DANA': 'EMONEY_DANA_SNAP',
   'E_WALLET_OVO': 'EMONEY_OVO_SNAP',
   'E_WALLET_SHOPEEPAY': 'EMONEY_SHOPEE_PAY_SNAP',
+}
+
+// Generate HMAC signature for DOKU
+function generateSignature(payload: string): string {
+  const crypto = require('crypto')
+  return crypto
+    .createHmac('sha256', SECRET_KEY)
+    .update(payload)
+    .digest('base64')
 }
 
 // Create Virtual Account via DOKU
@@ -71,57 +52,69 @@ export async function POST(request: NextRequest) {
 
     console.log('[DOKU] Creating VA:', { orderId, amount, paymentMethod, buyerName, phone })
 
-    // If SDK is initialized, try to use it
-    if (snap) {
-      try {
-        const CreateVARequestDto = require('doku-nodejs-library/_models/createVaRequestDto')
-        const VirtualAccountConfig = require('doku-nodejs-library/_models/virtualAccountConfig')
-        const TotalAmount = require('doku-nodejs-library/_models/totalAmount')
-        const AdditionalInfo = require('doku-nodejs-library/_models/additionalInfo')
+    // Prepare DOKU API request
+    const dokuRequestBody = {
+      partnerServiceId: process.env.DOKU_PARTNER_SERVICE_ID || 'LANGGOKU_TEST',
+      customerNo: phone,
+      virtualAccountNo: (process.env.DOKU_PARTNER_SERVICE_ID || 'LANGGOKU_TEST') + phone,
+      virtualAccountName: buyerName,
+      trxId: orderId,
+      totalAmount: {
+        value: amount.toString(),
+        currency: 'IDR'
+      },
+      additionalInfo: {
+        channel: CHANNEL_MAP[paymentMethod] || 'VIRTUAL_ACCOUNT_BANK_CIMB'
+      },
+      virtualAccountTrxType: 'C'
+    }
 
-        const createVaRequestDto = new CreateVARequestDto()
-        // Use DOKU's partner service ID (get from DOKU dashboard)
-        createVaRequestDto.partnerServiceId = process.env.DOKU_PARTNER_SERVICE_ID || 'YOUR_SERVICE_ID'
-        createVaRequestDto.customerNo = phone
-        createVaRequestDto.virtualAccountNo = createVaRequestDto.partnerServiceId + phone
-        createVaRequestDto.virtualAccountName = buyerName
-        createVaRequestDto.trxId = orderId
+    const dokuBodyString = JSON.stringify(dokuRequestBody)
+    const timestamp = new Date().toISOString()
+    const signature = generateSignature(dokuBodyString + timestamp)
 
-        const totalAmount = new TotalAmount()
-        totalAmount.value = amount.toString()
-        totalAmount.currency = 'IDR'
-        createVaRequestDto.totalAmount = totalAmount
+    // DOKU API endpoint
+    const dokuBaseUrl = IS_PRODUCTION 
+      ? 'https://api.doku.com' 
+      : 'https://api-sandbox.doku.com'
 
-        const virtualAccountConfig = new VirtualAccountConfig()
-        virtualAccountConfig.reusableStatus = false
+    try {
+      // Try to call DOKU API directly
+      const dokuResponse = await fetch(`${dokuBaseUrl}/checkout/v1/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Id': CLIENT_ID,
+          'Request-Id': `REQ_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          'Request-Timestamp': timestamp,
+          'Signature': signature,
+        },
+        body: dokuBodyString,
+      })
 
-        const additionalInfo = new AdditionalInfo(
-          CHANNEL_MAP[paymentMethod] || 'VIRTUAL_ACCOUNT_BANK_CIMB',
-          virtualAccountConfig
-        )
-        createVaRequestDto.additionalInfo = additionalInfo
-        createVaRequestDto.virtualAccountTrxType = 'C' // Closed
+      const dokuResult = await dokuResponse.json()
+      console.log('[DOKU] API Response:', dokuResult)
 
-        const result = await snap.createVa(createVaRequestDto)
-        
+      // If successful, return the payment URL
+      if (dokuResult.payment?.url) {
         return NextResponse.json({
           success: true,
           message: 'Virtual Account created',
           data: {
             orderId,
-            virtualAccountNumber: result?.virtualAccountData?.virtualAccountNo,
+            paymentUrl: dokuResult.payment.url,
             amount: amount,
             paymentMethod: paymentMethod,
             buyerName: buyerName,
           }
         })
-      } catch (sdkError) {
-        console.log('[DOKU] SDK Error:', sdkError)
       }
+    } catch (apiError) {
+      console.log('[DOKU] API call failed, using mock:', apiError)
     }
 
-    // Fallback: Generate mock VA for demo (since sandbox doesn't have full keys)
-    // In production, this would use real DOKU API
+    // Fallback: Generate mock VA number for demo
+    // In production with proper keys, this would use real DOKU API
     const mockVANumber = generateMockVANumber(paymentMethod)
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
