@@ -26,53 +26,50 @@ interface PaymentMethod {
   id: string
   name: string
   icon: string
-  description: string
-  color: string
+  category: string
 }
 
+// Full list of DOKU payment methods
 const PAYMENT_METHODS: PaymentMethod[] = [
-  { 
-    id: 'QRIS', 
-    name: 'QRIS', 
-    icon: '📱', 
-    description: 'Scan via DOKU/GoPay/OVO/LinkAja',
-    color: 'from-purple-50 to-indigo-50'
-  },
-  { 
-    id: 'VIRTUAL_ACCOUNT_BCA', 
-    name: 'VA BCA', 
-    icon: '🏦', 
-    description: 'Virtual Account Bank BCA',
-    color: 'from-blue-50 to-cyan-50'
-  },
-  { 
-    id: 'VIRTUAL_ACCOUNT_BRI', 
-    name: 'VA BRI', 
-    icon: '🏦', 
-    description: 'Virtual Account Bank BRI',
-    color: 'from-orange-50 to-amber-50'
-  },
-  { 
-    id: 'VIRTUAL_ACCOUNT_MANDIRI', 
-    name: 'VA Mandiri', 
-    icon: '🏦', 
-    description: 'Virtual Account Bank Mandiri',
-    color: 'from-red-50 to-pink-50'
-  },
-  { 
-    id: 'VIRTUAL_ACCOUNT_BSI', 
-    name: 'VA BSI', 
-    icon: '🏦', 
-    description: 'Virtual Account Bank BSI',
-    color: 'from-emerald-50 to-green-50'
-  },
-  { 
-    id: 'E_WALLET_DANA', 
-    name: 'DANA', 
-    icon: '💰', 
-    description: 'Bayar via DANA',
-    color: 'from-blue-50 to-indigo-50'
-  },
+  // Virtual Account - Bank
+  { id: 'VIRTUAL_ACCOUNT_BCA', name: 'Bank BCA', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_BRI', name: 'Bank BRI', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_MANDIRI', name: 'Bank Mandiri', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_BSI', name: 'Bank BSI', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_BNI', name: 'Bank BNI', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_PERMATA', name: 'Bank Permata', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_DANAMON', name: 'Bank Danamon', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_CIMB', name: 'Bank CIMB', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_MAYBANK', name: 'Bank Maybank', icon: '🏦', category: 'Virtual Account' },
+  { id: 'VIRTUAL_ACCOUNT_BTN', name: 'Bank BTN', icon: '🏦', category: 'Virtual Account' },
+  
+  // E-Wallet
+  { id: 'E_WALLET_DANA', name: 'DANA', icon: '💰', category: 'E-Wallet' },
+  { id: 'E_WALLET_OVO', name: 'OVO', icon: '💰', category: 'E-Wallet' },
+  { id: 'E_WALLET_SHOPEEPAY', name: 'ShopeePay', icon: '🛒', category: 'E-Wallet' },
+  { id: 'E_WALLET_LINKAJA', name: 'LinkAja', icon: '🔗', category: 'E-Wallet' },
+  
+  // QRIS
+  { id: 'QRIS', name: 'QRIS', icon: '📱', category: 'QRIS' },
+  
+  // Credit Card
+  { id: 'CREDIT_CARD', name: 'Kartu Kredit', icon: '💳', category: 'Kartu Kredit' },
+  
+  // Direct Debit
+  { id: 'DIRECT_DEBIT_BRI', name: 'Direct Debit BRI', icon: '🏦', category: 'Direct Debit' },
+  
+  // Retail
+  { id: 'RETAIL_ALFAMART', name: 'Alfamart', icon: '🏪', category: 'Retail' },
+  { id: 'RETAIL_INDOMARET', name: 'Indomaret', icon: '🏪', category: 'Retail' },
+  
+  // Paylater
+  { id: 'PAYLATER_AKULAKU', name: 'Akulaku', icon: '📊', category: 'Paylater' },
+  { id: 'PAYLATER_KREDIVO', name: 'Kredivo', icon: '📊', category: 'Paylater' },
+  { id: 'PAYLATER_INDODANA', name: 'Indodana', icon: '📊', category: 'Paylater' },
+  
+  // Others
+  { id: 'DIRECT_TRANSFER_BCA', name: 'Direct Transfer BCA', icon: '💸', category: 'Transfer' },
+  { id: 'REKBER_BCA', name: 'REKBER BCA', icon: '🤝', category: 'Escrow' },
 ]
 
 function Toast({ message, type, onClose }: ToastProps) {
@@ -152,7 +149,6 @@ export default function CheckoutPage() {
       const result = await response.json()
       
       if (result.success) {
-        console.log('[Checkout] Buyer data saved:', result.data)
         setSavedToSheet(true)
         showToast('Data berhasil disimpan! Silakan pilih metode pembayaran.', 'success')
       }
@@ -204,12 +200,13 @@ export default function CheckoutPage() {
       })
 
       const result = await response.json()
+      console.log('[Checkout] Payment result:', result)
       
       if (result.success && result.data.paymentLink) {
         setPaymentLink(result.data.paymentLink)
-        showToast(`Pembayaran via ${selectedPaymentMethod.replace(/_/g, ' ')} berhasil dibuat!`, 'success')
+        showToast(result.message || `Pembayaran via ${selectedPaymentMethod} berhasil dibuat!`, 'success')
       } else {
-        showToast('Gagal membuat link pembayaran. Silakan coba lagi.', 'error')
+        showToast(result.message || 'Gagal membuat link pembayaran. Silakan coba lagi.', 'error')
       }
     } catch (error) {
       console.error('[Checkout] Error creating payment:', error)
@@ -241,6 +238,8 @@ export default function CheckoutPage() {
   const handleWhatsAppConfirmation = () => {
     if (!checkoutData) return
 
+    const methodName = PAYMENT_METHODS.find(m => m.id === selectedPaymentMethod)?.name || 'DOKU'
+    
     const message = `Halo Admin Langgoku, saya sudah melakukan pembayaran melalui DOKU:
 
 📦 Produk: ${checkoutData.productName}
@@ -248,7 +247,7 @@ export default function CheckoutPage() {
 📱 No. WhatsApp: ${checkoutData.buyerPhone}
 💰 Kode Pembayaran: ${checkoutData.uniqueCode}
 💵 Total: ${formatPrice(checkoutData.finalPrice)}
-🏧 Metode: ${selectedPaymentMethod?.replace(/_/g, ' ') || 'DOKU'}
+🏧 Metode: ${methodName}
 
 Mohon dicek dan diverifikasi. Terima kasih!`
     
@@ -261,6 +260,13 @@ Mohon dicek dan diverifikasi. Terima kasih!`
   const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
     setToast({ message, type })
   }
+
+  // Group payment methods by category
+  const groupedMethods = PAYMENT_METHODS.reduce((acc, method) => {
+    if (!acc[method.category]) acc[method.category] = []
+    acc[method.category].push(method)
+    return acc
+  }, {} as Record<string, PaymentMethod[]>)
 
   if (loading || !checkoutData) {
     return (
@@ -287,7 +293,7 @@ Mohon dicek dan diverifikasi. Terima kasih!`
         <div className="container-custom">
           <div className="max-w-2xl">
             <h1 className="text-4xl md:text-5xl font-black mb-4">Checkout</h1>
-            <p className="text-xl text-purple-100">Pembayaran melalui DOKU</p>
+            <p className="text-xl text-purple-100">Pembayaran via DOKU Payment Gateway</p>
           </div>
         </div>
       </div>
@@ -303,7 +309,6 @@ Mohon dicek dan diverifikasi. Terima kasih!`
               <li>• Pastikan nominal yang ditransfer sudah <strong>BENAR</strong> (termasuk kode unik)</li>
               <li>• Simpan bukti pembayaran sebagai verifikasi</li>
               <li>• Admin akan memverifikasi pembayaran sebelum mengirim akun</li>
-              <li>• Jika ada yang klaim sudah membayar tapi belum verifikasi, <strong>AKAN DITOLAK</strong></li>
             </ul>
           </div>
 
@@ -323,170 +328,128 @@ Mohon dicek dan diverifikasi. Terima kasih!`
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="space-y-8">
               <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">📦</span>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Ringkasan Pesanan</h2>
+                <div className="space-y-4">
+                  <div className="bg-purple-50 p-4 rounded-xl">
+                    <p className="text-sm text-gray-600">Produk</p>
+                    <p className="text-xl font-bold text-gray-900">{checkoutData.productName}</p>
+                    <p className="text-gray-600">{checkoutData.productDuration}</p>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Ringkasan Pesanan</h2>
-                    <p className="text-gray-600">Detail produk yang Anda pesan</p>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-gray-50 to-purple-50 p-6 rounded-2xl border border-gray-200">
-                    <p className="text-sm font-semibold text-gray-600 mb-2">Produk</p>
-                    <p className="text-2xl font-bold text-gray-900">{checkoutData.productName}</p>
-                    <p className="text-gray-600 text-sm mt-1">{checkoutData.productDuration}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-r from-gray-50 to-green-50 p-6 rounded-2xl border border-gray-200">
-                      <p className="text-sm font-semibold text-gray-600 mb-2">Nama Pembeli</p>
-                      <p className="text-lg font-semibold text-gray-900">{checkoutData.buyerName}</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-green-50 p-4 rounded-xl">
+                      <p className="text-sm text-gray-600">Nama</p>
+                      <p className="font-semibold">{checkoutData.buyerName}</p>
                     </div>
-                    <div className="bg-gradient-to-r from-gray-50 to-purple-50 p-6 rounded-2xl border border-gray-200">
-                      <p className="text-sm font-semibold text-gray-600 mb-2">No. WhatsApp</p>
-                      <p className="text-lg font-semibold text-gray-900">{checkoutData.buyerPhone}</p>
+                    <div className="bg-purple-50 p-4 rounded-xl">
+                      <p className="text-sm text-gray-600">WhatsApp</p>
+                      <p className="font-semibold">{checkoutData.buyerPhone}</p>
                     </div>
                   </div>
-
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 rounded-2xl border-2 border-amber-200">
-                    <p className="text-sm font-semibold text-amber-800 mb-3">Kode Pembayaran Unik</p>
-                    <div className="flex items-center gap-3">
+                  <div className="bg-amber-50 p-4 rounded-xl border-2 border-amber-200">
+                    <p className="text-sm font-semibold text-amber-800 mb-2">Kode Pembayaran</p>
+                    <div className="flex items-center gap-2">
                       <input
                         type="text"
                         value={checkoutData.uniqueCode}
                         readOnly
-                        className="flex-1 bg-white border-2 border-amber-300 rounded-xl px-4 py-3 font-bold text-2xl text-amber-800 text-center outline-none"
+                        className="flex-1 bg-white border-2 border-amber-300 rounded-lg px-3 py-2 font-bold text-xl text-center"
                       />
                       <button
                         onClick={handleCopyCode}
-                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-300 font-bold transform hover:scale-105 shadow-lg"
+                        className="px-3 py-2 bg-amber-500 text-white rounded-lg"
                       >
-                        {copied ? '✅' : '📋'}
+                        {copied ? '✓' : '📋'}
                       </button>
                     </div>
-                    <p className="text-xs text-amber-700 font-medium mt-3 flex items-center gap-2">
-                      <span className="text-amber-600">⚠️</span>
-                      Tambahkan kode ini ke nominal pembayaran Anda
-                    </p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                  <span className="text-2xl">💰</span>
-                  Rincian Pembayaran
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-700 font-medium">Harga Produk</span>
-                    <span className="text-lg font-semibold text-gray-900">{formatPrice(checkoutData.originalPrice)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-amber-700 font-medium">Kode Unik</span>
-                    <span className="text-lg font-semibold text-amber-700">+{Math.round(checkoutData.finalPrice - checkoutData.originalPrice)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-4 bg-gradient-to-r from-purple-50 to-indigo-50 px-4 rounded-xl border-2 border-purple-200">
-                    <span className="text-xl font-bold text-gray-900">Total Pembayaran</span>
-                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">
-                      {formatPrice(checkoutData.finalPrice)}
-                    </span>
-                  </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Total Pembayaran</h3>
+                <div className="text-3xl font-black text-purple-600">
+                  {formatPrice(checkoutData.finalPrice)}
                 </div>
+                <p className="text-sm text-gray-500 mt-2">Termasuk kode unik</p>
               </div>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-6">
               <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">💳</span>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Pilih Metode Pembayaran</h2>
+                
+                {Object.entries(groupedMethods).map(([category, methods]) => (
+                  <div key={category} className="mb-6">
+                    <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase">{category}</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {methods.map((method) => (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => {
+                            console.log('[Payment] Selected:', method.id)
+                            setSelectedPaymentMethod(method.id)
+                          }}
+                          disabled={paymentLink !== null || processingPayment}
+                          className={`p-3 rounded-xl border-2 transition-all duration-200 text-left flex items-center gap-2 ${
+                            selectedPaymentMethod === method.id
+                              ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300'
+                              : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                          } ${paymentLink || processingPayment ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <span className="text-xl">{method.icon}</span>
+                          <span className="font-medium text-sm">{method.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Pilih Metode Pembayaran</h2>
-                    <p className="text-gray-600">Klik untuk memilih metode pembayaran DOKU</p>
-                  </div>
-                </div>
+                ))}
 
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  {PAYMENT_METHODS.map((method) => (
-                    <button
-                      key={method.id}
-                      onClick={() => setSelectedPaymentMethod(method.id)}
-                      disabled={paymentLink !== null}
-                      className={`p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
-                        selectedPaymentMethod === method.id
-                          ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300'
-                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
-                      } ${paymentLink ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{method.icon}</span>
-                        <div>
-                          <h4 className="font-bold text-gray-900">{method.name}</h4>
-                          <p className="text-xs text-gray-600">{method.description}</p>
-                        </div>
-                      </div>
-                      {selectedPaymentMethod === method.id && (
-                        <div className="mt-2 text-purple-600 text-sm font-medium">✓ Terpilih</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={handleCreatePayment}
+                  disabled={saving || processingPayment || !savedToSheet || !selectedPaymentMethod}
+                  className={`w-full py-4 px-6 rounded-2xl transition-all duration-300 font-bold text-lg mt-4 ${
+                    saving || processingPayment || !savedToSheet || !selectedPaymentMethod
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700'
+                  }`}
+                >
+                  {processingPayment ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="animate-spin">⏳</span> Membuat Pembayaran...
+                    </span>
+                  ) : saving ? (
+                    'Menyimpan...'
+                  ) : !selectedPaymentMethod ? (
+                    'Pilih Metode Pembayaran'
+                  ) : (
+                    '💳 Bayar Sekarang'
+                  )}
+                </button>
 
-                {!paymentLink ? (
-                  <button
-                    onClick={handleCreatePayment}
-                    disabled={saving || processingPayment || !savedToSheet || !selectedPaymentMethod}
-                    className={`w-full py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl flex items-center justify-center gap-3 text-lg font-bold ${
-                      saving || processingPayment || !savedToSheet || !selectedPaymentMethod
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 hover:scale-105'
-                    }`}
-                  >
-                    {processingPayment ? (
-                      <>
-                        <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                        Membuat Link Pembayaran...
-                      </>
-                    ) : saving ? (
-                      'Menyimpan...'
-                    ) : !selectedPaymentMethod ? (
-                      'Pilih Metode Pembayaran'
-                    ) : (
-                      <>
-                        <span className="text-2xl">💳</span>
-                        Bayar Sekarang via DOKU
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <div className="space-y-4">
+                {paymentLink && (
+                  <div className="mt-6 space-y-3">
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-green-600 text-xl">✓</span>
-                        <span className="text-green-700 font-medium">Link pembayaran berhasil dibuat!</span>
-                      </div>
+                      <p className="text-green-700 font-medium">✓ Link pembayaran berhasil dibuat!</p>
                     </div>
                     <a
                       href={paymentLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block w-full py-4 px-8 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white text-center font-bold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-xl"
+                      className="block w-full py-4 px-6 rounded-2xl bg-green-500 text-white text-center font-bold hover:bg-green-600"
                     >
-                      🔗 Buka Link Pembayaran DOKU
+                      🔗 Buka Halaman Pembayaran DOKU
                     </a>
                     <button
+                      type="button"
                       onClick={() => {
                         setPaymentLink(null)
                         setSelectedPaymentMethod(null)
                       }}
-                      className="w-full py-3 px-6 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                      className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50"
                     >
-                      ← Pilih Metode Lain
+                      Pilih Metode Lain
                     </button>
                   </div>
                 )}
@@ -494,32 +457,30 @@ Mohon dicek dan diverifikasi. Terima kasih!`
 
               {!paymentConfirmed ? (
                 <button
+                  type="button"
                   onClick={handleConfirmPayment}
                   disabled={!savedToSheet || !paymentLink}
-                  className={`w-full py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl flex items-center justify-center gap-3 text-lg font-bold ${
+                  className={`w-full py-4 px-6 rounded-2xl transition-all duration-300 font-bold text-lg ${
                     !savedToSheet || !paymentLink
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 hover:scale-105'
+                      : 'bg-amber-500 text-white hover:bg-amber-600'
                   }`}
                 >
-                  <span className="text-2xl">✓</span>
-                  Konfirmasi Pembayaran
+                  ✓ Konfirmasi Pembayaran
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={handleWhatsAppConfirmation}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 px-8 rounded-2xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-xl flex items-center justify-center gap-3 text-lg"
+                  className="w-full py-4 px-6 rounded-2xl bg-green-500 text-white font-bold text-lg hover:bg-green-600"
                 >
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-5.031 1.378c-3.055 2.364-3.905 6.75-1.89 10.525 1.891 3.368 5.853 4.795 9.797 3.488 3.368-1.079 5.82-4.15 5.428-7.418-.167-1.334-1.01-2.502-2.149-3.162-1.147-.medalist-2.295-1.023-3.958-.645z"/>
-                  </svg>
-                  💬 Kirim Bukti via WhatsApp
+                  💬 Kirim Bukti ke WhatsApp
                 </button>
               )}
 
               <Link
                 href="/"
-                className="block w-full bg-white border-2 border-gray-300 text-gray-700 font-bold py-4 px-8 rounded-2xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 text-center shadow-lg"
+                className="block text-center text-gray-600 hover:text-gray-900"
               >
                 ← Kembali ke Toko
               </Link>
