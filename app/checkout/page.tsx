@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatPrice } from '@/lib/googleSheets'
+import { formatPrice, calculateExpiryDate } from '@/lib/googleSheets'
 
 interface CheckoutData {
   productId: string
   productName: string
+  productDuration: string
   originalPrice: number
   uniqueCode: string
   finalPrice: number
@@ -19,6 +20,8 @@ export default function CheckoutPage() {
   const router = useRouter()
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [savedToSheet, setSavedToSheet] = useState(false)
 
   useEffect(() => {
     const data = sessionStorage.getItem('checkoutData')
@@ -26,8 +29,52 @@ export default function CheckoutPage() {
       router.push('/')
       return
     }
-    setCheckoutData(JSON.parse(data))
+    const parsedData = JSON.parse(data)
+    setCheckoutData(parsedData)
+    
+    // Auto-save buyer data to Google Sheets when checkout page loads
+    saveBuyerData(parsedData)
   }, [router])
+
+  const saveBuyerData = async (data: CheckoutData) => {
+    if (savedToSheet) return // Already saved
+    
+    setSaving(true)
+    try {
+      // Calculate end date based on duration
+      const startDate = new Date().toISOString().split('T')[0]
+      const endDate = calculateExpiryDate(data.productDuration).toISOString().split('T')[0]
+
+      const response = await fetch('/api/buyers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify({
+          name: data.buyerName,
+          phone: data.buyerPhone,
+          product: data.productName,
+          duration: data.productDuration,
+          startDate,
+          endDate,
+        }),
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('[Checkout] Buyer data saved to Google Sheets:', result.data)
+        setSavedToSheet(true)
+      } else {
+        console.warn('[Checkout] Failed to save buyer data:', result.message)
+      }
+    } catch (error) {
+      console.error('[Checkout] Error saving buyer data:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleCopyCode = () => {
     if (checkoutData?.uniqueCode) {
@@ -40,7 +87,7 @@ export default function CheckoutPage() {
   const handleWhatsAppConfirmation = () => {
     if (!checkoutData) return
 
-    const message = `Halo, saya ingin membeli ${checkoutData.productName}\nNama: ${checkoutData.buyerName}\nKode Pembayaran: ${checkoutData.uniqueCode}\nHarga: ${formatPrice(checkoutData.finalPrice)}`
+    const message = `Halo, saya ingin membeli ${checkoutData.productName}\nNama: ${checkoutData.buyerName}\nNo. WhatsApp: ${checkoutData.buyerPhone}\nKode Pembayaran: ${checkoutData.uniqueCode}\nHarga: ${formatPrice(checkoutData.finalPrice)}`
     const encodedMessage = encodeURIComponent(message)
     const whatsappUrl = `https://wa.me/${checkoutData.buyerPhone.replace(/\D/g, '')}?text=${encodedMessage}`
     
@@ -72,6 +119,20 @@ export default function CheckoutPage() {
 
       <div className="container-custom py-16">
         <div className="max-w-6xl mx-auto">
+          {/* Save Status Banner */}
+          {saving && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+              <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+              <span className="text-blue-700 font-medium">Menyimpan data pembeli ke database...</span>
+            </div>
+          )}
+          {savedToSheet && !saving && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+              <span className="text-green-600">✓</span>
+              <span className="text-green-700 font-medium">Data pembeli tersimpan di database</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Order Summary */}
             <div className="space-y-8">
@@ -90,6 +151,7 @@ export default function CheckoutPage() {
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-6 rounded-2xl border border-gray-200">
                     <p className="text-sm font-semibold text-gray-600 mb-2">Produk</p>
                     <p className="text-2xl font-bold text-gray-900">{checkoutData.productName}</p>
+                    <p className="text-gray-600 text-sm mt-1">{checkoutData.productDuration}</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
