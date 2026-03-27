@@ -58,8 +58,8 @@ export default function AdminProductManager() {
     setSubmitting(true)
     try {
       if (editingId) {
-        // Update existing product
-        const response = await fetch(`/api/products/${editingId}`, {
+        // Update existing product - use the correct URL
+        const response = await fetch(`/api/products/${editingId}/update-delete`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -67,10 +67,9 @@ export default function AdminProductManager() {
         const data = await response.json()
         
         if (data.success) {
-          setProducts(products.map(p =>
-            p.id === editingId ? { ...p, ...formData } as Product : p
-          ))
           alert('Produk berhasil diperbarui')
+          // Fetch fresh data from server after update
+          await fetchProducts()
         } else {
           alert('Gagal memperbarui produk: ' + data.message)
         }
@@ -84,8 +83,9 @@ export default function AdminProductManager() {
         const data = await response.json()
         
         if (data.success) {
-          setProducts([...products, data.data])
           alert('Produk berhasil ditambahkan')
+          // Fetch fresh data from server after add
+          await fetchProducts()
         } else {
           alert('Gagal menambahkan produk: ' + data.message)
         }
@@ -109,14 +109,17 @@ export default function AdminProductManager() {
     if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return
 
     try {
-      const response = await fetch(`/api/products/${id}`, {
+      // Use the correct URL path for delete
+      const response = await fetch(`/api/products/${id}/update-delete`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
       })
       const data = await response.json()
       
       if (data.success) {
-        setProducts(products.filter(p => p.id !== id))
         alert('Produk berhasil dihapus')
+        // Fetch fresh data from server after delete
+        await fetchProducts()
       } else {
         alert('Gagal menghapus produk: ' + data.message)
       }
