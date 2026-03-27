@@ -16,11 +16,40 @@ interface CheckoutData {
   buyerPhone: string
 }
 
+interface Settings {
+  adminPhone: string
+  storeEmail: string
+  storeName: string
+  storeDescription: string
+}
+
+interface PromoValidation {
+  success: boolean
+  data?: {
+    'Kode Promo': string
+    Diskon: number
+    'Tipe Diskon': string
+    'Minimal Pembelian': number
+    'Maksimal Diskon': number
+  }
+  message?: string
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [paymentStep, setPaymentStep] = useState<'select' | 'done'>('select')
+  
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('')
+  const [promoApplied, setPromoApplied] = useState<PromoValidation | null>(null)
+  const [applyingPromo, setApplyingPromo] = useState(false)
+  const [promoError, setPromoError] = useState('')
+  
+  // Price after promo
+  const [discountAmount, setDiscountAmount] = useState(0)
 
   useEffect(() => {
     const data = sessionStorage.getItem('checkoutData')
@@ -29,8 +58,72 @@ export default function CheckoutPage() {
       return
     }
     setCheckoutData(JSON.parse(data))
-    setLoading(false)
+    loadSettings()
   }, [router])
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings')
+      const data = await response.json()
+      if (data.success && data.data) {
+        setSettings(data.data)
+      }
+    } catch (err) {
+      console.error('Error loading settings:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const applyPromoCode = async () => {
+    if (!promoCode.trim() || !checkoutData) return
+    
+    setApplyingPromo(true)
+    setPromoError('')
+    
+    try {
+      const response = await fetch(`/api/promo-codes?code=${encodeURIComponent(promoCode)}`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        const promo = result.data
+        let discount = 0
+        
+        // Calculate discount
+        if (promo['Tipe Diskon'] === 'percentage') {
+          discount = (checkoutData.originalPrice * promo.Diskon) / 100
+          // Apply max discount cap
+          if (promo['Maksimal Diskon'] && discount > promo['Maksimal Diskon']) {
+            discount = promo['Maksimal Diskon']
+          }
+        } else {
+          discount = promo.Diskon
+        }
+        
+        // Check min purchase
+        if (promo['Minimal Pembelian'] && checkoutData.originalPrice < promo['Minimal Pembelian']) {
+          setPromoError(`Minimal pembelian Rp ${promo['Minimal Pembelian'].toLocaleString('id-ID')}`)
+          return
+        }
+        
+        setDiscountAmount(discount)
+        setPromoApplied(result)
+      } else {
+        setPromoError(result.message || 'Kode promo tidak valid')
+      }
+    } catch (err) {
+      setPromoError('Terjadi kesalahan')
+    } finally {
+      setApplyingPromo(false)
+    }
+  }
+
+  const removePromo = () => {
+    setPromoCode('')
+    setPromoApplied(null)
+    setDiscountAmount(0)
+    setPromoError('')
+  }
 
   const handleCopyCode = () => {
     if (checkoutData?.uniqueCode) {
@@ -38,20 +131,35 @@ export default function CheckoutPage() {
     }
   }
 
+  const getWhatsAppNumber = () => {
+    // Use from settings, or fallback to checkout data
+    return settings?.adminPhone || checkoutData?.buyerPhone || ''
+  }
+
+  const getStoreName = () => {
+    return settings?.storeName || 'Langgoku'
+  }
+
   const handleWhatsAppConfirmation = () => {
     if (!checkoutData) return
 
-    const message = `Halo Admin Langgoku, saya ingin membeli:
+    const finalPrice = checkoutData.finalPrice - discountAmount
+    const promoInfo = promoApplied ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})` : ''
+    
+    const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
 
 📦 Produk: ${checkoutData.productName}
+⏱️ Durasi: ${checkoutData.productDuration}
 👤 Nama: ${checkoutData.buyerName}
 📱 WhatsApp: ${checkoutData.buyerPhone}
-💵 Total: ${formatPrice(checkoutData.finalPrice)}
+💵 Harga Awal: ${formatPrice(checkoutData.originalPrice)}${promoInfo}
 💰 Kode Pembayaran: ${checkoutData.uniqueCode}
+💳 Total Bayar: ${formatPrice(finalPrice + checkoutData.uniqueCode)}
 
 Mohon info cara pembayarannya!`
     
-    window.open(`https://wa.me/${checkoutData.buyerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank')
+    const waNumber = getWhatsAppNumber().replace(/\D/g, '')
+    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank')
     setPaymentStep('done')
   }
 
@@ -66,13 +174,15 @@ Mohon info cara pembayarannya!`
     )
   }
 
+  const finalTotal = checkoutData.finalPrice - discountAmount
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-12">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl font-bold">Checkout</h1>
-          <p className="text-blue-200">Pesanan Anda</p>
+          <p className="text-blue-200">Pesanan Anda di {getStoreName()}</p>
         </div>
       </div>
 
@@ -101,6 +211,11 @@ Mohon info cara pembayarannya!`
                     <p className="font-semibold">{checkoutData.buyerPhone}</p>
                   </div>
                 </div>
+
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-sm text-gray-600">Email Toko</p>
+                  <p className="font-semibold">{settings?.storeEmail || '-'}</p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -112,14 +227,82 @@ Mohon info cara pembayarannya!`
                       Copy
                     </button>
                   </div>
+                  <p className="text-xs text-amber-600 mt-1">Tambahkan ke nominal transfer</p>
                 </div>
+
+                <div className="bg-green-50 p-4 rounded-xl">
+                  <p className="text-sm text-gray-600">Subtotal</p>
+                  <p className="text-lg font-semibold">{formatPrice(checkoutData.originalPrice)}</p>
+                </div>
+
+                {promoApplied && discountAmount > 0 && (
+                  <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-purple-600">Diskon Promo</p>
+                        <p className="text-lg font-bold text-purple-600">-{formatPrice(discountAmount)}</p>
+                      </div>
+                      <button onClick={removePromo} className="text-purple-500 text-sm hover:text-purple-700">
+                        Hapus
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-blue-50 p-4 rounded-xl">
                   <p className="text-sm text-gray-600">Total Bayar</p>
-                  <p className="text-3xl font-bold text-blue-600">{formatPrice(checkoutData.finalPrice)}</p>
+                  <p className="text-3xl font-bold text-blue-600">{formatPrice(finalTotal)}</p>
+                  {discountAmount > 0 && (
+                    <p className="text-xs text-green-600 mt-1">Termasuk kode unik</p>
+                  )}
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Promo Code Section */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+            <h2 className="text-xl font-bold mb-4">Kode Promo</h2>
+            
+            {!promoApplied ? (
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Masukkan kode promo"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  onClick={applyPromoCode}
+                  disabled={applyingPromo || !promoCode.trim()}
+                  className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {applyingPromo ? '...' : ' Gunakan'}
+                </button>
+              </div>
+            ) : (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-green-700">✓ {promoCode} Applied</p>
+                  <p className="text-sm text-green-600">
+                    {promoApplied.data?.['Tipe Diskon'] === 'percentage' 
+                      ? `${promoApplied.data?.Diskon}% off` 
+                      : `Rp ${promoApplied.data?.Diskon?.toLocaleString('id-ID')} off`}
+                  </p>
+                </div>
+                <button
+                  onClick={removePromo}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            
+            {promoError && (
+              <p className="mt-2 text-red-500 text-sm">{promoError}</p>
+            )}
           </div>
 
           {/* Payment Info */}
@@ -132,7 +315,7 @@ Mohon info cara pembayarannya!`
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
               <p className="text-yellow-800 text-sm">
-                <strong>Catatan:</strong> Setiap pesanan memiliki kode unik yang harus ditambahkan ke nominal pembayaran.
+                <strong>Catatan:</strong> Setiap pesanan memiliki kode unik ({checkoutData.uniqueCode}) yang harus ditambahkan ke nominal pembayaran.
                 Hubungi admin untuk info lebih lanjut.
               </p>
             </div>

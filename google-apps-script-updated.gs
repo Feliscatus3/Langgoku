@@ -12,7 +12,8 @@ const SHEETS = {
   PRODUCTS: 'Produk',
   BUYERS: 'Pembeli',
   LOGS: 'Logs',
-  SETTINGS: 'Pengaturan'
+  SETTINGS: 'Pengaturan',
+  PROMO_CODES: 'Kode Promo'
 };
 
 // ==============================
@@ -37,13 +38,17 @@ function doGet(e) {
         return getStats();
       case 'getSettings':
         return getSettings();
+      case 'getPromoCodes':
+        return getPromoCodes();
+      case 'validatePromoCode':
+        return validatePromoCode(params.code || null);
       case 'testConnection':
         return testConnection();
       default:
         return sendResponse({
           success: false,
           message: 'Action tidak dikenali',
-          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'testConnection']
+          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'getPromoCodes', 'validatePromoCode', 'testConnection']
         });
     }
   } catch (error) {
@@ -56,18 +61,15 @@ function doPost(e) {
   let params = {};
   
   try {
-    // Try to get action from parameter first
     if (e && e.parameter && e.parameter.action) {
       params.action = e.parameter.action;
     }
     
-    // Try to parse JSON body
     if (e && e.postData && e.postData.contents) {
       try {
         const bodyParams = JSON.parse(e.postData.contents);
         params = { ...params, ...bodyParams };
       } catch (parseError) {
-        // If JSON parse fails, try to parse as form data
         const contents = e.postData.contents;
         if (contents.includes('=')) {
           const formParams = contents.split('&');
@@ -107,6 +109,12 @@ function doPost(e) {
         return deleteBuyer(params.id);
       case 'saveSettings':
         return saveSettings(params);
+      case 'addPromoCode':
+        return addPromoCode(params);
+      case 'updatePromoCode':
+        return updatePromoCode(params);
+      case 'deletePromoCode':
+        return deletePromoCode(params.id);
       case 'sendNotification':
         return sendNotification(params);
       default:
@@ -381,7 +389,6 @@ function deleteBuyer(id) {
 function getSettings() {
   const sheet = getSheetByName(SHEETS.SETTINGS);
   if (!sheet) {
-    // Create settings sheet if not exists
     return createSettingsSheet();
   }
   
@@ -398,8 +405,7 @@ function getSettings() {
     storeEmail: data[lastRow][3] || '',
     storeName: data[lastRow][4] || 'Langgoku',
     storeDescription: data[lastRow][5] || '',
-    defaultPaymentMethod: data[lastRow][6] || 'QRIS',
-    notificationEnabled: data[lastRow][7] !== false
+    notificationEnabled: data[lastRow][6] !== false
   };
   
   return sendResponse({ success: true, data: settingsData });
@@ -425,7 +431,6 @@ function saveSettings(settings) {
     settings.storeEmail || '',
     settings.storeName || 'Langgoku',
     settings.storeDescription || '',
-    settings.defaultPaymentMethod || 'QRIS',
     settings.notificationEnabled !== false,
     new Date().toLocaleString('id-ID')
   ];
@@ -453,13 +458,197 @@ function createSettingsSheet() {
       'Email Toko', 
       'Nama Toko', 
       'Deskripsi Toko',
-      'Metode Pembayaran Default',
       'Notifikasi Aktif',
       'Tanggal Update'
     ]);
   }
   
   return getSheetByName(SHEETS.SETTINGS);
+}
+
+// ==============================
+// PROMO CODE FUNCTIONS
+// ==============================
+
+function getPromoCodes() {
+  const sheet = getSheetByName(SHEETS.PROMO_CODES);
+  if (!sheet) {
+    createPromoCodesSheet();
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
+  const headers = data[0];
+  const promoCodes = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      promoCodes.push(objectToData(headers, data[i]));
+    }
+  }
+  
+  return sendResponse({ success: true, data: promoCodes, count: promoCodes.length });
+}
+
+function validatePromoCode(code) {
+  if (!code) return sendResponse({ success: false, message: 'Kode promo diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.PROMO_CODES);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Kode Promo tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] && data[i][1].toUpperCase() === code.toUpperCase()) {
+      const promoData = objectToData(headers, data[i]);
+      
+      // Check if promo is active and not expired
+      const now = new Date();
+      const expiryDate = promoData['Tanggal Kadaluarsa'] ? new Date(promoData['Tanggal Kadaluarsa']) : null;
+      
+      if (promoData['Status'] !== 'Aktif') {
+        return sendResponse({ success: false, message: 'Kode promo tidak aktif' });
+      }
+      
+      if (expiryDate && expiryDate < now) {
+        return sendResponse({ success: false, message: 'Kode promo sudah expired' });
+      }
+      
+      // Check usage limit
+      const usageLimit = parseNumber(promoData['Batas Penggunaan']);
+      const currentUsage = parseNumber(promoData[' Penggunaan Saat Ini'] || 0);
+      
+      if (usageLimit > 0 && currentUsage >= usageLimit) {
+        return sendResponse({ success: false, message: 'Kode promo sudah mencapai batas penggunaan' });
+      }
+      
+      return sendResponse({
+        success: true,
+        data: promoData,
+        message: 'Kode promo valid'
+      });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Kode promo tidak ditemukan' });
+}
+
+function addPromoCode(promo) {
+  console.log('addPromoCode called with:', JSON.stringify(promo));
+  
+  if (!promo || !promo.code) {
+    return sendResponse({ success: false, message: 'Data kode promo tidak valid' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.PROMO_CODES);
+  if (!sheet) {
+    createPromoCodesSheet();
+    return addPromoCode(promo);
+  }
+  
+  const newId = 'PROMO_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  const rowData = [
+    newId,
+    promo.code.toUpperCase(),
+    promo.discount || 0,
+    promo.discountType || 'percentage',
+    promo.description || '',
+    promo.usageLimit || 0,
+    0,
+    promo.minPurchase || 0,
+    promo.maxDiscount || 0,
+    promo.expiryDate || '',
+    'Aktif',
+    new Date().toLocaleString('id-ID')
+  ];
+  
+  sheet.appendRow(rowData);
+  
+  console.log('Promo code added with ID:', newId);
+  
+  return sendResponse({
+    success: true,
+    message: 'Kode promo berhasil ditambahkan',
+    data: { id: newId }
+  });
+}
+
+function updatePromoCode(promo) {
+  if (!promo || !promo.id) {
+    return sendResponse({ success: false, message: 'ID kode promo diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.PROMO_CODES);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Kode Promo tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === promo.id) {
+      const row = i + 1;
+      if (promo.code) sheet.getRange(row, 2).setValue(promo.code.toUpperCase());
+      if (promo.discount !== undefined) sheet.getRange(row, 3).setValue(promo.discount);
+      if (promo.discountType) sheet.getRange(row, 4).setValue(promo.discountType);
+      if (promo.description !== undefined) sheet.getRange(row, 5).setValue(promo.description);
+      if (promo.usageLimit !== undefined) sheet.getRange(row, 6).setValue(promo.usageLimit);
+      if (promo.minPurchase !== undefined) sheet.getRange(row, 8).setValue(promo.minPurchase);
+      if (promo.maxDiscount !== undefined) sheet.getRange(row, 9).setValue(promo.maxDiscount);
+      if (promo.expiryDate !== undefined) sheet.getRange(row, 10).setValue(promo.expiryDate);
+      if (promo.status) sheet.getRange(row, 11).setValue(promo.status);
+      
+      return sendResponse({ success: true, message: 'Kode promo berhasil diperbarui' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Kode promo tidak ditemukan' });
+}
+
+function deletePromoCode(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID kode promo diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.PROMO_CODES);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Kode Promo tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return sendResponse({ success: true, message: 'Kode promo berhasil dihapus' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Kode promo tidak ditemukan' });
+}
+
+function createPromoCodesSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  if (!ss.getSheetByName(SHEETS.PROMO_CODES)) {
+    const promoSheet = ss.insertSheet(SHEETS.PROMO_CODES);
+    promoSheet.appendRow([
+      'ID',
+      'Kode Promo',
+      'Diskon',
+      'Tipe Diskon',
+      'Deskripsi',
+      'Batas Penggunaan',
+      'Penggunaan Saat Ini',
+      'Minimal Pembelian',
+      'Maksimal Diskon',
+      'Tanggal Kadaluarsa',
+      'Status',
+      'Tanggal Dibuat'
+    ]);
+  }
+  
+  return getSheetByName(SHEETS.PROMO_CODES);
 }
 
 // ==============================
@@ -518,12 +707,14 @@ function getStats() {
   const productsSheet = getSheetByName(SHEETS.PRODUCTS);
   const buyersSheet = getSheetByName(SHEETS.BUYERS);
   const settingsSheet = getSheetByName(SHEETS.SETTINGS);
+  const promoSheet = getSheetByName(SHEETS.PROMO_CODES);
   
   return sendResponse({
     success: true,
     stats: {
       totalProducts: productsSheet ? Math.max(0, productsSheet.getLastRow() - 1) : 0,
       totalBuyers: buyersSheet ? Math.max(0, buyersSheet.getLastRow() - 1) : 0,
+      totalPromoCodes: promoSheet ? Math.max(0, promoSheet.getLastRow() - 1) : 0,
       settingsExist: settingsSheet ? true : false,
       lastUpdated: new Date().toLocaleString('id-ID')
     }
@@ -578,12 +769,20 @@ function initializeSheets() {
     const settingsSheet = ss.insertSheet(SHEETS.SETTINGS);
     settingsSheet.appendRow([
       'ID', 'Google Sheet ID', 'No WhatsApp Admin', 'Email Toko', 
-      'Nama Toko', 'Deskripsi Toko', 'Metode Pembayaran Default', 
-      'Notifikasi Aktif', 'Tanggal Update'
+      'Nama Toko', 'Deskripsi Toko', 'Notifikasi Aktif', 'Tanggal Update'
     ]);
   }
   
-  return 'Sheets initialized: Produk, Pembeli, Logs, Pengaturan';
+  if (!ss.getSheetByName(SHEETS.PROMO_CODES)) {
+    const promoSheet = ss.insertSheet(SHEETS.PROMO_CODES);
+    promoSheet.appendRow([
+      'ID', 'Kode Promo', 'Diskon', 'Tipe Diskon', 'Deskripsi',
+      'Batas Penggunaan', 'Penggunaan Saat Ini', 'Minimal Pembelian',
+      'Maksimal Diskon', 'Tanggal Kadaluarsa', 'Status', 'Tanggal Dibuat'
+    ]);
+  }
+  
+  return 'Sheets initialized: Produk, Pembeli, Logs, Pengaturan, Kode Promo';
 }
 
 function testConnection() {
@@ -593,6 +792,7 @@ function testConnection() {
     const buyersSheet = ss.getSheetByName(SHEETS.BUYERS);
     const logsSheet = ss.getSheetByName(SHEETS.LOGS);
     const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
+    const promoSheet = ss.getSheetByName(SHEETS.PROMO_CODES);
     
     return sendResponse({
       success: true,
@@ -602,10 +802,12 @@ function testConnection() {
         Produk: productsSheet ? 'ready' : 'not found',
         Pembeli: buyersSheet ? 'ready' : 'not found',
         Logs: logsSheet ? 'ready' : 'not found',
-        Pengaturan: settingsSheet ? 'ready' : 'not found'
+        Pengaturan: settingsSheet ? 'ready' : 'not found',
+        'Kode Promo': promoSheet ? 'ready' : 'not found'
       },
       productsCount: productsSheet ? productsSheet.getLastRow() - 1 : 0,
-      buyersCount: buyersSheet ? buyersSheet.getLastRow() - 1 : 0
+      buyersCount: buyersSheet ? buyersSheet.getLastRow() - 1 : 0,
+      promoCodesCount: promoSheet ? promoSheet.getLastRow() - 1 : 0
     });
   } catch (error) {
     return sendResponse({

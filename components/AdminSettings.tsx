@@ -8,7 +8,6 @@ interface Settings {
   storeEmail: string
   storeName: string
   storeDescription: string
-  defaultPaymentMethod: string
   notificationEnabled: boolean
 }
 
@@ -19,40 +18,47 @@ export default function AdminSettings() {
     storeEmail: '',
     storeName: 'Langgoku',
     storeDescription: '',
-    defaultPaymentMethod: 'QRIS',
     notificationEnabled: true,
   })
 
   const [isSaving, setIsSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Load settings from localStorage as fallback
-    const saved = localStorage.getItem('langgoku_settings')
-    if (saved) {
-      setSettings(JSON.parse(saved))
-    }
-    
-    // Also try to load from API
     loadSettingsFromAPI()
   }, [])
 
   const loadSettingsFromAPI = async () => {
+    setLoading(true)
     try {
       const response = await fetch('/api/settings', {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
       })
       const data = await response.json()
+      
       if (data.success && data.data) {
+        // Load from Google Sheets - use localStorage as fallback display only
         const mergedSettings = { ...settings, ...data.data }
         setSettings(mergedSettings)
-        // Save to localStorage as backup
         localStorage.setItem('langgoku_settings', JSON.stringify(mergedSettings))
+      } else {
+        // Try localStorage if API fails
+        const saved = localStorage.getItem('langgoku_settings')
+        if (saved) {
+          setSettings(JSON.parse(saved))
+        }
       }
     } catch (err) {
-      console.log('Using localStorage settings fallback')
+      console.log('Loading from localStorage fallback')
+      const saved = localStorage.getItem('langgoku_settings')
+      if (saved) {
+        setSettings(JSON.parse(saved))
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -105,12 +111,20 @@ export default function AdminSettings() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-2xl">
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-2xl md:text-3xl font-medium text-gray-950">Pengaturan Toko</h2>
-        <p className="text-gray-500 text-sm mt-2">Konfigurasi Google Sheets dan informasi toko Anda</p>
+        <p className="text-gray-500 text-sm mt-2">Konfigurasi informasi toko dari Google Sheets</p>
       </div>
 
       {/* Error Message */}
@@ -129,31 +143,11 @@ export default function AdminSettings() {
 
       {/* Settings Form */}
       <div className="space-y-6">
-        {/* Google Sheets Configuration */}
-        <div className="card p-6 shadow-md">
-          <h3 className="text-lg font-medium text-gray-950 mb-4">Konfigurasi Google Sheets</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Google Spreadsheet ID
-              </label>
-              <input
-                type="text"
-                value={settings.googleSheetId}
-                onChange={(e) => handleChange('googleSheetId', e.target.value)}
-                placeholder="Contoh: 1a2b3c4d5e6f7g8h9i0j"
-                className="input-field w-full"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Dapatkan dari URL Google Sheets Anda: docs.google.com/spreadsheets/d/{'{SPREADSHEET_ID}'}/edit
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Store Information */}
+        {/* Store Information - from Google Sheets */}
         <div className="card p-6 shadow-md">
           <h3 className="text-lg font-medium text-gray-950 mb-4">Informasi Toko</h3>
+          <p className="text-xs text-gray-500 mb-4">Data ini diambil dari sheet "Pengaturan" di Google Sheets</p>
+          
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -212,26 +206,10 @@ export default function AdminSettings() {
           </div>
         </div>
 
-        {/* Payment & Notification Settings */}
+        {/* Notification Settings */}
         <div className="card p-6 shadow-md">
-          <h3 className="text-lg font-medium text-gray-950 mb-4">Pembayaran & Notifikasi</h3>
+          <h3 className="text-lg font-medium text-gray-950 mb-4">Notifikasi</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Metode Pembayaran Default
-              </label>
-              <select
-                value={settings.defaultPaymentMethod}
-                onChange={(e) => handleChange('defaultPaymentMethod', e.target.value)}
-                className="input-field w-full"
-              >
-                <option value="QRIS">QRIS</option>
-                <option value="BANK_TRANSFER">Bank Transfer</option>
-                <option value="E_WALLET">E-Wallet</option>
-                <option value="PULSA">Pulsa</option>
-              </select>
-            </div>
-
             <div>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -260,6 +238,13 @@ export default function AdminSettings() {
           >
             {isSaving ? 'Menyimpan ke Google Sheets...' : 'Simpan Pengaturan'}
           </button>
+          
+          <button
+            onClick={loadSettingsFromAPI}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            Refresh dari Sheets
+          </button>
         </div>
       </div>
 
@@ -270,6 +255,7 @@ export default function AdminSettings() {
           <li>• Pengaturan disimpan ke Google Sheets sheet "Pengaturan"</li>
           <li>• Data akan otomatis tersimpan dan dapat diakses dari mana saja</li>
           <li>• localStorage digunakan sebagai backup jika koneksi bermasalah</li>
+          <li>• Klik "Refresh dari Sheets" untuk memuat data terbaru</li>
         </ul>
       </div>
     </div>
