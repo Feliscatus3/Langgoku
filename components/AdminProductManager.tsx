@@ -14,12 +14,44 @@ interface Product {
   description?: string
 }
 
+interface ToastProps {
+  message: string
+  type: 'success' | 'error'
+  onClose: () => void
+}
+
+function Toast({ message, type, onClose }: ToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ${
+      type === 'success' 
+        ? 'bg-green-500 text-white' 
+        : 'bg-red-500 text-white'
+    }`}>
+      <div className="flex items-center gap-3">
+        <span className="text-xl">
+          {type === 'success' ? '✓' : '✕'}
+        </span>
+        <p className="font-medium">{message}</p>
+        <button onClick={onClose} className="ml-4 text-white/80 hover:text-white">
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminProductManager() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     price: 0,
@@ -36,22 +68,33 @@ export default function AdminProductManager() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/products')
+      const response = await fetch('/api/products', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
+      })
       const data = await response.json()
       if (data.success && data.data) {
         setProducts(data.data)
       }
     } catch (err) {
       console.error('Error fetching products:', err)
-      alert('Gagal memuat produk')
+      showToast('Gagal memuat produk', 'error')
     } finally {
       setLoading(false)
     }
   }
 
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type })
+  }
+
   const handleAddProduct = async () => {
     if (!formData.name || !formData.price || !formData.duration || formData.stock == null) {
-      alert('Harap isi semua field yang diperlukan (*)') 
+      showToast('Harap isi semua field yang diperlukan (*)', 'error')
       return
     }
 
@@ -61,39 +104,45 @@ export default function AdminProductManager() {
         // Update existing product - use the correct URL
         const response = await fetch(`/api/products/${editingId}/update-delete`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
           body: JSON.stringify(formData),
         })
         const data = await response.json()
         
         if (data.success) {
-          alert('Produk berhasil diperbarui')
+          showToast('Produk berhasil diperbarui', 'success')
           // Fetch fresh data from server after update
           await fetchProducts()
         } else {
-          alert('Gagal memperbarui produk: ' + data.message)
+          showToast('Gagal memperbarui produk: ' + data.message, 'error')
         }
       } else {
         // Add new product
         const response = await fetch('/api/products/create', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
           body: JSON.stringify(formData),
         })
         const data = await response.json()
         
         if (data.success) {
-          alert('Produk berhasil ditambahkan')
+          showToast('Produk berhasil ditambahkan', 'success')
           // Fetch fresh data from server after add
           await fetchProducts()
         } else {
-          alert('Gagal menambahkan produk: ' + data.message)
+          showToast('Gagal menambahkan produk: ' + data.message, 'error')
         }
       }
       resetForm()
     } catch (err) {
       console.error('Error saving product:', err)
-      alert('Terjadi kesalahan saat menyimpan produk')
+      showToast('Terjadi kesalahan saat menyimpan produk', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -112,20 +161,27 @@ export default function AdminProductManager() {
       // Use the correct URL path for delete
       const response = await fetch(`/api/products/${id}/update-delete`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
       })
       const data = await response.json()
       
       if (data.success) {
-        alert('Produk berhasil dihapus')
+        showToast('Produk berhasil dihapus', 'success')
         // Fetch fresh data from server after delete
         await fetchProducts()
       } else {
-        alert('Gagal menghapus produk: ' + data.message)
+        showToast('Gagal menghapus produk: ' + data.message, 'error')
+        // If product not found in Google Sheets, remove from local state anyway
+        if (data.message?.includes('tidak ditemukan')) {
+          setProducts(products.filter(p => p.id !== id))
+        }
       }
     } catch (err) {
       console.error('Error deleting product:', err)
-      alert('Terjadi kesalahan saat menghapus produk')
+      showToast('Terjadi kesalahan saat menghapus produk', 'error')
     }
   }
 
@@ -150,6 +206,15 @@ export default function AdminProductManager() {
 
   return (
     <div>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-950 mb-1">Manajemen Produk</h2>
