@@ -145,6 +145,7 @@ export default function CheckoutPage() {
 
     const finalPrice = checkoutData.finalPrice - discountAmount
     const promoInfo = promoApplied ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})` : ''
+    const uniqueCodeNum = parseInt(checkoutData.uniqueCode) || 0
     
     const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
 
@@ -154,7 +155,7 @@ export default function CheckoutPage() {
 📱 WhatsApp: ${checkoutData.buyerPhone}
 💵 Harga Awal: ${formatPrice(checkoutData.originalPrice)}${promoInfo}
 💰 Kode Pembayaran: ${checkoutData.uniqueCode}
-💳 Total Bayar: ${formatPrice(finalPrice + checkoutData.uniqueCode)}
+💳 Total Bayar: ${formatPrice(finalPrice + uniqueCodeNum)}
 
 Mohon info cara pembayarannya!`
     
