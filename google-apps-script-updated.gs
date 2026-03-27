@@ -424,20 +424,37 @@ function saveSettings(settings) {
     return saveSettings(settings);
   }
   
-  const rowData = [
-    'SET_' + Date.now(),
-    settings.googleSheetId || '',
-    settings.adminPhone || '',
-    settings.storeEmail || '',
-    settings.storeName || 'Langgoku',
-    settings.storeDescription || '',
-    settings.notificationEnabled !== false,
-    new Date().toLocaleString('id-ID')
-  ];
+  // Get existing data to check if settings exist
+  const data = sheet.getDataRange().getValues();
+  const rowCount = data.length;
   
-  sheet.appendRow(rowData);
-  
-  console.log('Settings saved successfully');
+  if (rowCount > 1) {
+    // Update the last row instead of appending
+    const lastRow = rowCount;
+    sheet.getRange(lastRow, 2).setValue(settings.googleSheetId || '');
+    sheet.getRange(lastRow, 3).setValue(settings.adminPhone || '');
+    sheet.getRange(lastRow, 4).setValue(settings.storeEmail || '');
+    sheet.getRange(lastRow, 5).setValue(settings.storeName || 'Langgoku');
+    sheet.getRange(lastRow, 6).setValue(settings.storeDescription || '');
+    sheet.getRange(lastRow, 7).setValue(settings.notificationEnabled !== false);
+    sheet.getRange(lastRow, 8).setValue(new Date().toLocaleString('id-ID'));
+    
+    console.log('Settings updated at row:', lastRow);
+  } else {
+    // First row (headers only), append new settings
+    const rowData = [
+      'SET_' + Date.now(),
+      settings.googleSheetId || '',
+      settings.adminPhone || '',
+      settings.storeEmail || '',
+      settings.storeName || 'Langgoku',
+      settings.storeDescription || '',
+      settings.notificationEnabled !== false,
+      new Date().toLocaleString('id-ID')
+    ];
+    sheet.appendRow(rowData);
+    console.log('Settings added as first row');
+  }
   
   return sendResponse({
     success: true,
@@ -521,7 +538,7 @@ function validatePromoCode(code) {
       
       // Check usage limit
       const usageLimit = parseNumber(promoData['Batas Penggunaan']);
-      const currentUsage = parseNumber(promoData[' Penggunaan Saat Ini'] || 0);
+      const currentUsage = parseNumber(promoData['Penggunaan Saat Ini'] || 0);
       
       if (usageLimit > 0 && currentUsage >= usageLimit) {
         return sendResponse({ success: false, message: 'Kode promo sudah mencapai batas penggunaan' });

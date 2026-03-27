@@ -18,6 +18,16 @@ interface Stats {
   expiringSoon: number
 }
 
+interface Buyer {
+  ID: string
+  Nama: string
+  No_WhatsApp: string
+  Produk: string
+  Durasi: string
+  'Tanggal Selesai': string
+  Status: string
+}
+
 interface Settings {
   storeName: string
   storeEmail: string
@@ -36,6 +46,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     activeSubscriptions: 0,
     expiringSoon: 0
   })
+  const [expiringBuyers, setExpiringBuyers] = useState<Buyer[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -55,37 +66,75 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
   const loadDashboardData = async () => {
     try {
-      // Load stats
-      const statsRes = await fetch('/api/products')
-      const statsData = await statsRes.json()
+      // Load products
+      const productsRes = await fetch('/api/products')
+      const productsData = await productsRes.json()
       
+      // Load buyers
       const buyersRes = await fetch('/api/buyers')
       const buyersData = await buyersRes.json()
       
+      // Load promo codes
       const promoRes = await fetch('/api/promo-codes')
       const promoData = await promoRes.json()
       
+      // Load settings
       const settingsRes = await fetch('/api/settings')
       const settingsData = await settingsRes.json()
       
-      // Calculate stats
+      // Process buyers data - handle both data formats
       const buyers = buyersData.data || []
-      const activeSubscriptions = buyers.filter((b: any) => b.Status === 'active').length
-      const thirtyDaysFromNow = new Date()
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
-      const expiringSoon = buyers.filter((b: any) => {
-        if (!b['Tanggal Selesai']) return false
-        const endDate = new Date(b['Tanggal Selesai'])
-        return endDate <= thirtyDaysFromNow && endDate > new Date()
+      
+      // Calculate active subscriptions (Status = 'active')
+      const activeSubscriptions = buyers.filter((b: any) => {
+        const status = b.Status || b.status || ''
+        return status.toLowerCase() === 'active'
       }).length
       
-      setStats({
-        totalProducts: statsData.count || 0,
-        totalBuyers: buyers.length,
-        totalPromoCodes: promoData.count || 0,
-        activeSubscriptions,
-        expiringSoon
+      // Calculate expiring soon (within 30 days)
+      const thirtyDaysFromNow = new Date()
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+      
+      const expiringList: Buyer[] = []
+      let expiringCount = 0
+      
+      buyers.forEach((b: any) => {
+        const endDateStr = b['Tanggal Selesai'] || b['Tanggal Selesai'] || b.endDate || ''
+        if (endDateStr) {
+          try {
+            const endDate = new Date(endDateStr)
+            // Check if not expired yet but will expire within 30 days
+            if (endDate > new Date() && endDate <= thirtyDaysFromNow) {
+              expiringCount++
+              expiringList.push({
+                ID: b.ID || b.id || '',
+                Nama: b.Nama || b.name || '',
+                No_WhatsApp: b.No_WhatsApp || b['No WhatsApp'] || b.phone || '',
+                Produk: b.Produk || b.product || '',
+                Durasi: b.Durasi || b.duration || '',
+                'Tanggal Selesai': endDateStr,
+                Status: b.Status || b.status || ''
+              })
+            }
+          } catch (e) {
+            // Skip invalid dates
+          }
+        }
       })
+      
+      // Get total product count
+      const totalProducts = Array.isArray(productsData.data) ? productsData.data.length : (productsData.count || 0)
+      
+      setStats({
+        totalProducts,
+        totalBuyers: buyers.length,
+        totalPromoCodes: Array.isArray(promoData.data) ? promoData.data.length : (promoData.count || 0),
+        activeSubscriptions,
+        expiringSoon: expiringCount
+      })
+      
+      // Set expiring buyers (max 5 for display)
+      setExpiringBuyers(expiringList.slice(0, 5))
       
       if (settingsData.success && settingsData.data) {
         setSettings(settingsData.data)
@@ -119,6 +168,26 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       month: 'long',
       year: 'numeric'
     })
+  }
+
+  const formatDateShort = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch {
+      return dateStr
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      </div>
+    )
   }
 
   return (
@@ -286,6 +355,45 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     <p className="text-amber-600 text-sm mt-4">dalam 30 hari</p>
                   </div>
                 </div>
+
+                {/* Expiring Soon List */}
+                {expiringBuyers.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">⚠️ Langganan Akan Habis</h3>
+                      <button 
+                        onClick={() => setActiveTab('buyers')}
+                        className="text-blue-600 text-sm hover:underline"
+                      >
+                        Lihat Semua →
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-gray-600 font-medium">Nama</th>
+                            <th className="px-4 py-2 text-left text-gray-600 font-medium">Produk</th>
+                            <th className="px-4 py-2 text-left text-gray-600 font-medium">WhatsApp</th>
+                            <th className="px-4 py-2 text-left text-gray-600 font-medium">Tanggal Selesai</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {expiringBuyers.map((buyer) => (
+                            <tr key={buyer.ID} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 font-medium text-gray-900">{buyer.Nama}</td>
+                              <td className="px-4 py-3 text-gray-600">{buyer.Produk}</td>
+                              <td className="px-4 py-3 text-gray-600">{buyer.No_WhatsApp}</td>
+                              <td className="px-4 py-3 text-amber-600 font-medium">
+                                {formatDateShort(buyer['Tanggal Selesai'])}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* Promo Codes & Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
