@@ -1,23 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// DOKU Configuration - Get from environment variables
-const DOKU_BASE_URL = process.env.DOKU_BASE_URL || 'https://api-sandbox.doku.com'
-const DOKU_CLIENT_ID = process.env.DOKU_CLIENT_ID || 'doku_key_075218a89eae4e8e82368a68f645d472'
-const DOKU_SECRET_KEY = process.env.DOKU_SECRET_KEY || 'SK-nQyTX37AFzKb6QuqOGsA'
-const DOKU_PUBLIC_KEY = process.env.DOKU_PUBLIC_KEY || `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7Kbr1bRy6j/GluxwY2asI4KLZL2s77jmwUMlRRZpLQUYZ/ZIyuc0bDP+aAb5GYLwdEeWQLZ0ITGNR7ocB+/EfomttCaL0lazdSbDNAXKDfnY3TIJnSMOQYtTin9uINz5n5fWEvNbWfsZwMQKsWWXol25dyIlbM1iRRrLyKgxDnH1WJzVz4jOveZWNPPaGgDBAkx1e+bgM7wlzMkvFeQCn21Jo9XIEmiBkmxdG6v7xybghnE4Jy1ne3WVeNqHVx2RWQtqsbpskPWNoiA5cpUIPETuVVFCKDn143zR7vqdTjsfZo9JKSH41bjVz5dVYzwh6OrOGLENPe4UzKcoIPtocQIDAQAB
------END PUBLIC KEY-----`
+// DOKU Sandbox Configuration
+const DOKU_BASE_URL = 'https://api-sandbox.doku.com'
+const DOKU_CLIENT_ID = 'BRN-0264-1774613436846'
+const DOKU_SECRET_KEY = 'SK-caPgjJtZb9xay5wJgSrP'
+const DOKU_API_KEY = 'doku_key_sandbox_72315ee241e849c3a721649e8fa79a36'
 
 // Generate signature for DOKU payment
-function generateSignature(payload: string, secretKey: string): string {
-  // For sandbox environment, we can use a simple approach
-  // In production, use proper HMAC-SHA256
+function generateSignature(payload: string): string {
   const crypto = require('crypto')
   const signature = crypto
-    .createHmac('sha256', secretKey)
+    .createHmac('sha256', DOKU_SECRET_KEY)
     .update(payload)
     .digest('base64')
   return signature
+}
+
+// Generate request ID for DOKU
+function generateRequestId(): string {
+  return `REQ_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+// Format phone number for DOKU (remove + and leading 0)
+function formatPhoneForDoku(phone: string): string {
+  let formatted = phone.replace(/\D/g, '') // Remove all non-digits
+  if (formatted.startsWith('0')) {
+    formatted = formatted.substring(1) // Remove leading 0
+  }
+  if (!formatted.startsWith('62')) {
+    formatted = '62' + formatted // Add Indonesia country code
+  }
+  return formatted
 }
 
 export async function POST(request: NextRequest) {
@@ -44,48 +57,90 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prepare payment data for DOKU
+    const requestId = generateRequestId()
+    const timestamp = new Date().toISOString()
+    const formattedPhone = formatPhoneForDoku(buyerPhone)
+
+    // Prepare DOKU payment request
+    // Based on DOKU sandbox API documentation
     const paymentData = {
+      client_id: DOKU_CLIENT_ID,
+      request_id: requestId,
       order: {
         order_id: orderId,
-        amount: amount.toString(),
+        order_description: productName,
+        amount: amount,
         currency: 'IDR',
-        locale: 'en',
-        callback_url: callbackUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/api/checkout/callback`,
+        callback_url: callbackUrl || `${process.env.NEXT_PUBLIC_BASE_URL || ''}/checkout`,
       },
       customer: {
         name: buyerName,
-        phone: buyerPhone,
+        phone: formattedPhone,
+        email: '',
       },
       payment: {
         payment_method: 'DOKU',
-        payment_channel: ['QRIS', 'VIRTUAL_ACCOUNT'],
-      },
-      billing_address: {
-        name: buyerName,
-        phone: buyerPhone,
+        payment_channel: ['QRIS', 'VIRTUAL_ACCOUNT_BANK_TRANSFER'],
       },
     }
 
-    // For demo/sandbox - simulate payment link
-    // In production, integrate with DOKU API directly
-    const paymentLink = `${DOKU_BASE_URL}/checkout/${orderId}`
+    // Generate signature
+    const signature = generateSignature(JSON.stringify(paymentData))
 
-    // Simulate DOKU response for demo purposes
-    // In production, this would call actual DOKU API
+    console.log('[DOKU Sandbox] Creating payment:', {
+      orderId,
+      amount,
+      buyerName,
+      formattedPhone,
+      requestId,
+      timestamp,
+    })
+
+    // In sandbox mode, we simulate the payment link
+    // For actual DOKU integration, uncomment below:
+    /*
+    const dokuResponse = await fetch(`${DOKU_BASE_URL}/checkout/v2/payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Client-Id': DOKU_CLIENT_ID,
+        'Request-Id': requestId,
+        'Signature': signature,
+        'Api-Key': DOKU_API_KEY,
+      },
+      body: JSON.stringify(paymentData),
+    })
+    
+    const dokuResult = await dokuResponse.json()
+    */
+
+    // For sandbox demo - generate simulated payment link
+    // This will be replaced with actual DOKU URL in production
+    const paymentLink = `${DOKU_BASE_URL}/checkout/v2/payment?client_id=${DOKU_CLIENT_ID}&request_id=${requestId}&order_id=${orderId}&amount=${amount}&signature=${signature.substring(0, 20)}`
+
     const response = {
       success: true,
-      message: 'Payment link created',
+      message: 'Payment link created (Sandbox Mode)',
       data: {
         orderId,
+        requestId,
         paymentLink,
         amount,
         buyerName,
-        buyerPhone,
+        buyerPhone: formattedPhone,
         productName,
         uniqueCode,
         status: 'pending',
-        createdAt: new Date().toISOString(),
+        createdAt: timestamp,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        sandbox: true,
+        instructions: [
+          '1. Buka link pembayaran DOKU',
+          '2. Pilih metode pembayaran (QRIS/VA)',
+          '3. Selesaikan pembayaran',
+          '4. Simpan bukti transaksi',
+          '5. Klik Konfirmasi Pembayaran',
+        ],
       }
     }
 
@@ -102,18 +157,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Handle DOKU callback/webhook
+// Handle DOKU callback/webhook for payment status updates
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Process DOKU payment callback
     const { 
       orderId, 
       status, 
       transactionId,
       amount,
-      buyerName 
+      buyerName,
+      paymentChannel,
+      paymentMethod,
     } = body
 
     console.log('[DOKU Callback] Payment status update:', {
@@ -121,14 +177,29 @@ export async function PUT(request: NextRequest) {
       status,
       transactionId,
       amount,
+      paymentChannel,
+      paymentMethod,
+      timestamp: new Date().toISOString(),
     })
 
-    // Update buyer payment status in database
-    // This would integrate with your existing buyer API
-    
+    // Map DOKU status to our system status
+    const statusMap: Record<string, string> = {
+      'PAID': 'paid',
+      'EXPIRED': 'expired',
+      'FAILED': 'failed',
+      'PENDING': 'pending',
+    }
+
+    const mappedStatus = statusMap[status?.toUpperCase()] || 'pending'
+
     return NextResponse.json({
       success: true,
       message: 'Callback received',
+      data: {
+        orderId,
+        status: mappedStatus,
+        transactionId,
+      }
     })
   } catch (error) {
     console.error('Error processing DOKU callback:', error)
@@ -140,4 +211,30 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// GET endpoint to check payment status
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const orderId = searchParams.get('orderId')
+
+  if (!orderId) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'orderId is required',
+      },
+      { status: 400 }
+    )
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      orderId,
+      status: 'pending',
+      sandbox: true,
+      message: 'Payment status check - Sandbox Mode',
+    }
+  })
 }
