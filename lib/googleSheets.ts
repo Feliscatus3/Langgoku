@@ -1,30 +1,44 @@
 // Support both local and Vercel environment variables
-// For Vercel, use NEXT_PUBLIC_ prefix to expose to client-side
-// For server-side, use GOOGLE_APPS_SCRIPT_URL (server-only)
 const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
 
-// Debug log in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('[GoogleSheets] APPS_SCRIPT_URL:', APPS_SCRIPT_URL ? 'SET' : 'NOT SET')
+// Column name mapping from Indonesian (Google Sheets) to English (App)
+const COLUMN_MAP: { [key: string]: string } = {
+  'ID': 'id',
+  'Nama Produk': 'name',
+  'Harga': 'price',
+  'Durasi': 'duration',
+  'Stok': 'stock',
+  'Deskripsi': 'description',
+  'Tanggal Dibuat': 'createdAt',
+  'Gambar URL': 'image',
+  // Buyer columns
+  'Nama': 'name',
+  'No WhatsApp': 'phone',
+  'Produk': 'product',
+  'Tanggal Mulai': 'startDate',
+  'Tanggal Selesai': 'endDate',
+  'Status': 'status',
+  'Sisa Hari': 'remainingDays',
+  'Metode Pembayaran': 'paymentMethod',
+  'No Admin WhatsApp': 'adminPhone',
+  'Tanggal Input': 'createdAt'
 }
 
 export async function getGoogleSheetsData() {
   try {
     if (!APPS_SCRIPT_URL) {
-      console.error('[GoogleSheets] URL not configured. Set GOOGLE_APPS_SCRIPT_URL in Vercel Environment Variables.')
+      console.error('[GoogleSheets] URL not configured.')
       return []
     }
 
-    console.log('[GoogleSheets] Fetching from:', `${APPS_SCRIPT_URL}?action=getProducts`)
-    
     const url = `${APPS_SCRIPT_URL}?action=getProducts`
     const response = await fetch(url, { 
       next: { revalidate: 60 },
-      signal: AbortSignal.timeout(30000) // 30 second timeout
+      signal: AbortSignal.timeout(30000)
     })
     
     if (!response.ok) {
-      console.error('[GoogleSheets] HTTP Error:', response.status, response.statusText)
+      console.error('[GoogleSheets] HTTP Error:', response.status)
       return []
     }
 
@@ -35,12 +49,39 @@ export async function getGoogleSheetsData() {
       return []
     }
 
-    console.log('[GoogleSheets] Products fetched:', data.data?.length || 0)
-    return data.data || []
+    // Map column names from Indonesian to English
+    const mappedData = (data.data || []).map((item: any) => mapColumnNames(item))
+    
+    console.log('[GoogleSheets] Products fetched:', mappedData.length)
+    return mappedData
   } catch (error) {
     console.error('[GoogleSheets] Fetch error:', error)
     return []
   }
+}
+
+function mapColumnNames(item: any): any {
+  const mapped: any = {}
+  for (const key in item) {
+    const englishKey = COLUMN_MAP[key] || key
+    let value = item[key]
+    
+    // Parse numeric fields
+    if (englishKey === 'price' || englishKey === 'stock') {
+      value = parseNumber(value)
+    }
+    
+    mapped[englishKey] = value
+  }
+  return mapped
+}
+
+function parseNumber(value: any): number {
+  if (typeof value === 'number') return value
+  if (!value) return 0
+  const cleaned = String(value).replace(/[^\d.-]/g, '')
+  const parsed = parseFloat(cleaned)
+  return isNaN(parsed) ? 0 : parsed
 }
 
 export async function addProductToGoogleSheets(product: {
@@ -52,29 +93,27 @@ export async function addProductToGoogleSheets(product: {
   description?: string
 }) {
   if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured in Vercel Environment Variables')
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
   }
 
-  console.log('[GoogleSheets] Adding product:', product.name)
-  
-  const url = `${APPS_SCRIPT_URL}?action=addProduct`
-  const response = await fetch(url, {
+  const response = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(product),
+    body: JSON.stringify({
+      action: 'addProduct',
+      ...product
+    }),
     signal: AbortSignal.timeout(30000)
   })
 
   const data = await response.json()
   
   if (!data.success) {
-    console.error('[GoogleSheets] Add product error:', data.message)
     throw new Error(data.message || 'Failed to add product')
   }
 
-  console.log('[GoogleSheets] Product added successfully:', data.data)
   return data
 }
 
@@ -88,16 +127,18 @@ export async function updateProductInGoogleSheets(product: {
   description?: string
 }) {
   if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured in Vercel Environment Variables')
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
   }
 
-  const url = `${APPS_SCRIPT_URL}?action=updateProduct`
-  const response = await fetch(url, {
+  const response = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(product),
+    body: JSON.stringify({
+      action: 'updateProduct',
+      ...product
+    }),
     signal: AbortSignal.timeout(30000)
   })
 
@@ -112,16 +153,18 @@ export async function updateProductInGoogleSheets(product: {
 
 export async function deleteProductFromGoogleSheets(id: string) {
   if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured in Vercel Environment Variables')
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
   }
 
-  const url = `${APPS_SCRIPT_URL}?action=deleteProduct`
-  const response = await fetch(url, {
+  const response = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ id }),
+    body: JSON.stringify({
+      action: 'deleteProduct',
+      id
+    }),
     signal: AbortSignal.timeout(30000)
   })
 
@@ -135,11 +178,7 @@ export async function deleteProductFromGoogleSheets(id: string) {
 }
 
 export function parsePrice(priceStr: any): number {
-  if (typeof priceStr === 'number') return priceStr
-  if (!priceStr) return 0
-
-  const cleaned = String(priceStr).replace(/[^\d]/g, '')
-  return parseInt(cleaned, 10) || 0
+  return parseNumber(priceStr)
 }
 
 export function formatPrice(price: number): string {
