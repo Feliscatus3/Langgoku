@@ -22,6 +22,59 @@ interface ToastProps {
   onClose: () => void
 }
 
+interface PaymentMethod {
+  id: string
+  name: string
+  icon: string
+  description: string
+  color: string
+}
+
+const PAYMENT_METHODS: PaymentMethod[] = [
+  { 
+    id: 'QRIS', 
+    name: 'QRIS', 
+    icon: '📱', 
+    description: 'Scan via DOKU/GoPay/OVO/LinkAja',
+    color: 'from-purple-50 to-indigo-50'
+  },
+  { 
+    id: 'VIRTUAL_ACCOUNT_BCA', 
+    name: 'VA BCA', 
+    icon: '🏦', 
+    description: 'Virtual Account Bank BCA',
+    color: 'from-blue-50 to-cyan-50'
+  },
+  { 
+    id: 'VIRTUAL_ACCOUNT_BRI', 
+    name: 'VA BRI', 
+    icon: '🏦', 
+    description: 'Virtual Account Bank BRI',
+    color: 'from-orange-50 to-amber-50'
+  },
+  { 
+    id: 'VIRTUAL_ACCOUNT_MANDIRI', 
+    name: 'VA Mandiri', 
+    icon: '🏦', 
+    description: 'Virtual Account Bank Mandiri',
+    color: 'from-red-50 to-pink-50'
+  },
+  { 
+    id: 'VIRTUAL_ACCOUNT_BSI', 
+    name: 'VA BSI', 
+    icon: '🏦', 
+    description: 'Virtual Account Bank BSI',
+    color: 'from-emerald-50 to-green-50'
+  },
+  { 
+    id: 'E_WALLET_DANA', 
+    name: 'DANA', 
+    icon: '💰', 
+    description: 'Bayar via DANA',
+    color: 'from-blue-50 to-indigo-50'
+  },
+]
+
 function Toast({ message, type, onClose }: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(onClose, 4000)
@@ -54,6 +107,7 @@ export default function CheckoutPage() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
   const [processingPayment, setProcessingPayment] = useState(false)
   const [paymentLink, setPaymentLink] = useState<string | null>(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -100,7 +154,7 @@ export default function CheckoutPage() {
       if (result.success) {
         console.log('[Checkout] Buyer data saved:', result.data)
         setSavedToSheet(true)
-        showToast('Data berhasil disimpan! Silakan lakukan pembayaran.', 'success')
+        showToast('Data berhasil disimpan! Silakan pilih metode pembayaran.', 'success')
       }
     } catch (error) {
       console.error('[Checkout] Error saving buyer data:', error)
@@ -118,6 +172,11 @@ export default function CheckoutPage() {
   const handleCreatePayment = async () => {
     if (!checkoutData) return
 
+    if (!selectedPaymentMethod) {
+      showToast('Silakan pilih metode pembayaran terlebih dahulu!', 'warning')
+      return
+    }
+
     if (!savedToSheet) {
       await saveBuyerData()
     }
@@ -125,7 +184,6 @@ export default function CheckoutPage() {
     setProcessingPayment(true)
     
     try {
-      // Create payment via DOKU API
       const orderId = `LANGGOKU_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
       const response = await fetch('/api/checkout', {
@@ -141,6 +199,7 @@ export default function CheckoutPage() {
           buyerPhone: checkoutData.buyerPhone,
           productName: checkoutData.productName,
           uniqueCode: checkoutData.uniqueCode,
+          paymentMethod: selectedPaymentMethod,
         }),
       })
 
@@ -148,7 +207,7 @@ export default function CheckoutPage() {
       
       if (result.success && result.data.paymentLink) {
         setPaymentLink(result.data.paymentLink)
-        showToast('Link pembayaran DOKU berhasil dibuat!', 'success')
+        showToast(`Pembayaran via ${selectedPaymentMethod.replace(/_/g, ' ')} berhasil dibuat!`, 'success')
       } else {
         showToast('Gagal membuat link pembayaran. Silakan coba lagi.', 'error')
       }
@@ -163,7 +222,6 @@ export default function CheckoutPage() {
   const handleConfirmPayment = async () => {
     if (!checkoutData) return
 
-    // Show confirmation dialog
     if (!confirm('Apakah Anda SUDAH MEMBAYAR melalui DOKU? Pastikan nominal yang ditransfer sudah benar (termasuk kode unik).')) {
       return
     }
@@ -190,6 +248,7 @@ export default function CheckoutPage() {
 📱 No. WhatsApp: ${checkoutData.buyerPhone}
 💰 Kode Pembayaran: ${checkoutData.uniqueCode}
 💵 Total: ${formatPrice(checkoutData.finalPrice)}
+🏧 Metode: ${selectedPaymentMethod?.replace(/_/g, ' ') || 'DOKU'}
 
 Mohon dicek dan diverifikasi. Terima kasih!`
     
@@ -216,7 +275,6 @@ Mohon dicek dan diverifikasi. Terima kasih!`
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* Toast Notification */}
       {toast && (
         <Toast 
           message={toast.message} 
@@ -225,7 +283,6 @@ Mohon dicek dan diverifikasi. Terima kasih!`
         />
       )}
 
-      {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white py-16">
         <div className="container-custom">
           <div className="max-w-2xl">
@@ -237,7 +294,6 @@ Mohon dicek dan diverifikasi. Terima kasih!`
 
       <div className="container-custom py-16">
         <div className="max-w-6xl mx-auto">
-          {/* Warning Banner */}
           <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-6 mb-8">
             <h3 className="font-bold text-amber-900 text-lg mb-3 flex items-center gap-2">
               ⚠️ Peringatan Penting - Cegah Penipu!
@@ -251,7 +307,6 @@ Mohon dicek dan diverifikasi. Terima kasih!`
             </ul>
           </div>
 
-          {/* Status Banner */}
           {saving && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-center gap-3">
               <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
@@ -261,12 +316,11 @@ Mohon dicek dan diverifikasi. Terima kasih!`
           {savedToSheet && !saving && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center gap-3">
               <span className="text-green-600 text-xl">✓</span>
-              <span className="text-green-700 font-medium">Data pembeli tersimpan - Silakan lakukan pembayaran via DOKU</span>
+              <span className="text-green-700 font-medium">Data pembeli tersimpan - Pilih metode pembayaran dan lakukan pembayaran</span>
             </div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Order Summary */}
             <div className="space-y-8">
               <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
                 <div className="flex items-center gap-4 mb-8">
@@ -321,11 +375,10 @@ Mohon dicek dan diverifikasi. Terima kasih!`
                 </div>
               </div>
 
-              {/* Price Breakdown */}
               <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
                 <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                   <span className="text-2xl">💰</span>
-                  Rincian Pembayaran (DOKU)
+                  Rincian Pembayaran
                 </h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center py-3 border-b border-gray-100">
@@ -346,54 +399,50 @@ Mohon dicek dan diverifikasi. Terima kasih!`
               </div>
             </div>
 
-            {/* Payment Section */}
             <div className="space-y-8">
-              {/* DOKU Payment */}
               <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center">
                     <span className="text-white font-bold text-xl">💳</span>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Pembayaran DOKU</h2>
-                    <p className="text-gray-600">Pilih metode pembayaran DOKU</p>
+                    <h2 className="text-2xl font-bold text-gray-900">Pilih Metode Pembayaran</h2>
+                    <p className="text-gray-600">Klik untuk memilih metode pembayaran DOKU</p>
                   </div>
                 </div>
 
-                {/* Payment Methods */}
-                <div className="space-y-4 mb-6">
-                  <div className="bg-gradient-to-br from-gray-50 to-purple-50 p-6 rounded-2xl border-2 border-purple-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">📱</span>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  {PAYMENT_METHODS.map((method) => (
+                    <button
+                      key={method.id}
+                      onClick={() => setSelectedPaymentMethod(method.id)}
+                      disabled={paymentLink !== null}
+                      className={`p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        selectedPaymentMethod === method.id
+                          ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300'
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                      } ${paymentLink ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{method.icon}</span>
                         <div>
-                          <h4 className="font-bold text-gray-900">QRIS</h4>
-                          <p className="text-sm text-gray-600">Scan via DOKU/GoPay/OVO/LinkAja</p>
+                          <h4 className="font-bold text-gray-900">{method.name}</h4>
+                          <p className="text-xs text-gray-600">{method.description}</p>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 p-6 rounded-2xl border-2 border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">🏦</span>
-                        <div>
-                          <h4 className="font-bold text-gray-900">Virtual Account</h4>
-                          <p className="text-sm text-gray-600">BCA, BRI, BNl, BSI, dll</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                      {selectedPaymentMethod === method.id && (
+                        <div className="mt-2 text-purple-600 text-sm font-medium">✓ Terpilih</div>
+                      )}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Create Payment Button */}
                 {!paymentLink ? (
                   <button
                     onClick={handleCreatePayment}
-                    disabled={saving || processingPayment || !savedToSheet}
+                    disabled={saving || processingPayment || !savedToSheet || !selectedPaymentMethod}
                     className={`w-full py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl flex items-center justify-center gap-3 text-lg font-bold ${
-                      saving || processingPayment || !savedToSheet
+                      saving || processingPayment || !savedToSheet || !selectedPaymentMethod
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 hover:scale-105'
                     }`}
@@ -405,6 +454,8 @@ Mohon dicek dan diverifikasi. Terima kasih!`
                       </>
                     ) : saving ? (
                       'Menyimpan...'
+                    ) : !selectedPaymentMethod ? (
+                      'Pilih Metode Pembayaran'
                     ) : (
                       <>
                         <span className="text-2xl">💳</span>
@@ -428,11 +479,19 @@ Mohon dicek dan diverifikasi. Terima kasih!`
                     >
                       🔗 Buka Link Pembayaran DOKU
                     </a>
+                    <button
+                      onClick={() => {
+                        setPaymentLink(null)
+                        setSelectedPaymentMethod(null)
+                      }}
+                      className="w-full py-3 px-6 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                    >
+                      ← Pilih Metode Lain
+                    </button>
                   </div>
                 )}
               </div>
 
-              {/* Confirm Payment Button */}
               {!paymentConfirmed ? (
                 <button
                   onClick={handleConfirmPayment}
