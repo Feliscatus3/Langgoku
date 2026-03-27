@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { formatPrice } from '@/lib/googleSheets'
 
@@ -18,6 +18,16 @@ interface ToastProps {
   message: string
   type: 'success' | 'error'
   onClose: () => void
+}
+
+interface ConfirmModalProps {
+  title: string
+  message: string
+  confirmText: string
+  cancelText: string
+  type: 'add' | 'edit' | 'delete'
+  onConfirm: () => void
+  onCancel: () => void
 }
 
 function Toast({ message, type, onClose }: ToastProps) {
@@ -45,13 +55,50 @@ function Toast({ message, type, onClose }: ToastProps) {
   )
 }
 
+function ConfirmModal({ title, message, confirmText, cancelText, type, onConfirm, onCancel }: ConfirmModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">{title}</h3>
+        <p className="text-gray-600 mb-6">{message}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-3 rounded-lg text-white font-medium transition-colors ${
+              type === 'delete' 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            {confirmText}
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+          >
+            {cancelText}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminProductManager() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    type: 'add' | 'edit' | 'delete'
+    title: string
+    message: string
+    onConfirm: () => void
+  } | null>(null)
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     price: 0,
@@ -61,13 +108,10 @@ export default function AdminProductManager() {
     description: ''
   })
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
-
-  const fetchProducts = async () => {
+  // Fetch products with no cache
+  const fetchProducts = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       const response = await fetch('/api/products', {
         cache: 'no-store',
         headers: {
@@ -85,8 +129,21 @@ export default function AdminProductManager() {
       showToast('Gagal memuat produk', 'error')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
+
+  // Auto-refresh every 5 seconds to keep data in sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchProducts(false)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [fetchProducts])
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
@@ -98,67 +155,107 @@ export default function AdminProductManager() {
       return
     }
 
+    // Show confirmation modal
+    setConfirmModal({
+      show: true,
+      type: 'add',
+      title: 'Tambah Produk',
+      message: `Apakah Anda yakin ingin menambahkan produk "${formData.name}"?`,
+      onConfirm: async () => {
+        setConfirmModal(null)
+        await executeAddProduct()
+      }
+    })
+  }
+
+  const executeAddProduct = async () => {
     setSubmitting(true)
     try {
-      if (editingId) {
-        // Update existing product - use the correct URL
-        const response = await fetch(`/api/products/${editingId}/update-delete`, {
-          method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-          },
-          body: JSON.stringify(formData),
-        })
-        const data = await response.json()
-        
-        if (data.success) {
-          showToast('Produk berhasil diperbarui', 'success')
-          // Fetch fresh data from server after update
-          await fetchProducts()
-        } else {
-          showToast('Gagal memperbarui produk: ' + data.message, 'error')
-        }
+      const response = await fetch('/api/products/create', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify(formData),
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        showToast('Produk berhasil ditambahkan', 'success')
+        await fetchProducts()
+        resetForm()
       } else {
-        // Add new product
-        const response = await fetch('/api/products/create', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-          },
-          body: JSON.stringify(formData),
-        })
-        const data = await response.json()
-        
-        if (data.success) {
-          showToast('Produk berhasil ditambahkan', 'success')
-          // Fetch fresh data from server after add
-          await fetchProducts()
-        } else {
-          showToast('Gagal menambahkan produk: ' + data.message, 'error')
-        }
+        showToast('Gagal menambahkan produk: ' + data.message, 'error')
       }
-      resetForm()
     } catch (err) {
-      console.error('Error saving product:', err)
-      showToast('Terjadi kesalahan saat menyimpan produk', 'error')
+      console.error('Error adding product:', err)
+      showToast('Terjadi kesalahan saat menambahkan produk', 'error')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleEdit = (product: Product) => {
-    setEditingId(product.id)
-    setFormData(product)
-    setShowForm(true)
+  const handleUpdateProduct = async () => {
+    if (!editingId) return
+
+    // Show confirmation modal
+    setConfirmModal({
+      show: true,
+      type: 'edit',
+      title: 'Edit Produk',
+      message: `Apakah Anda yakin ingin memperbarui produk "${formData.name}"?`,
+      onConfirm: async () => {
+        setConfirmModal(null)
+        await executeUpdateProduct()
+      }
+    })
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return
-
+  const executeUpdateProduct = async () => {
+    setSubmitting(true)
     try {
-      // Use the correct URL path for delete
+      const response = await fetch(`/api/products/${editingId}/update-delete`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify(formData),
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        showToast('Produk berhasil diperbarui', 'success')
+        await fetchProducts()
+        resetForm()
+      } else {
+        showToast('Gagal memperbarui produk: ' + data.message, 'error')
+      }
+    } catch (err) {
+      console.error('Error updating product:', err)
+      showToast('Terjadi kesalahan saat memperbarui produk', 'error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (id: string, name: string) => {
+    // Show confirmation modal
+    setConfirmModal({
+      show: true,
+      type: 'delete',
+      title: 'Hapus Produk',
+      message: `Apakah Anda yakin ingin menghapus produk "${name}"? Data yang dihapus tidak dapat dikembalikan.`,
+      onConfirm: async () => {
+        setConfirmModal(null)
+        await executeDeleteProduct(id)
+      }
+    })
+  }
+
+  const executeDeleteProduct = async (id: string) => {
+    try {
       const response = await fetch(`/api/products/${id}/update-delete`, {
         method: 'DELETE',
         headers: { 
@@ -170,19 +267,27 @@ export default function AdminProductManager() {
       
       if (data.success) {
         showToast('Produk berhasil dihapus', 'success')
-        // Fetch fresh data from server after delete
         await fetchProducts()
       } else {
         showToast('Gagal menghapus produk: ' + data.message, 'error')
-        // If product not found in Google Sheets, remove from local state anyway
-        if (data.message?.includes('tidak ditemukan')) {
-          setProducts(products.filter(p => p.id !== id))
-        }
+        // Remove from local state anyway
+        setProducts(products.filter(p => p.id !== id))
       }
     } catch (err) {
       console.error('Error deleting product:', err)
       showToast('Terjadi kesalahan saat menghapus produk', 'error')
     }
+  }
+
+  const handleEdit = (product: Product) => {
+    setEditingId(product.id)
+    setFormData(product)
+    setShowForm(true)
+  }
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchProducts()
   }
 
   const resetForm = () => {
@@ -215,19 +320,42 @@ export default function AdminProductManager() {
         />
       )}
 
+      {/* Confirmation Modal */}
+      {confirmModal?.show && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.type === 'delete' ? 'Ya, Hapus' : 'Ya, Simpan'}
+          cancelText="Batal"
+          type={confirmModal.type}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
+
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-950 mb-1">Manajemen Produk</h2>
           <p className="text-gray-600 text-sm">Kelola catalog produk premium Anda</p>
         </div>
-        {!showForm && (
+        <div className="flex gap-2">
           <button
-            onClick={() => setShowForm(true)}
-            className="btn-primary whitespace-nowrap"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
           >
-            + Tambah Produk
+            <span className={refreshing ? 'animate-spin' : ''}>🔄</span>
+            {refreshing ? 'Menyegarkan...' : 'Refresh'}
           </button>
-        )}
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="btn-primary whitespace-nowrap"
+            >
+              + Tambah Produk
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Add/Edit Form */}
@@ -320,11 +448,11 @@ export default function AdminProductManager() {
 
             <div className="flex gap-3 pt-4">
               <button
-                onClick={handleAddProduct}
+                onClick={editingId ? handleUpdateProduct : handleAddProduct}
                 disabled={submitting}
                 className="btn-primary flex-1"
               >
-                {submitting ? (editingId ? 'Menyimpan...' : 'Menambahkan...') : (editingId ? 'Update Produk' : 'Tambah Produk')}
+                {submitting ? 'Menyimpan...' : (editingId ? 'Update Produk' : 'Tambah Produk')}
               </button>
               <button
                 onClick={resetForm}
@@ -380,7 +508,7 @@ export default function AdminProductManager() {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(product.id)}
+                  onClick={() => handleDelete(product.id, product.name)}
                   className="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-medium transition-colors"
                 >
                   Hapus
