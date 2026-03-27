@@ -1,0 +1,74 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build/
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Documentation and guide files
+*.md
+README.md
+TODO.md
+UPDATE_SUMMARY_2026.md
+QUICK_REFERENCE.md
+QUICKSTART.md
+SETUP_GUIDE.md
+PANDUAN_PENGGUNA.md
+API.md
+PROJECT_SUMMARY.md
+IMPLEMENTATION_COMPLETE.md
+GOOGLE_APPS_SCRIPT_SETUP.md
+GOOGLE_SHEETS_GUIDE.md
+DEPLOYMENT.md
+BUILD_OUTPUT.md
+LINT_OUTPUT.md
+
+# Template and export files
+*.xlsx
+*.xls
+*.csv
+*.tsv
+Langgoku_Template.*
+langgoku_*.csv
+
+# Python scripts (not needed for deployment)
+*.py
+create_template.py
+
+# Build outputs
+build-output.txt
+lint-output.txt
+
+# Google Apps Script files (use online editor)
+google-apps-script.js
+google-apps-script-updated.gs

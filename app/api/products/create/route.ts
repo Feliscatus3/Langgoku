@@ -27,22 +27,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: 'GOOGLE_APPS_SCRIPT_URL belum dikonfigurasi. Silakan tambahkan di Vercel project settings: https://vercel.com/dashboard → Settings → Environment Variables',
+          message: 'GOOGLE_APPS_SCRIPT_URL belum dikonfigurasi. Silakan tambahkan di Vercel project settings.',
         },
         { status: 500 }
       )
     }
 
-    console.log('[API] Calling Google Apps Script:', `${APPS_SCRIPT_URL}?action=addProduct`)
+    console.log('[API] Calling Google Apps Script:', APPS_SCRIPT_URL)
 
-    // Kirim data ke Google Apps Script
-    const url = `${APPS_SCRIPT_URL}?action=addProduct`
+    // Kirim data ke Google Apps Script - action included in body
+    const url = APPS_SCRIPT_URL
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        action: 'addProduct',
         name,
         price,
         duration,
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || 'Gagal menambahkan produk. Pastikan Google Apps Script sudah di-deploy dengan benar.',
+          message: result.message || 'Gagal menambahkan produk',
         },
         { status: 500 }
       )

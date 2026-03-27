@@ -1,25 +1,13 @@
 /**
  * LANGGOKU - Google Apps Script untuk Google Sheets Integration
  * Salin kode ini ke Google Apps Script Editor di Google Sheets Anda
- * 
- * Langkah-langkah setup:
- * 1. Buka https://docs.google.com/spreadsheets
- * 2. Buat spreadsheet baru atau buka yang sudah ada
- * 3. Klik Extensions > Apps Script
- * 4. Hapus kode default dan salin seluruh kode dari file ini
- * 5. Simpan dengan nama project (contoh: "Langgoku API")
- * 6. Jalankan fungsi doGet atau doPost untuk deploy
- * 7. Klik Deploy > New deployment > Web app
- * 8. Pilih Execute as: Your Account
- * 9. Pilih Who has access: Anyone
- * 10. Copy URL deployment dan gunakan di aplikasi Anda
  */
 
 // ==============================
 // KONFIGURASI GOOGLE SHEETS
 // ==============================
 
-const SPREADSHEET_ID = '1P7STjDhVEfCS8y55uWpYNE1nx54o6WEChuBMhR5psOE'; // ID Spreadsheet Anda
+const SPREADSHEET_ID = '1P7STjDhVEfCS8y55uWpYNE1nx54o6WEChuBMhR5psOE';
 const SHEETS = {
   PRODUCTS: 'Produk',
   BUYERS: 'Pembeli',
@@ -30,11 +18,9 @@ const SHEETS = {
 // MAIN HANDLER FUNCTIONS
 // ==============================
 
-/**
- * Handle GET requests untuk membaca data
- */
 function doGet(e) {
-  const action = e && e.parameter ? e.parameter.action : null;
+  const params = e ? e.parameter : {};
+  const action = params.action || null;
   
   try {
     switch (action) {
@@ -43,57 +29,90 @@ function doGet(e) {
       case 'getBuyers':
         return getBuyers();
       case 'getProduct':
-        return getProduct(e && e.parameter ? e.parameter.id : null);
+        return getProduct(params.id || null);
       case 'getBuyer':
-        return getBuyer(e && e.parameter ? e.parameter.id : null);
+        return getBuyer(params.id || null);
       case 'getStats':
         return getStats();
+      case 'testConnection':
+        return testConnection();
       default:
         return sendResponse({
           success: false,
           message: 'Action tidak dikenali',
-          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats']
-        }, 400);
+          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'testConnection']
+        });
     }
   } catch (error) {
-    logError(action, error);
-    return sendResponse({ success: false, message: error.toString() }, 500);
+    logError('doGet', error);
+    return sendResponse({ success: false, message: error.toString() });
   }
 }
 
-/**
- * Handle POST requests untuk menambah/mengubah data
- */
 function doPost(e) {
-  const action = e.parameter.action;
-  const payload = JSON.parse(e.postData.contents);
+  let params = {};
   
   try {
+    // Try to get action from parameter first
+    if (e && e.parameter && e.parameter.action) {
+      params.action = e.parameter.action;
+    }
+    
+    // Try to parse JSON body
+    if (e && e.postData && e.postData.contents) {
+      try {
+        const bodyParams = JSON.parse(e.postData.contents);
+        params = { ...params, ...bodyParams };
+      } catch (parseError) {
+        // If JSON parse fails, try to parse as form data
+        const contents = e.postData.contents;
+        if (contents.includes('=')) {
+          const formParams = contents.split('&');
+          formParams.forEach(function(item) {
+            const pair = item.split('=');
+            if (pair[0] && pair[1]) {
+              params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1].replace(/\+/g, ' '));
+            }
+          });
+        }
+      }
+    }
+    
+    const action = params.action;
+    
+    if (!action) {
+      return sendResponse({
+        success: false,
+        message: 'Action tidak ditemukan dalam request'
+      });
+    }
+    
+    console.log('doPost called with action:', action, 'params:', JSON.stringify(params));
+    
     switch (action) {
       case 'addProduct':
-        return addProduct(payload);
+        return addProduct(params);
       case 'updateProduct':
-        return updateProduct(payload);
+        return updateProduct(params);
       case 'deleteProduct':
-        return deleteProduct(payload.id);
+        return deleteProduct(params.id);
       case 'addBuyer':
-        return addBuyer(payload);
+        return addBuyer(params);
       case 'updateBuyer':
-        return updateBuyer(payload);
+        return updateBuyer(params);
       case 'deleteBuyer':
-        return deleteBuyer(payload.id);
+        return deleteBuyer(params.id);
       case 'sendNotification':
-        return sendNotification(payload);
+        return sendNotification(params);
       default:
         return sendResponse({
           success: false,
-          message: 'Action tidak dikenali',
-          availableActions: ['addProduct', 'updateProduct', 'deleteProduct', 'addBuyer', 'updateBuyer', 'deleteBuyer', 'sendNotification']
-        }, 400);
+          message: 'Action tidak dikenali: ' + action
+        });
     }
   } catch (error) {
-    logError(action, error);
-    return sendResponse({ success: false, message: error.toString() }, 500);
+    logError('doPost', error);
+    return sendResponse({ success: false, message: error.toString() });
   }
 }
 
@@ -103,111 +122,122 @@ function doPost(e) {
 
 function getProducts() {
   const sheet = getSheetByName(SHEETS.PRODUCTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' }, 404);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
   
   const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
   const headers = data[0];
   const products = [];
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0]) { // Check if row is not empty
+    if (data[i][0]) {
       products.push(objectToData(headers, data[i]));
     }
   }
   
-  return sendResponse({
-    success: true,
-    data: products,
-    count: products.length
-  });
+  return sendResponse({ success: true, data: products, count: products.length });
 }
 
 function getProduct(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID produk diperlukan' });
+  
   const sheet = getSheetByName(SHEETS.PRODUCTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' }, 404);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' });
   
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
-      return sendResponse({
-        success: true,
-        data: objectToData(headers, data[i])
-      });
+      return sendResponse({ success: true, data: objectToData(headers, data[i]) });
     }
   }
   
-  return sendResponse({ success: false, message: 'Produk tidak ditemukan' }, 404);
+  return sendResponse({ success: false, message: 'Produk tidak ditemukan' });
 }
 
 function addProduct(product) {
-  const sheet = getSheetByName(SHEETS.PRODUCTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' }, 404);
+  console.log('addProduct called with:', JSON.stringify(product));
   
-  const data = [
-    generateId(),
+  // Validate input
+  if (!product) {
+    return sendResponse({ success: false, message: 'Data produk tidak valid' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.PRODUCTS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const newId = 'ID_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  const rowData = [
+    newId,
     product.name || '',
-    product.price || 0,
+    parseNumber(product.price),
     product.duration || '',
-    product.stock || 0,
+    parseNumber(product.stock),
     product.description || '',
     new Date().toLocaleString('id-ID'),
     product.image || ''
   ];
   
-  sheet.appendRow(data);
+  sheet.appendRow(rowData);
+  
+  console.log('Product added with ID:', newId);
   
   return sendResponse({
     success: true,
     message: 'Produk berhasil ditambahkan',
-    data: { id: data[0] }
+    data: { id: newId }
   });
 }
 
 function updateProduct(product) {
-  const sheet = getSheetByName(SHEETS.PRODUCTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' }, 404);
+  console.log('updateProduct called with:', JSON.stringify(product));
   
-  const range = sheet.getDataRange();
-  const data = range.getValues();
+  if (!product || !product.id) {
+    return sendResponse({ success: false, message: 'ID produk diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.PRODUCTS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === product.id) {
       const row = i + 1;
-      sheet.getRange(row, 2).setValue(product.name);
-      sheet.getRange(row, 3).setValue(product.price);
-      sheet.getRange(row, 4).setValue(product.duration);
-      sheet.getRange(row, 5).setValue(product.stock);
-      sheet.getRange(row, 6).setValue(product.description);
+      sheet.getRange(row, 2).setValue(product.name || '');
+      sheet.getRange(row, 3).setValue(parseNumber(product.price));
+      sheet.getRange(row, 4).setValue(product.duration || '');
+      sheet.getRange(row, 5).setValue(parseNumber(product.stock));
+      sheet.getRange(row, 6).setValue(product.description || '');
       
-      return sendResponse({
-        success: true,
-        message: 'Produk berhasil diperbarui'
-      });
+      return sendResponse({ success: true, message: 'Produk berhasil diperbarui' });
     }
   }
   
-  return sendResponse({ success: false, message: 'Produk tidak ditemukan' }, 404);
+  return sendResponse({ success: false, message: 'Produk tidak ditemukan' });
 }
 
 function deleteProduct(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID produk diperlukan' });
+  
   const sheet = getSheetByName(SHEETS.PRODUCTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' }, 404);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk tidak ditemukan' });
   
   const data = sheet.getDataRange().getValues();
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
       sheet.deleteRow(i + 1);
-      return sendResponse({
-        success: true,
-        message: 'Produk berhasil dihapus'
-      });
+      return sendResponse({ success: true, message: 'Produk berhasil dihapus' });
     }
   }
   
-  return sendResponse({ success: false, message: 'Produk tidak ditemukan' }, 404);
+  return sendResponse({ success: false, message: 'Produk tidak ditemukan' });
 }
 
 // ==============================
@@ -216,9 +246,13 @@ function deleteProduct(id) {
 
 function getBuyers() {
   const sheet = getSheetByName(SHEETS.BUYERS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' }, 404);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' });
   
   const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
   const headers = data[0];
   const buyers = [];
   
@@ -228,38 +262,41 @@ function getBuyers() {
     }
   }
   
-  return sendResponse({
-    success: true,
-    data: buyers,
-    count: buyers.length
-  });
+  return sendResponse({ success: true, data: buyers, count: buyers.length });
 }
 
 function getBuyer(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID pembeli diperlukan' });
+  
   const sheet = getSheetByName(SHEETS.BUYERS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' }, 404);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' });
   
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
-      return sendResponse({
-        success: true,
-        data: objectToData(headers, data[i])
-      });
+      return sendResponse({ success: true, data: objectToData(headers, data[i]) });
     }
   }
   
-  return sendResponse({ success: false, message: 'Pembeli tidak ditemukan' }, 404);
+  return sendResponse({ success: false, message: 'Pembeli tidak ditemukan' });
 }
 
 function addBuyer(buyer) {
-  const sheet = getSheetByName(SHEETS.BUYERS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' }, 404);
+  console.log('addBuyer called with:', JSON.stringify(buyer));
   
-  const data = [
-    generateId(),
+  if (!buyer) {
+    return sendResponse({ success: false, message: 'Data pembeli tidak valid' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.BUYERS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const newId = 'BY_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  const rowData = [
+    newId,
     buyer.name || '',
     buyer.phone || '',
     buyer.product || '',
@@ -267,71 +304,70 @@ function addBuyer(buyer) {
     buyer.startDate || new Date().toISOString().split('T')[0],
     buyer.endDate || '',
     'active',
-    0, // remainingDays
-    false, // notified
-    '', // notificationSentAt
+    0,
+    false,
+    '',
     buyer.googleSheetId || '',
     buyer.paymentMethod || 'QRIS',
     buyer.adminPhone || '',
     new Date().toLocaleString('id-ID')
   ];
   
-  sheet.appendRow(data);
+  sheet.appendRow(rowData);
   
   return sendResponse({
     success: true,
     message: 'Data pembeli berhasil ditambahkan',
-    data: { id: data[0] }
+    data: { id: newId }
   });
 }
 
 function updateBuyer(buyer) {
-  const sheet = getSheetByName(SHEETS.BUYERS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' }, 404);
+  if (!buyer || !buyer.id) {
+    return sendResponse({ success: false, message: 'ID pembeli diperlukan' });
+  }
   
-  const range = sheet.getDataRange();
-  const data = range.getValues();
+  const sheet = getSheetByName(SHEETS.BUYERS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === buyer.id) {
       const row = i + 1;
-      sheet.getRange(row, 2).setValue(buyer.name);
-      sheet.getRange(row, 3).setValue(buyer.phone);
-      sheet.getRange(row, 4).setValue(buyer.product);
-      sheet.getRange(row, 5).setValue(buyer.duration);
-      sheet.getRange(row, 6).setValue(buyer.startDate);
-      sheet.getRange(row, 7).setValue(buyer.endDate);
-      sheet.getRange(row, 12).setValue(buyer.googleSheetId);
-      sheet.getRange(row, 13).setValue(buyer.paymentMethod);
-      sheet.getRange(row, 14).setValue(buyer.adminPhone);
+      sheet.getRange(row, 2).setValue(buyer.name || '');
+      sheet.getRange(row, 3).setValue(buyer.phone || '');
+      sheet.getRange(row, 4).setValue(buyer.product || '');
+      sheet.getRange(row, 5).setValue(buyer.duration || '');
+      sheet.getRange(row, 6).setValue(buyer.startDate || '');
+      sheet.getRange(row, 7).setValue(buyer.endDate || '');
+      sheet.getRange(row, 12).setValue(buyer.googleSheetId || '');
+      sheet.getRange(row, 13).setValue(buyer.paymentMethod || 'QRIS');
+      sheet.getRange(row, 14).setValue(buyer.adminPhone || '');
       
-      return sendResponse({
-        success: true,
-        message: 'Data pembeli berhasil diperbarui'
-      });
+      return sendResponse({ success: true, message: 'Data pembeli berhasil diperbarui' });
     }
   }
   
-  return sendResponse({ success: false, message: 'Pembeli tidak ditemukan' }, 404);
+  return sendResponse({ success: false, message: 'Pembeli tidak ditemukan' });
 }
 
 function deleteBuyer(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID pembeli diperlukan' });
+  
   const sheet = getSheetByName(SHEETS.BUYERS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' }, 404);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Pembeli tidak ditemukan' });
   
   const data = sheet.getDataRange().getValues();
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
       sheet.deleteRow(i + 1);
-      return sendResponse({
-        success: true,
-        message: 'Data pembeli berhasil dihapus'
-      });
+      return sendResponse({ success: true, message: 'Data pembeli berhasil dihapus' });
     }
   }
   
-  return sendResponse({ success: false, message: 'Pembeli tidak ditemukan' }, 404);
+  return sendResponse({ success: false, message: 'Pembeli tidak ditemukan' });
 }
 
 // ==============================
@@ -339,26 +375,51 @@ function deleteBuyer(id) {
 // ==============================
 
 function getSheetByName(name) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  return ss.getSheetByName(name);
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    return ss.getSheetByName(name);
+  } catch (error) {
+    Logger.log('Error getting sheet: ' + error.toString());
+    return null;
+  }
 }
 
 function objectToData(headers, row) {
   const obj = {};
-  headers.forEach((header, index) => {
-    obj[header] = row[index];
-  });
+  if (!headers || !row) return obj;
+  
+  for (let i = 0; i < headers.length; i++) {
+    const headerName = headers[i];
+    const value = row[i];
+    if (headerName) {
+      obj[headerName] = value !== undefined ? value : '';
+    }
+  }
   return obj;
 }
 
-function generateId() {
-  return 'ID_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+function parseNumber(value) {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
 }
 
-function sendResponse(data, statusCode = 200) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+function sendResponse(data) {
+  try {
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (e) {
+    Logger.log('Error sending response: ' + e.toString());
+    return ContentService
+      .createTextOutput('{"success": false, "message": "Error creating response"}')
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function getStats() {
@@ -368,8 +429,8 @@ function getStats() {
   return sendResponse({
     success: true,
     stats: {
-      totalProducts: productsSheet ? productsSheet.getLastRow() - 1 : 0,
-      totalBuyers: buyersSheet ? buyersSheet.getLastRow() - 1 : 0,
+      totalProducts: productsSheet ? Math.max(0, productsSheet.getLastRow() - 1) : 0,
+      totalBuyers: buyersSheet ? Math.max(0, buyersSheet.getLastRow() - 1) : 0,
       lastUpdated: new Date().toLocaleString('id-ID')
     }
   });
@@ -379,102 +440,72 @@ function logError(action, error) {
   try {
     const sheet = getSheetByName(SHEETS.LOGS);
     if (sheet) {
+      const errorMsg = error ? error.toString() : 'Unknown error';
       sheet.appendRow([
         new Date().toLocaleString('id-ID'),
-        action,
-        error.toString(),
-        Session.getEffectiveUser().getEmail()
+        action || 'unknown',
+        errorMsg.substring(0, 500),
+        'system'
       ]);
     }
   } catch (e) {
-    Logger.log('Error logging: ' + e);
+    Logger.log('Error logging: ' + e.toString());
   }
 }
 
 // ==============================
-// INIT FUNCTION (Jalankan sekali untuk setup)
+// INIT FUNCTION
 // ==============================
 
 function initializeSheets() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   
-  // Create Products sheet if not exists
   if (!ss.getSheetByName(SHEETS.PRODUCTS)) {
     const productsSheet = ss.insertSheet(SHEETS.PRODUCTS);
     productsSheet.appendRow(['ID', 'Nama Produk', 'Harga', 'Durasi', 'Stok', 'Deskripsi', 'Tanggal Dibuat', 'Gambar URL']);
   }
   
-  // Create Buyers sheet if not exists
   if (!ss.getSheetByName(SHEETS.BUYERS)) {
     const buyersSheet = ss.insertSheet(SHEETS.BUYERS);
     buyersSheet.appendRow([
-      'ID',
-      'Nama',
-      'No WhatsApp',
-      'Produk',
-      'Durasi',
-      'Tanggal Mulai',
-      'Tanggal Selesai',
-      'Status',
-      'Sisa Hari',
-      'Notified',
-      'Notified At',
-      'Google Sheet ID',
-      'Metode Pembayaran',
-      'No Admin WhatsApp',
-      'Tanggal Input'
+      'ID', 'Nama', 'No WhatsApp', 'Produk', 'Durasi', 
+      'Tanggal Mulai', 'Tanggal Selesai', 'Status', 'Sisa Hari', 
+      'Notified', 'Notified At', 'Google Sheet ID', 
+      'Metode Pembayaran', 'No Admin WhatsApp', 'Tanggal Input'
     ]);
   }
   
-  // Create Logs sheet if not exists
   if (!ss.getSheetByName(SHEETS.LOGS)) {
     const logsSheet = ss.insertSheet(SHEETS.LOGS);
     logsSheet.appendRow(['Waktu', 'Action', 'Error', 'User']);
   }
   
-  Logger.log('Sheets initialized successfully!');
+  return 'Sheets initialized: Produk, Pembeli, Logs';
 }
 
-/**
- * TEST FUNCTIONS - Uncomment untuk testing
- */
-
-// Uncomment untuk test addProduct
-/*
-function testAddProduct() {
-  const result = addProduct({
-    name: 'Netflix Premium',
-    price: 50000,
-    duration: '1 bulan',
-    stock: 100,
-    description: 'Akun Netflix Premium dengan fitur lengkap'
-  });
-  Logger.log(JSON.stringify(result));
+function testConnection() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const productsSheet = ss.getSheetByName(SHEETS.PRODUCTS);
+    const buyersSheet = ss.getSheetByName(SHEETS.BUYERS);
+    const logsSheet = ss.getSheetByName(SHEETS.LOGS);
+    
+    return sendResponse({
+      success: true,
+      message: 'Koneksi berhasil! Spreadsheet: ' + ss.getName(),
+      spreadsheetId: SPREADSHEET_ID,
+      sheets: {
+        Produk: productsSheet ? 'ready' : 'not found',
+        Pembeli: buyersSheet ? 'ready' : 'not found',
+        Logs: logsSheet ? 'ready' : 'not found'
+      },
+      productsCount: productsSheet ? productsSheet.getLastRow() - 1 : 0,
+      buyersCount: buyersSheet ? buyersSheet.getLastRow() - 1 : 0
+    });
+  } catch (error) {
+    return sendResponse({
+      success: false,
+      message: 'Koneksi gagal: ' + error.toString()
+    });
+  }
 }
-*/
-
-// Uncomment untuk test getProducts
-/*
-function testGetProducts() {
-  const result = getProducts();
-  Logger.log(JSON.stringify(result));
-}
-*/
-
-// Uncomment untuk test addBuyer
-/*
-function testAddBuyer() {
-  const result = addBuyer({
-    name: 'John Doe',
-    phone: '+628126543210',
-    product: 'Netflix Premium',
-    duration: '1 bulan',
-    startDate: '2026-03-24',
-    endDate: '2026-04-24',
-    googleSheetId: 'abc123',
-    paymentMethod: 'QRIS',
-    adminPhone: '+628129876543'
-  });
-  Logger.log(JSON.stringify(result));
-}
-*/
