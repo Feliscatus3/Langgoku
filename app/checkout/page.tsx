@@ -16,6 +16,20 @@ interface CheckoutData {
   buyerPhone: string
 }
 
+interface PaymentResult {
+  success: boolean
+  data?: {
+    orderId: string
+    virtualAccountNumber: string
+    amount: number
+    paymentMethod: string
+    buyerName: string
+    phone: string
+    expiresAt: string
+  }
+  message?: string
+}
+
 const PAYMENT_METHODS = [
   { id: 'VIRTUAL_ACCOUNT_BCA', name: 'Bank BCA', icon: '🏦' },
   { id: 'VIRTUAL_ACCOUNT_BRI', name: 'Bank BRI', icon: '🏦' },
@@ -33,7 +47,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
   const [showPaymentPopup, setShowPaymentPopup] = useState(false)
-  const [paymentInstructions, setPaymentInstructions] = useState('')
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
+  const [creatingPayment, setCreatingPayment] = useState(false)
 
   useEffect(() => {
     const data = sessionStorage.getItem('checkoutData')
@@ -45,24 +60,44 @@ export default function CheckoutPage() {
     setLoading(false)
   }, [router])
 
-  const getPaymentInstructions = (method: string): string => {
-    const instructions: Record<string, string> = {
-      'VIRTUAL_ACCOUNT_BCA': `Transfer ke VA BCA: 1234567890\nNominal: Rp ${checkoutData?.finalPrice}`,
-      'VIRTUAL_ACCOUNT_BRI': `Transfer ke VA BRI: 1234567890\nNominal: Rp ${checkoutData?.finalPrice}`,
-      'VIRTUAL_ACCOUNT_MANDIRI': `Transfer ke VA Mandiri: 1234567890\nNominal: Rp ${checkoutData?.finalPrice}`,
-      'VIRTUAL_ACCOUNT_BNI': `Transfer ke VA BNI: 1234567890\nNominal: Rp ${checkoutData?.finalPrice}`,
-      'QRIS': `Scan QRIS dengan nominal Rp ${checkoutData?.finalPrice}`,
-      'E_WALLET_DANA': `Bayar via DANA: @langgoku\nNominal: Rp ${checkoutData?.finalPrice}`,
-      'E_WALLET_OVO': `Bayar via OVO: @langgoku\nNominal: Rp ${checkoutData?.finalPrice}`,
-      'RETAIL_ALFAMART': `Bayar di Alfamart terdekat\nKode: ${checkoutData?.uniqueCode}`,
-    }
-    return instructions[method] || 'Ikuti instruksi pembayaran'
-  }
-
-  const handleSelectMethod = (methodId: string) => {
+  const handleSelectMethod = async (methodId: string) => {
+    if (!checkoutData) return
+    
     setSelectedMethod(methodId)
-    setPaymentInstructions(getPaymentInstructions(methodId))
-    setShowPaymentPopup(true)
+    setCreatingPayment(true)
+    
+    try {
+      // Call DOKU API to create Virtual Account
+      const orderId = `LANGGOKU_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      const response = await fetch('/api/doku', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          amount: checkoutData.finalPrice,
+          buyerName: checkoutData.buyerName,
+          buyerPhone: checkoutData.buyerPhone,
+          productName: checkoutData.productName,
+          paymentMethod: methodId,
+        })
+      })
+      
+      const result = await response.json()
+      console.log('[Checkout] DOKU Result:', result)
+      
+      setPaymentResult(result)
+      setShowPaymentPopup(true)
+    } catch (error) {
+      console.error('[Checkout] Error creating payment:', error)
+      setPaymentResult({
+        success: false,
+        message: 'Gagal membuat pembayaran'
+      })
+      setShowPaymentPopup(true)
+    } finally {
+      setCreatingPayment(false)
+    }
   }
 
   const handleClosePopup = () => {
@@ -75,10 +110,17 @@ export default function CheckoutPage() {
     }
   }
 
+  const handleCopyVANumber = () => {
+    if (paymentResult?.data?.virtualAccountNumber) {
+      navigator.clipboard.writeText(paymentResult.data.virtualAccountNumber)
+    }
+  }
+
   const handleWhatsAppConfirmation = () => {
-    if (!checkoutData || !selectedMethod) return
+    if (!checkoutData) return
 
     const methodName = PAYMENT_METHODS.find(m => m.id === selectedMethod)?.name || 'DOKU'
+    const vaNumber = paymentResult?.data?.virtualAccountNumber || '-'
     
     const message = `Halo Admin Langgoku, saya ingin membeli:
 
@@ -88,6 +130,7 @@ export default function CheckoutPage() {
 💵 Total: ${formatPrice(checkoutData.finalPrice)}
 💰 Kode: ${checkoutData.uniqueCode}
 🏧 Metode: ${methodName}
+🏦 VA Number: ${vaNumber}
 
 Mohon info selanjutnya!`
     
@@ -111,7 +154,7 @@ Mohon info selanjutnya!`
       <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white py-12">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl font-bold">Checkout</h1>
-          <p className="text-purple-200">Pembayaran via DOKU</p>
+          <p className="text-purple-200">Pembayaran via DOKU Payment Gateway</p>
         </div>
       </div>
 
@@ -164,20 +207,28 @@ Mohon info selanjutnya!`
           {/* Payment Methods */}
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <h2 className="text-xl font-bold mb-4">Pilih Metode Pembayaran</h2>
-            <p className="text-gray-600 text-sm mb-6">Pilih metode yang tersedia via DOKU</p>
+            <p className="text-gray-600 text-sm mb-6">Pilih metode pembayaran DOKU</p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {PAYMENT_METHODS.map((method) => (
                 <button
                   key={method.id}
                   onClick={() => handleSelectMethod(method.id)}
-                  className="p-4 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all text-center"
+                  disabled={creatingPayment}
+                  className="p-4 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all text-center disabled:opacity-50"
                 >
                   <span className="text-3xl block mb-2">{method.icon}</span>
                   <span className="font-medium text-sm">{method.name}</span>
                 </button>
               ))}
             </div>
+            
+            {creatingPayment && (
+              <div className="mt-4 text-center">
+                <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto"></div>
+                <p className="text-gray-600 mt-2">Membuat Virtual Account...</p>
+              </div>
+            )}
           </div>
 
           {/* WhatsApp Button */}
@@ -206,16 +257,49 @@ Mohon info selanjutnya!`
               <p className="text-gray-600 text-sm">Total: {formatPrice(checkoutData.finalPrice)}</p>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-xl mb-6">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Instruksi Pembayaran:</p>
-              <pre className="text-sm text-gray-600 whitespace-pre-wrap font-mono">{paymentInstructions}</pre>
-            </div>
+            {paymentResult?.success && paymentResult.data ? (
+              <>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+                  <p className="text-green-700 font-medium text-center">✓ Virtual Account Dibuat!</p>
+                </div>
 
-            <div className="bg-amber-50 p-4 rounded-xl mb-6">
-              <p className="text-sm text-amber-800">
-                <strong>Penting:</strong> Tambahkan kode pembayaran {checkoutData.uniqueCode} ke nominal transfer
-              </p>
-            </div>
+                <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Nomor Virtual Account:</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-purple-700 font-mono">
+                      {paymentResult.data.virtualAccountNumber}
+                    </span>
+                    <button onClick={handleCopyVANumber} className="px-2 py-1 bg-purple-500 text-white rounded text-sm">
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 p-4 rounded-xl mb-4">
+                  <p className="text-sm text-amber-800">
+                    <strong>Total Transfer: </strong>
+                    {formatPrice(checkoutData.finalPrice)}
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    (Sudah termasuk kode pembayaran {checkoutData.uniqueCode})
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-xl mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Cara Pembayaran:</strong><br/>
+                    1. Transfer ke nomor VA di atas<br/>
+                    2. Gunakan nominal yang sesuai<br/>
+                    3. Simpan bukti transfer<br/>
+                    4. Konfirmasi via WhatsApp
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <p className="text-red-700">{paymentResult?.message || 'Gagal membuat pembayaran'}</p>
+              </div>
+            )}
 
             <button
               onClick={handleWhatsAppConfirmation}
