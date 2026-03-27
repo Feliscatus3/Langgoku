@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
+import useSWR from 'swr'
 import { formatPrice } from '@/lib/googleSheets'
 
 interface Product {
@@ -30,12 +31,17 @@ interface ConfirmModalProps {
   onCancel: () => void
 }
 
-function Toast({ message, type, onClose }: ToastProps) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000)
-    return () => clearTimeout(timer)
-  }, [onClose])
+// SWR fetcher with no cache
+const fetcher = (url: string) => fetch(url, {
+  cache: 'no-store',
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  }
+}).then(res => res.json())
 
+function Toast({ message, type, onClose }: ToastProps) {
   return (
     <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ${
       type === 'success' 
@@ -85,9 +91,6 @@ function ConfirmModal({ title, message, confirmText, cancelText, type, onConfirm
 }
 
 export default function AdminProductManager() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -108,42 +111,19 @@ export default function AdminProductManager() {
     description: ''
   })
 
-  // Fetch products with no cache
-  const fetchProducts = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true)
-      const response = await fetch('/api/products', {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        }
-      })
-      const data = await response.json()
-      if (data.success && data.data) {
-        setProducts(data.data)
-      }
-    } catch (err) {
-      console.error('Error fetching products:', err)
-      showToast('Gagal memuat produk', 'error')
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [])
+  // Use SWR for real-time data fetching
+  // revalidateOnFocus: true - auto-refresh when user focuses on the page
+  // revalidateOnReconnect: true - auto-refresh when reconnecting
+  // refreshInterval: 3000 - refresh every 3 seconds
+  const { data, error, isLoading, mutate } = useSWR('/api/products', fetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    refreshInterval: 3000, // Refresh every 3 seconds for near real-time
+    refreshWhenHidden: false,
+    refreshWhenOffline: false,
+  })
 
-  useEffect(() => {
-    fetchProducts()
-  }, [fetchProducts])
-
-  // Auto-refresh every 5 seconds to keep data in sync
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchProducts(false)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [fetchProducts])
+  const products: Product[] = data?.data || []
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
@@ -155,7 +135,6 @@ export default function AdminProductManager() {
       return
     }
 
-    // Show confirmation modal
     setConfirmModal({
       show: true,
       type: 'add',
@@ -179,14 +158,14 @@ export default function AdminProductManager() {
         },
         body: JSON.stringify(formData),
       })
-      const data = await response.json()
+      const result = await response.json()
       
-      if (data.success) {
+      if (result.success) {
         showToast('Produk berhasil ditambahkan', 'success')
-        await fetchProducts()
+        mutate() // Trigger SWR to re-fetch data immediately
         resetForm()
       } else {
-        showToast('Gagal menambahkan produk: ' + data.message, 'error')
+        showToast('Gagal menambahkan produk: ' + result.message, 'error')
       }
     } catch (err) {
       console.error('Error adding product:', err)
@@ -199,7 +178,6 @@ export default function AdminProductManager() {
   const handleUpdateProduct = async () => {
     if (!editingId) return
 
-    // Show confirmation modal
     setConfirmModal({
       show: true,
       type: 'edit',
@@ -223,14 +201,14 @@ export default function AdminProductManager() {
         },
         body: JSON.stringify(formData),
       })
-      const data = await response.json()
+      const result = await response.json()
       
-      if (data.success) {
+      if (result.success) {
         showToast('Produk berhasil diperbarui', 'success')
-        await fetchProducts()
+        mutate() // Trigger SWR to re-fetch data immediately
         resetForm()
       } else {
-        showToast('Gagal memperbarui produk: ' + data.message, 'error')
+        showToast('Gagal memperbarui produk: ' + result.message, 'error')
       }
     } catch (err) {
       console.error('Error updating product:', err)
@@ -241,7 +219,6 @@ export default function AdminProductManager() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    // Show confirmation modal
     setConfirmModal({
       show: true,
       type: 'delete',
@@ -263,15 +240,13 @@ export default function AdminProductManager() {
           'Cache-Control': 'no-cache',
         },
       })
-      const data = await response.json()
+      const result = await response.json()
       
-      if (data.success) {
+      if (result.success) {
         showToast('Produk berhasil dihapus', 'success')
-        await fetchProducts()
+        mutate() // Trigger SWR to re-fetch data immediately
       } else {
-        showToast('Gagal menghapus produk: ' + data.message, 'error')
-        // Remove from local state anyway
-        setProducts(products.filter(p => p.id !== id))
+        showToast('Gagal menghapus produk: ' + result.message, 'error')
       }
     } catch (err) {
       console.error('Error deleting product:', err)
@@ -286,8 +261,7 @@ export default function AdminProductManager() {
   }
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchProducts()
+    mutate() // Manually trigger SWR to re-fetch
   }
 
   const resetForm = () => {
@@ -303,9 +277,15 @@ export default function AdminProductManager() {
     })
   }
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center py-12">
       <div className="text-blue-600 font-medium">Memuat produk...</div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="flex items-center justify-center py-12">
+      <div className="text-red-600 font-medium">Gagal memuat produk</div>
     </div>
   )
 
@@ -341,11 +321,10 @@ export default function AdminProductManager() {
         <div className="flex gap-2">
           <button
             onClick={handleRefresh}
-            disabled={refreshing}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
           >
-            <span className={refreshing ? 'animate-spin' : ''}>🔄</span>
-            {refreshing ? 'Menyegarkan...' : 'Refresh'}
+            <span>🔄</span>
+            Refresh
           </button>
           {!showForm && (
             <button
