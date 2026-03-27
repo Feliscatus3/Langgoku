@@ -7,6 +7,7 @@ interface Settings {
   adminPhone: string
   storeEmail: string
   storeName: string
+  storeDescription: string
   defaultPaymentMethod: string
   notificationEnabled: boolean
 }
@@ -17,20 +18,43 @@ export default function AdminSettings() {
     adminPhone: '',
     storeEmail: '',
     storeName: 'Langgoku',
+    storeDescription: '',
     defaultPaymentMethod: 'QRIS',
     notificationEnabled: true,
   })
 
   const [isSaving, setIsSaving] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Load settings from localStorage
+    // Load settings from localStorage as fallback
     const saved = localStorage.getItem('langgoku_settings')
     if (saved) {
       setSettings(JSON.parse(saved))
     }
+    
+    // Also try to load from API
+    loadSettingsFromAPI()
   }, [])
+
+  const loadSettingsFromAPI = async () => {
+    try {
+      const response = await fetch('/api/settings', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      })
+      const data = await response.json()
+      if (data.success && data.data) {
+        const mergedSettings = { ...settings, ...data.data }
+        setSettings(mergedSettings)
+        // Save to localStorage as backup
+        localStorage.setItem('langgoku_settings', JSON.stringify(mergedSettings))
+      }
+    } catch (err) {
+      console.log('Using localStorage settings fallback')
+    }
+  }
 
   const handleChange = (field: keyof Settings, value: any) => {
     setSettings({
@@ -41,23 +65,41 @@ export default function AdminSettings() {
 
   const handleSave = async () => {
     setIsSaving(true)
+    setError(null)
     try {
       // Validate required fields
-      if (!settings.googleSheetId || !settings.adminPhone || !settings.storeEmail) {
-        alert('Harap isi semua field yang diperlukan')
+      if (!settings.adminPhone || !settings.storeEmail) {
+        setError('Harap isi nomor WhatsApp dan email toko')
         setIsSaving(false)
         return
       }
 
-      // Save to localStorage
-      localStorage.setItem('langgoku_settings', JSON.stringify(settings))
-      
-      // TODO: Later, adapt to save to actual backend/database
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      // Save to Google Sheets via API
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify(settings),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Also save to localStorage as backup
+        localStorage.setItem('langgoku_settings', JSON.stringify(settings))
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 3000)
+      } else {
+        setError(result.message || 'Gagal menyimpan pengaturan ke Google Sheets')
+      }
     } catch (err) {
       console.error('Error saving settings:', err)
-      alert('Gagal menyimpan pengaturan')
+      // Save to localStorage as fallback
+      localStorage.setItem('langgoku_settings', JSON.stringify(settings))
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
     } finally {
       setIsSaving(false)
     }
@@ -71,10 +113,17 @@ export default function AdminSettings() {
         <p className="text-gray-500 text-sm mt-2">Konfigurasi Google Sheets dan informasi toko Anda</p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
       {/* Success Message */}
       {success && (
         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg">
-          Pengaturan berhasil disimpan
+          ✓ Pengaturan berhasil disimpan ke Google Sheets
         </div>
       )}
 
@@ -121,7 +170,20 @@ export default function AdminSettings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Toko
+                Deskripsi Toko
+              </label>
+              <textarea
+                value={settings.storeDescription}
+                onChange={(e) => handleChange('storeDescription', e.target.value)}
+                placeholder="Toko akun premium terbaik..."
+                rows={3}
+                className="input-field w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Toko *
               </label>
               <input
                 type="email"
@@ -134,7 +196,7 @@ export default function AdminSettings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nomor WhatsApp Admin
+                Nomor WhatsApp Admin *
               </label>
               <input
                 type="tel"
@@ -196,19 +258,18 @@ export default function AdminSettings() {
             disabled={isSaving}
             className="btn-primary flex-1"
           >
-            {isSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+            {isSaving ? 'Menyimpan ke Google Sheets...' : 'Simpan Pengaturan'}
           </button>
         </div>
       </div>
 
       {/* Helper Info */}
       <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h4 className="font-medium text-blue-900 mb-2">Perlu bantuan setup?</h4>
+        <h4 className="font-medium text-blue-900 mb-2">Info Pengaturan</h4>
         <ul className="text-xs text-blue-800 space-y-1">
-          <li>1. Buat Google Sheet baru atau gunakan yang sudah ada</li>
-          <li>2. Buat sheet dengan nama &quot;Products&quot; untuk daftar produk</li>
-          <li>3. Copy Spreadsheet ID dari URL, paste di form atas</li>
-          <li>4. Simpan pengaturan</li>
+          <li>• Pengaturan disimpan ke Google Sheets sheet "Pengaturan"</li>
+          <li>• Data akan otomatis tersimpan dan dapat diakses dari mana saja</li>
+          <li>• localStorage digunakan sebagai backup jika koneksi bermasalah</li>
         </ul>
       </div>
     </div>

@@ -11,7 +11,8 @@ const SPREADSHEET_ID = '1P7STjDhVEfCS8y55uWpYNE1nx54o6WEChuBMhR5psOE';
 const SHEETS = {
   PRODUCTS: 'Produk',
   BUYERS: 'Pembeli',
-  LOGS: 'Logs'
+  LOGS: 'Logs',
+  SETTINGS: 'Pengaturan'
 };
 
 // ==============================
@@ -34,13 +35,15 @@ function doGet(e) {
         return getBuyer(params.id || null);
       case 'getStats':
         return getStats();
+      case 'getSettings':
+        return getSettings();
       case 'testConnection':
         return testConnection();
       default:
         return sendResponse({
           success: false,
           message: 'Action tidak dikenali',
-          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'testConnection']
+          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'testConnection']
         });
     }
   } catch (error) {
@@ -102,6 +105,8 @@ function doPost(e) {
         return updateBuyer(params);
       case 'deleteBuyer':
         return deleteBuyer(params.id);
+      case 'saveSettings':
+        return saveSettings(params);
       case 'sendNotification':
         return sendNotification(params);
       default:
@@ -162,7 +167,6 @@ function getProduct(id) {
 function addProduct(product) {
   console.log('addProduct called with:', JSON.stringify(product));
   
-  // Validate input
   if (!product) {
     return sendResponse({ success: false, message: 'Data produk tidak valid' });
   }
@@ -371,6 +375,94 @@ function deleteBuyer(id) {
 }
 
 // ==============================
+// SETTINGS FUNCTIONS
+// ==============================
+
+function getSettings() {
+  const sheet = getSheetByName(SHEETS.SETTINGS);
+  if (!sheet) {
+    // Create settings sheet if not exists
+    return createSettingsSheet();
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: null, message: 'Belum ada pengaturan' });
+  }
+  
+  // Get the last row (most recent settings)
+  const lastRow = data.length - 1;
+  const settingsData = {
+    googleSheetId: data[lastRow][1] || '',
+    adminPhone: data[lastRow][2] || '',
+    storeEmail: data[lastRow][3] || '',
+    storeName: data[lastRow][4] || 'Langgoku',
+    storeDescription: data[lastRow][5] || '',
+    defaultPaymentMethod: data[lastRow][6] || 'QRIS',
+    notificationEnabled: data[lastRow][7] !== false
+  };
+  
+  return sendResponse({ success: true, data: settingsData });
+}
+
+function saveSettings(settings) {
+  console.log('saveSettings called with:', JSON.stringify(settings));
+  
+  if (!settings) {
+    return sendResponse({ success: false, message: 'Data pengaturan tidak valid' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.SETTINGS);
+  if (!sheet) {
+    createSettingsSheet();
+    return saveSettings(settings);
+  }
+  
+  const rowData = [
+    'SET_' + Date.now(),
+    settings.googleSheetId || '',
+    settings.adminPhone || '',
+    settings.storeEmail || '',
+    settings.storeName || 'Langgoku',
+    settings.storeDescription || '',
+    settings.defaultPaymentMethod || 'QRIS',
+    settings.notificationEnabled !== false,
+    new Date().toLocaleString('id-ID')
+  ];
+  
+  sheet.appendRow(rowData);
+  
+  console.log('Settings saved successfully');
+  
+  return sendResponse({
+    success: true,
+    message: 'Pengaturan berhasil disimpan',
+    data: settings
+  });
+}
+
+function createSettingsSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  if (!ss.getSheetByName(SHEETS.SETTINGS)) {
+    const settingsSheet = ss.insertSheet(SHEETS.SETTINGS);
+    settingsSheet.appendRow([
+      'ID', 
+      'Google Sheet ID', 
+      'No WhatsApp Admin', 
+      'Email Toko', 
+      'Nama Toko', 
+      'Deskripsi Toko',
+      'Metode Pembayaran Default',
+      'Notifikasi Aktif',
+      'Tanggal Update'
+    ]);
+  }
+  
+  return getSheetByName(SHEETS.SETTINGS);
+}
+
+// ==============================
 // UTILITY FUNCTIONS
 // ==============================
 
@@ -425,12 +517,14 @@ function sendResponse(data) {
 function getStats() {
   const productsSheet = getSheetByName(SHEETS.PRODUCTS);
   const buyersSheet = getSheetByName(SHEETS.BUYERS);
+  const settingsSheet = getSheetByName(SHEETS.SETTINGS);
   
   return sendResponse({
     success: true,
     stats: {
       totalProducts: productsSheet ? Math.max(0, productsSheet.getLastRow() - 1) : 0,
       totalBuyers: buyersSheet ? Math.max(0, buyersSheet.getLastRow() - 1) : 0,
+      settingsExist: settingsSheet ? true : false,
       lastUpdated: new Date().toLocaleString('id-ID')
     }
   });
@@ -480,7 +574,16 @@ function initializeSheets() {
     logsSheet.appendRow(['Waktu', 'Action', 'Error', 'User']);
   }
   
-  return 'Sheets initialized: Produk, Pembeli, Logs';
+  if (!ss.getSheetByName(SHEETS.SETTINGS)) {
+    const settingsSheet = ss.insertSheet(SHEETS.SETTINGS);
+    settingsSheet.appendRow([
+      'ID', 'Google Sheet ID', 'No WhatsApp Admin', 'Email Toko', 
+      'Nama Toko', 'Deskripsi Toko', 'Metode Pembayaran Default', 
+      'Notifikasi Aktif', 'Tanggal Update'
+    ]);
+  }
+  
+  return 'Sheets initialized: Produk, Pembeli, Logs, Pengaturan';
 }
 
 function testConnection() {
@@ -489,6 +592,7 @@ function testConnection() {
     const productsSheet = ss.getSheetByName(SHEETS.PRODUCTS);
     const buyersSheet = ss.getSheetByName(SHEETS.BUYERS);
     const logsSheet = ss.getSheetByName(SHEETS.LOGS);
+    const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
     
     return sendResponse({
       success: true,
@@ -497,7 +601,8 @@ function testConnection() {
       sheets: {
         Produk: productsSheet ? 'ready' : 'not found',
         Pembeli: buyersSheet ? 'ready' : 'not found',
-        Logs: logsSheet ? 'ready' : 'not found'
+        Logs: logsSheet ? 'ready' : 'not found',
+        Pengaturan: settingsSheet ? 'ready' : 'not found'
       },
       productsCount: productsSheet ? productsSheet.getLastRow() - 1 : 0,
       buyersCount: buyersSheet ? buyersSheet.getLastRow() - 1 : 0
