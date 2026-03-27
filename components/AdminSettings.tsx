@@ -9,6 +9,9 @@ interface Settings {
   storeName: string
   storeDescription: string
   notificationEnabled: boolean
+  maintenanceMode: boolean
+  announcementText: string
+  announcementEnabled: boolean
 }
 
 export default function AdminSettings() {
@@ -19,6 +22,9 @@ export default function AdminSettings() {
     storeName: 'Langgoku',
     storeDescription: '',
     notificationEnabled: true,
+    maintenanceMode: false,
+    announcementText: '',
+    announcementEnabled: false,
   })
 
   const [isSaving, setIsSaving] = useState(false)
@@ -40,12 +46,10 @@ export default function AdminSettings() {
       const data = await response.json()
       
       if (data.success && data.data) {
-        // Load from Google Sheets - use localStorage as fallback display only
         const mergedSettings = { ...settings, ...data.data }
         setSettings(mergedSettings)
         localStorage.setItem('langgoku_settings', JSON.stringify(mergedSettings))
       } else {
-        // Try localStorage if API fails
         const saved = localStorage.getItem('langgoku_settings')
         if (saved) {
           setSettings(JSON.parse(saved))
@@ -73,14 +77,12 @@ export default function AdminSettings() {
     setIsSaving(true)
     setError(null)
     try {
-      // Validate required fields
       if (!settings.adminPhone || !settings.storeEmail) {
         setError('Harap isi nomor WhatsApp dan email toko')
         setIsSaving(false)
         return
       }
 
-      // Save to Google Sheets via API
       const response = await fetch('/api/settings', {
         method: 'POST',
         headers: {
@@ -93,7 +95,6 @@ export default function AdminSettings() {
       const result = await response.json()
 
       if (result.success) {
-        // Also save to localStorage as backup
         localStorage.setItem('langgoku_settings', JSON.stringify(settings))
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
@@ -102,7 +103,6 @@ export default function AdminSettings() {
       }
     } catch (err) {
       console.error('Error saving settings:', err)
-      // Save to localStorage as fallback
       localStorage.setItem('langgoku_settings', JSON.stringify(settings))
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -143,7 +143,7 @@ export default function AdminSettings() {
 
       {/* Settings Form */}
       <div className="space-y-6">
-        {/* Store Information - from Google Sheets */}
+        {/* Store Information */}
         <div className="card p-6 shadow-md">
           <h3 className="text-lg font-medium text-gray-950 mb-4">Informasi Toko</h3>
           <p className="text-xs text-gray-500 mb-4">Data ini diambil dari sheet "Pengaturan" di Google Sheets</p>
@@ -206,6 +206,66 @@ export default function AdminSettings() {
           </div>
         </div>
 
+        {/* Maintenance Mode */}
+        <div className="card p-6 shadow-md">
+          <h3 className="text-lg font-medium text-gray-950 mb-4">Mode Maintenance</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.maintenanceMode}
+                  onChange={(e) => handleChange('maintenanceMode', e.target.checked)}
+                  className="w-5 h-5 text-blue-600"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Aktifkan Mode Maintenance
+                  </span>
+                  <p className="text-xs text-gray-500">
+                    Saat aktif, semua visitor akan diarahkan ke halaman maintenance kecuali admin
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Announcement */}
+        <div className="card p-6 shadow-md">
+          <h3 className="text-lg font-medium text-gray-950 mb-4">Pengumuman</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.announcementEnabled}
+                  onChange={(e) => handleChange('announcementEnabled', e.target.checked)}
+                  className="w-5 h-5 text-blue-600"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Tampilkan Pengumuman
+                </span>
+              </label>
+            </div>
+
+            {settings.announcementEnabled && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Text Pengumuman
+                </label>
+                <textarea
+                  value={settings.announcementText}
+                  onChange={(e) => handleChange('announcementText', e.target.value)}
+                  placeholder="Masukkan teks pengumuman..."
+                  rows={4}
+                  className="input-field w-full"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Notification Settings */}
         <div className="card p-6 shadow-md">
           <h3 className="text-lg font-medium text-gray-950 mb-4">Notifikasi</h3>
@@ -253,8 +313,8 @@ export default function AdminSettings() {
         <h4 className="font-medium text-blue-900 mb-2">Info Pengaturan</h4>
         <ul className="text-xs text-blue-800 space-y-1">
           <li>• Pengaturan disimpan ke Google Sheets sheet "Pengaturan"</li>
-          <li>• Data akan otomatis tersimpan dan dapat diakses dari mana saja</li>
-          <li>• localStorage digunakan sebagai backup jika koneksi bermasalah</li>
+          <li>• Mode Maintenance mengalihkan semua halaman ke /maintenance kecuali /admin</li>
+          <li>• Pengumuman akan muncul di halaman maintenance</li>
           <li>• Klik "Refresh dari Sheets" untuk memuat data terbaru</li>
         </ul>
       </div>

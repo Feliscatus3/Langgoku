@@ -41,6 +41,7 @@ export default function CheckoutPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [paymentStep, setPaymentStep] = useState<'select' | 'done'>('select')
+  const [settingsLoading, setSettingsLoading] = useState(true)
   
   // Promo code state
   const [promoCode, setPromoCode] = useState('')
@@ -62,16 +63,20 @@ export default function CheckoutPage() {
   }, [router])
 
   const loadSettings = async () => {
+    setSettingsLoading(true)
     try {
       const response = await fetch('/api/settings')
       const data = await response.json()
+      console.log('Settings response:', data)
       if (data.success && data.data) {
         setSettings(data.data)
+        console.log('Admin phone from settings:', data.data.adminPhone)
       }
     } catch (err) {
       console.error('Error loading settings:', err)
     } finally {
       setLoading(false)
+      setSettingsLoading(false)
     }
   }
 
@@ -132,8 +137,12 @@ export default function CheckoutPage() {
   }
 
   const getWhatsAppNumber = () => {
-    // Use from settings, or fallback to checkout data
-    return settings?.adminPhone || checkoutData?.buyerPhone || ''
+    // First priority: settings adminPhone from Google Sheets
+    if (settings?.adminPhone) {
+      return settings.adminPhone
+    }
+    // Fallback: buyer phone (not ideal but better than nothing)
+    return checkoutData?.buyerPhone || ''
   }
 
   const getStoreName = () => {
@@ -142,6 +151,14 @@ export default function CheckoutPage() {
 
   const handleWhatsAppConfirmation = () => {
     if (!checkoutData) return
+
+    const waNumber = getWhatsAppNumber()
+    console.log('Using WhatsApp number:', waNumber)
+    
+    if (!waNumber) {
+      alert('Nomor WhatsApp admin belum dikonfigurasi. Silakan hubungi admin melalui cara lain.')
+      return
+    }
 
     const finalPrice = checkoutData.finalPrice - discountAmount
     const promoInfo = promoApplied ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})` : ''
@@ -159,8 +176,8 @@ export default function CheckoutPage() {
 
 Mohon info cara pembayarannya!`
     
-    const waNumber = getWhatsAppNumber().replace(/\D/g, '')
-    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank')
+    const cleanNumber = waNumber.replace(/\D/g, '')
+    window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`, '_blank')
     setPaymentStep('done')
   }
 

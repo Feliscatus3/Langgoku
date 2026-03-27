@@ -13,7 +13,8 @@ const SHEETS = {
   BUYERS: 'Pembeli',
   LOGS: 'Logs',
   SETTINGS: 'Pengaturan',
-  PROMO_CODES: 'Kode Promo'
+  PROMO_CODES: 'Kode Promo',
+  PROMO_ADS: 'Iklan Promo'
 };
 
 // ==============================
@@ -42,13 +43,15 @@ function doGet(e) {
         return getPromoCodes();
       case 'validatePromoCode':
         return validatePromoCode(params.code || null);
+      case 'getPromoAds':
+        return getPromoAds();
       case 'testConnection':
         return testConnection();
       default:
         return sendResponse({
           success: false,
           message: 'Action tidak dikenali',
-          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'getPromoCodes', 'validatePromoCode', 'testConnection']
+          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'getPromoCodes', 'validatePromoCode', 'getPromoAds', 'testConnection']
         });
     }
   } catch (error) {
@@ -115,6 +118,12 @@ function doPost(e) {
         return updatePromoCode(params);
       case 'deletePromoCode':
         return deletePromoCode(params.id);
+      case 'addPromoAd':
+        return addPromoAd(params);
+      case 'updatePromoAd':
+        return updatePromoAd(params);
+      case 'deletePromoAd':
+        return deletePromoAd(params.id);
       case 'sendNotification':
         return sendNotification(params);
       default:
@@ -405,7 +414,10 @@ function getSettings() {
     storeEmail: data[lastRow][3] || '',
     storeName: data[lastRow][4] || 'Langgoku',
     storeDescription: data[lastRow][5] || '',
-    notificationEnabled: data[lastRow][6] !== false
+    notificationEnabled: data[lastRow][6] !== false,
+    maintenanceMode: data[lastRow][7] === true || data[lastRow][7] === 'true',
+    announcementText: data[lastRow][8] || '',
+    announcementEnabled: data[lastRow][9] === true || data[lastRow][9] === 'true'
   };
   
   return sendResponse({ success: true, data: settingsData });
@@ -437,7 +449,10 @@ function saveSettings(settings) {
     sheet.getRange(lastRow, 5).setValue(settings.storeName || 'Langgoku');
     sheet.getRange(lastRow, 6).setValue(settings.storeDescription || '');
     sheet.getRange(lastRow, 7).setValue(settings.notificationEnabled !== false);
-    sheet.getRange(lastRow, 8).setValue(new Date().toLocaleString('id-ID'));
+    sheet.getRange(lastRow, 8).setValue(settings.maintenanceMode === true);
+    sheet.getRange(lastRow, 9).setValue(settings.announcementText || '');
+    sheet.getRange(lastRow, 10).setValue(settings.announcementEnabled === true);
+    sheet.getRange(lastRow, 11).setValue(new Date().toLocaleString('id-ID'));
     
     console.log('Settings updated at row:', lastRow);
   } else {
@@ -450,6 +465,9 @@ function saveSettings(settings) {
       settings.storeName || 'Langgoku',
       settings.storeDescription || '',
       settings.notificationEnabled !== false,
+      settings.maintenanceMode === true,
+      settings.announcementText || '',
+      settings.announcementEnabled === true,
       new Date().toLocaleString('id-ID')
     ];
     sheet.appendRow(rowData);
@@ -476,6 +494,9 @@ function createSettingsSheet() {
       'Nama Toko', 
       'Deskripsi Toko',
       'Notifikasi Aktif',
+      'Mode Maintenance',
+      'Text Pengumuman',
+      'Pengumuman Aktif',
       'Tanggal Update'
     ]);
   }
@@ -669,6 +690,133 @@ function createPromoCodesSheet() {
 }
 
 // ==============================
+// PROMO ADS FUNCTIONS
+// ==============================
+
+function getPromoAds() {
+  const sheet = getSheetByName(SHEETS.PROMO_ADS);
+  if (!sheet) {
+    createPromoAdsSheet();
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
+  const headers = data[0];
+  const promoAds = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      promoAds.push(objectToData(headers, data[i]));
+    }
+  }
+  
+  return sendResponse({ success: true, data: promoAds, count: promoAds.length });
+}
+
+function addPromoAd(ad) {
+  console.log('addPromoAd called with:', JSON.stringify(ad));
+  
+  if (!ad || !ad.imageUrl) {
+    return sendResponse({ success: false, message: 'URL gambar diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.PROMO_ADS);
+  if (!sheet) {
+    createPromoAdsSheet();
+    return addPromoAd(ad);
+  }
+  
+  const newId = 'AD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  const rowData = [
+    newId,
+    ad.imageUrl || '',
+    ad.title || '',
+    ad.description || '',
+    ad.linkUrl || '',
+    ad.isActive !== false,
+    new Date().toLocaleString('id-ID')
+  ];
+  
+  sheet.appendRow(rowData);
+  
+  console.log('Promo ad added with ID:', newId);
+  
+  return sendResponse({
+    success: true,
+    message: 'Iklan promo berhasil ditambahkan',
+    data: { id: newId }
+  });
+}
+
+function updatePromoAd(ad) {
+  if (!ad || !ad.id) {
+    return sendResponse({ success: false, message: 'ID iklan diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.PROMO_ADS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Iklan Promo tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === ad.id) {
+      const row = i + 1;
+      if (ad.imageUrl) sheet.getRange(row, 2).setValue(ad.imageUrl);
+      if (ad.title !== undefined) sheet.getRange(row, 3).setValue(ad.title);
+      if (ad.description !== undefined) sheet.getRange(row, 4).setValue(ad.description);
+      if (ad.linkUrl !== undefined) sheet.getRange(row, 5).setValue(ad.linkUrl);
+      if (ad.isActive !== undefined) sheet.getRange(row, 6).setValue(ad.isActive);
+      
+      return sendResponse({ success: true, message: 'Iklan promo berhasil diperbarui' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Iklan promo tidak ditemukan' });
+}
+
+function deletePromoAd(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID iklan diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.PROMO_ADS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Iklan Promo tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return sendResponse({ success: true, message: 'Iklan promo berhasil dihapus' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Iklan promo tidak ditemukan' });
+}
+
+function createPromoAdsSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  if (!ss.getSheetByName(SHEETS.PROMO_ADS)) {
+    const promoSheet = ss.insertSheet(SHEETS.PROMO_ADS);
+    promoSheet.appendRow([
+      'ID',
+      'URL Gambar',
+      'Judul',
+      'Deskripsi',
+      'URL Link',
+      'Aktif',
+      'Tanggal Dibuat'
+    ]);
+  }
+  
+  return getSheetByName(SHEETS.PROMO_ADS);
+}
+
+// ==============================
 // UTILITY FUNCTIONS
 // ==============================
 
@@ -725,6 +873,7 @@ function getStats() {
   const buyersSheet = getSheetByName(SHEETS.BUYERS);
   const settingsSheet = getSheetByName(SHEETS.SETTINGS);
   const promoSheet = getSheetByName(SHEETS.PROMO_CODES);
+  const promoAdsSheet = getSheetByName(SHEETS.PROMO_ADS);
   
   return sendResponse({
     success: true,
@@ -732,6 +881,7 @@ function getStats() {
       totalProducts: productsSheet ? Math.max(0, productsSheet.getLastRow() - 1) : 0,
       totalBuyers: buyersSheet ? Math.max(0, buyersSheet.getLastRow() - 1) : 0,
       totalPromoCodes: promoSheet ? Math.max(0, promoSheet.getLastRow() - 1) : 0,
+      totalPromoAds: promoAdsSheet ? Math.max(0, promoAdsSheet.getLastRow() - 1) : 0,
       settingsExist: settingsSheet ? true : false,
       lastUpdated: new Date().toLocaleString('id-ID')
     }
@@ -786,7 +936,8 @@ function initializeSheets() {
     const settingsSheet = ss.insertSheet(SHEETS.SETTINGS);
     settingsSheet.appendRow([
       'ID', 'Google Sheet ID', 'No WhatsApp Admin', 'Email Toko', 
-      'Nama Toko', 'Deskripsi Toko', 'Notifikasi Aktif', 'Tanggal Update'
+      'Nama Toko', 'Deskripsi Toko', 'Notifikasi Aktif', 
+      'Mode Maintenance', 'Text Pengumuman', 'Pengumuman Aktif', 'Tanggal Update'
     ]);
   }
   
@@ -799,7 +950,14 @@ function initializeSheets() {
     ]);
   }
   
-  return 'Sheets initialized: Produk, Pembeli, Logs, Pengaturan, Kode Promo';
+  if (!ss.getSheetByName(SHEETS.PROMO_ADS)) {
+    const promoAdsSheet = ss.insertSheet(SHEETS.PROMO_ADS);
+    promoAdsSheet.appendRow([
+      'ID', 'URL Gambar', 'Judul', 'Deskripsi', 'URL Link', 'Aktif', 'Tanggal Dibuat'
+    ]);
+  }
+  
+  return 'Sheets initialized: Produk, Pembeli, Logs, Pengaturan, Kode Promo, Iklan Promo';
 }
 
 function testConnection() {
@@ -810,6 +968,7 @@ function testConnection() {
     const logsSheet = ss.getSheetByName(SHEETS.LOGS);
     const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
     const promoSheet = ss.getSheetByName(SHEETS.PROMO_CODES);
+    const promoAdsSheet = ss.getSheetByName(SHEETS.PROMO_ADS);
     
     return sendResponse({
       success: true,
@@ -820,11 +979,13 @@ function testConnection() {
         Pembeli: buyersSheet ? 'ready' : 'not found',
         Logs: logsSheet ? 'ready' : 'not found',
         Pengaturan: settingsSheet ? 'ready' : 'not found',
-        'Kode Promo': promoSheet ? 'ready' : 'not found'
+        'Kode Promo': promoSheet ? 'ready' : 'not found',
+        'Iklan Promo': promoAdsSheet ? 'ready' : 'not found'
       },
       productsCount: productsSheet ? productsSheet.getLastRow() - 1 : 0,
       buyersCount: buyersSheet ? buyersSheet.getLastRow() - 1 : 0,
-      promoCodesCount: promoSheet ? promoSheet.getLastRow() - 1 : 0
+      promoCodesCount: promoSheet ? promoSheet.getLastRow() - 1 : 0,
+      promoAdsCount: promoAdsSheet ? promoAdsSheet.getLastRow() - 1 : 0
     });
   } catch (error) {
     return sendResponse({
