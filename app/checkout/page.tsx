@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatPrice, calculateExpiryDate } from '@/lib/googleSheets'
+import { formatPrice } from '@/lib/googleSheets'
 
 interface CheckoutData {
   productId: string
@@ -16,97 +16,11 @@ interface CheckoutData {
   buyerPhone: string
 }
 
-interface ToastProps {
-  message: string
-  type: 'success' | 'error' | 'warning'
-  onClose: () => void
-}
-
-interface PaymentMethod {
-  id: string
-  name: string
-  icon: string
-  category: string
-}
-
-// Full list of DOKU payment methods
-const PAYMENT_METHODS: PaymentMethod[] = [
-  // Virtual Account - Bank
-  { id: 'VIRTUAL_ACCOUNT_BCA', name: 'Bank BCA', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_BRI', name: 'Bank BRI', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_MANDIRI', name: 'Bank Mandiri', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_BSI', name: 'Bank BSI', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_BNI', name: 'Bank BNI', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_PERMATA', name: 'Bank Permata', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_DANAMON', name: 'Bank Danamon', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_CIMB', name: 'Bank CIMB', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_MAYBANK', name: 'Bank Maybank', icon: '🏦', category: 'Virtual Account' },
-  { id: 'VIRTUAL_ACCOUNT_BTN', name: 'Bank BTN', icon: '🏦', category: 'Virtual Account' },
-  
-  // E-Wallet
-  { id: 'E_WALLET_DANA', name: 'DANA', icon: '💰', category: 'E-Wallet' },
-  { id: 'E_WALLET_OVO', name: 'OVO', icon: '💰', category: 'E-Wallet' },
-  { id: 'E_WALLET_SHOPEEPAY', name: 'ShopeePay', icon: '🛒', category: 'E-Wallet' },
-  { id: 'E_WALLET_LINKAJA', name: 'LinkAja', icon: '🔗', category: 'E-Wallet' },
-  
-  // QRIS
-  { id: 'QRIS', name: 'QRIS', icon: '📱', category: 'QRIS' },
-  
-  // Credit Card
-  { id: 'CREDIT_CARD', name: 'Kartu Kredit', icon: '💳', category: 'Kartu Kredit' },
-  
-  // Direct Debit
-  { id: 'DIRECT_DEBIT_BRI', name: 'Direct Debit BRI', icon: '🏦', category: 'Direct Debit' },
-  
-  // Retail
-  { id: 'RETAIL_ALFAMART', name: 'Alfamart', icon: '🏪', category: 'Retail' },
-  { id: 'RETAIL_INDOMARET', name: 'Indomaret', icon: '🏪', category: 'Retail' },
-  
-  // Paylater
-  { id: 'PAYLATER_AKULAKU', name: 'Akulaku', icon: '📊', category: 'Paylater' },
-  { id: 'PAYLATER_KREDIVO', name: 'Kredivo', icon: '📊', category: 'Paylater' },
-  { id: 'PAYLATER_INDODANA', name: 'Indodana', icon: '📊', category: 'Paylater' },
-  
-  // Others
-  { id: 'DIRECT_TRANSFER_BCA', name: 'Direct Transfer BCA', icon: '💸', category: 'Transfer' },
-  { id: 'REKBER_BCA', name: 'REKBER BCA', icon: '🤝', category: 'Escrow' },
-]
-
-function Toast({ message, type, onClose }: ToastProps) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 4000)
-    return () => clearTimeout(timer)
-  }, [onClose])
-
-  const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-amber-500'
-  
-  return (
-    <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} text-white`}>
-      <div className="flex items-center gap-3">
-        <span className="text-xl">
-          {type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠️'}
-        </span>
-        <p className="font-medium">{message}</p>
-        <button onClick={onClose} className="ml-4 text-white/80 hover:text-white">
-          ✕
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function CheckoutPage() {
   const router = useRouter()
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [savedToSheet, setSavedToSheet] = useState(false)
-  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
-  const [processingPayment, setProcessingPayment] = useState(false)
-  const [paymentLink, setPaymentLink] = useState<string | null>(null)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [paymentStep, setPaymentStep] = useState<'select' | 'processing' | 'done'>('select')
 
   useEffect(() => {
     const data = sessionStorage.getItem('checkoutData')
@@ -114,377 +28,183 @@ export default function CheckoutPage() {
       router.push('/')
       return
     }
-    const parsedData = JSON.parse(data)
-    setCheckoutData(parsedData)
+    setCheckoutData(JSON.parse(data))
     setLoading(false)
   }, [router])
 
-  const saveBuyerData = async (showLoading = true) => {
-    if (savedToSheet || !checkoutData) return
-    
-    if (showLoading) setSaving(true)
-    try {
-      const startDate = new Date().toISOString().split('T')[0]
-      const endDate = calculateExpiryDate(checkoutData.productDuration).toISOString().split('T')[0]
-
-      const response = await fetch('/api/buyers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-        },
-        body: JSON.stringify({
-          name: checkoutData.buyerName,
-          phone: checkoutData.buyerPhone,
-          product: checkoutData.productName,
-          duration: checkoutData.productDuration,
-          startDate,
-          endDate,
-          paymentMethod: 'DOKU',
-          paymentStatus: 'pending',
-          uniqueCode: checkoutData.uniqueCode,
-        }),
-      })
-
-      const result = await response.json()
-      
-      if (result.success) {
-        setSavedToSheet(true)
-        showToast('Data berhasil disimpan! Silakan pilih metode pembayaran.', 'success')
-      }
-    } catch (error) {
-      console.error('[Checkout] Error saving buyer data:', error)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  useEffect(() => {
-    if (checkoutData && !savedToSheet && !saving) {
-      saveBuyerData()
-    }
-  }, [checkoutData])
-
-  const handleCreatePayment = async () => {
+  const handlePayWithDoku = () => {
     if (!checkoutData) return
-
-    if (!selectedPaymentMethod) {
-      showToast('Silakan pilih metode pembayaran terlebih dahulu!', 'warning')
-      return
-    }
-
-    if (!savedToSheet) {
-      await saveBuyerData()
-    }
-
-    setProcessingPayment(true)
     
-    try {
-      const orderId = `LANGGOKU_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-        },
-        body: JSON.stringify({
-          orderId,
-          amount: checkoutData.finalPrice,
-          buyerName: checkoutData.buyerName,
-          buyerPhone: checkoutData.buyerPhone,
-          productName: checkoutData.productName,
-          uniqueCode: checkoutData.uniqueCode,
-          paymentMethod: selectedPaymentMethod,
-        }),
-      })
-
-      const result = await response.json()
-      console.log('[Checkout] Payment result:', result)
-      
-      if (result.success && result.data.paymentLink) {
-        setPaymentLink(result.data.paymentLink)
-        showToast(result.message || `Pembayaran via ${selectedPaymentMethod} berhasil dibuat!`, 'success')
-      } else {
-        showToast(result.message || 'Gagal membuat link pembayaran. Silakan coba lagi.', 'error')
-      }
-    } catch (error) {
-      console.error('[Checkout] Error creating payment:', error)
-      showToast('Terjadi kesalahan. Silakan coba lagi.', 'error')
-    } finally {
-      setProcessingPayment(false)
-    }
-  }
-
-  const handleConfirmPayment = async () => {
-    if (!checkoutData) return
-
-    if (!confirm('Apakah Anda SUDAH MEMBAYAR melalui DOKU? Pastikan nominal yang ditransfer sudah benar (termasuk kode unik).')) {
-      return
-    }
-
-    setPaymentConfirmed(true)
-    showToast('Konfirmasi pembayaran diterima! Tim admin akan memverifikasi pembayaran Anda.', 'success')
+    // Direct link to DOKU sandbox payment simulator
+    const dokuUrl = `https://sandbox.doku.com/simulator/merchant/creditcard/initiate`
+    
+    // Open in new tab
+    window.open(dokuUrl, '_blank')
+    
+    setPaymentStep('done')
   }
 
   const handleCopyCode = () => {
     if (checkoutData?.uniqueCode) {
       navigator.clipboard.writeText(checkoutData.uniqueCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     }
   }
 
   const handleWhatsAppConfirmation = () => {
     if (!checkoutData) return
 
-    const methodName = PAYMENT_METHODS.find(m => m.id === selectedPaymentMethod)?.name || 'DOKU'
-    
-    const message = `Halo Admin Langgoku, saya sudah melakukan pembayaran melalui DOKU:
+    const message = `Halo Admin Langgoku, saya ingin membeli:
 
 📦 Produk: ${checkoutData.productName}
 👤 Nama: ${checkoutData.buyerName}
 📱 No. WhatsApp: ${checkoutData.buyerPhone}
-💰 Kode Pembayaran: ${checkoutData.uniqueCode}
 💵 Total: ${formatPrice(checkoutData.finalPrice)}
-🏧 Metode: ${methodName}
+💰 Kode Pembayaran: ${checkoutData.uniqueCode}
 
-Mohon dicek dan diverifikasi. Terima kasih!`
+Saya akan membayar melalui DOKU. Mohon infonya!`
     
-    const encodedMessage = encodeURIComponent(message)
-    const whatsappUrl = `https://wa.me/${checkoutData.buyerPhone.replace(/\D/g, '')}?text=${encodedMessage}`
-    
-    window.open(whatsappUrl, '_blank')
+    window.open(`https://wa.me/${checkoutData.buyerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank')
   }
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type })
-  }
-
-  // Group payment methods by category
-  const groupedMethods = PAYMENT_METHODS.reduce((acc, method) => {
-    if (!acc[method.category]) acc[method.category] = []
-    acc[method.category].push(method)
-    return acc
-  }, {} as Record<string, PaymentMethod[]>)
 
   if (loading || !checkoutData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-blue-600 font-semibold">Memuat data pembayaran...</p>
+          <div className="animate-spin w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
-        />
-      )}
-
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white py-16">
-        <div className="container-custom">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-black mb-4">Checkout</h1>
-            <p className="text-xl text-purple-100">Pembayaran via DOKU Payment Gateway</p>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white py-12">
+        <div className="container mx-auto px-4">
+          <h1 className="text-3xl font-bold">Checkout - Pembayaran DOKU</h1>
         </div>
       </div>
 
-      <div className="container-custom py-16">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-6 mb-8">
-            <h3 className="font-bold text-amber-900 text-lg mb-3 flex items-center gap-2">
-              ⚠️ Peringatan Penting - Cegah Penipu!
-            </h3>
-            <ul className="text-amber-800 text-sm space-y-2">
-              <li>• <strong>JANGAN</strong> klik "Konfirmasi Pembayaran" jika Anda <strong>BELUM</strong> membayar</li>
-              <li>• Pastikan nominal yang ditransfer sudah <strong>BENAR</strong> (termasuk kode unik)</li>
-              <li>• Simpan bukti pembayaran sebagai verifikasi</li>
-              <li>• Admin akan memverifikasi pembayaran sebelum mengirim akun</li>
-            </ul>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+          
+          {/* Order Summary */}
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold mb-4">Ringkasan Pesanan</h2>
+            
+            <div className="space-y-4">
+              <div className="bg-purple-50 p-4 rounded-xl">
+                <p className="text-sm text-gray-600">Produk</p>
+                <p className="text-xl font-bold">{checkoutData.productName}</p>
+                <p className="text-gray-600">{checkoutData.productDuration}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-sm text-gray-600">Nama</p>
+                  <p className="font-semibold">{checkoutData.buyerName}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-sm text-gray-600">WhatsApp</p>
+                  <p className="font-semibold">{checkoutData.buyerPhone}</p>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 p-4 rounded-xl border-2 border-amber-200">
+                <p className="text-sm font-semibold text-amber-800">Kode Pembayaran (+ ke harga)</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-2xl font-bold text-amber-700">{checkoutData.uniqueCode}</span>
+                  <button onClick={handleCopyCode} className="text-amber-600">📋</button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold">Total Bayar</span>
+                <span className="text-2xl font-bold text-purple-600">{formatPrice(checkoutData.finalPrice)}</span>
+              </div>
+            </div>
           </div>
 
-          {saving && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-center gap-3">
-              <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-              <span className="text-blue-700 font-medium">Menyimpan data...</span>
-            </div>
-          )}
-          {savedToSheet && !saving && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center gap-3">
-              <span className="text-green-600 text-xl">✓</span>
-              <span className="text-green-700 font-medium">Data pembeli tersimpan - Pilih metode pembayaran dan lakukan pembayaran</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="space-y-8">
-              <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Ringkasan Pesanan</h2>
-                <div className="space-y-4">
-                  <div className="bg-purple-50 p-4 rounded-xl">
-                    <p className="text-sm text-gray-600">Produk</p>
-                    <p className="text-xl font-bold text-gray-900">{checkoutData.productName}</p>
-                    <p className="text-gray-600">{checkoutData.productDuration}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-green-50 p-4 rounded-xl">
-                      <p className="text-sm text-gray-600">Nama</p>
-                      <p className="font-semibold">{checkoutData.buyerName}</p>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-xl">
-                      <p className="text-sm text-gray-600">WhatsApp</p>
-                      <p className="font-semibold">{checkoutData.buyerPhone}</p>
-                    </div>
-                  </div>
-                  <div className="bg-amber-50 p-4 rounded-xl border-2 border-amber-200">
-                    <p className="text-sm font-semibold text-amber-800 mb-2">Kode Pembayaran</p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={checkoutData.uniqueCode}
-                        readOnly
-                        className="flex-1 bg-white border-2 border-amber-300 rounded-lg px-3 py-2 font-bold text-xl text-center"
-                      />
-                      <button
-                        onClick={handleCopyCode}
-                        className="px-3 py-2 bg-amber-500 text-white rounded-lg"
-                      >
-                        {copied ? '✓' : '📋'}
-                      </button>
-                    </div>
-                  </div>
+          {/* Payment Section */}
+          <div className="space-y-6">
+            
+            {/* DOKU Payment Box */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-4xl">💳</span>
                 </div>
+                <h2 className="text-xl font-bold">Bayar dengan DOKU</h2>
+                <p className="text-gray-600 text-sm">Pilih metode pembayaran di simulator DOKU</p>
               </div>
 
-              <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Total Pembayaran</h3>
-                <div className="text-3xl font-black text-purple-600">
-                  {formatPrice(checkoutData.finalPrice)}
-                </div>
-                <p className="text-sm text-gray-500 mt-2">Termasuk kode unik</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Pilih Metode Pembayaran</h2>
-                
-                {Object.entries(groupedMethods).map(([category, methods]) => (
-                  <div key={category} className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase">{category}</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {methods.map((method) => (
-                        <button
-                          key={method.id}
-                          type="button"
-                          onClick={() => {
-                            console.log('[Payment] Selected:', method.id)
-                            setSelectedPaymentMethod(method.id)
-                          }}
-                          disabled={paymentLink !== null || processingPayment}
-                          className={`p-3 rounded-xl border-2 transition-all duration-200 text-left flex items-center gap-2 ${
-                            selectedPaymentMethod === method.id
-                              ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300'
-                              : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
-                          } ${paymentLink || processingPayment ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <span className="text-xl">{method.icon}</span>
-                          <span className="font-medium text-sm">{method.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
+              {paymentStep === 'select' && (
                 <button
-                  type="button"
-                  onClick={handleCreatePayment}
-                  disabled={saving || processingPayment || !savedToSheet || !selectedPaymentMethod}
-                  className={`w-full py-4 px-6 rounded-2xl transition-all duration-300 font-bold text-lg mt-4 ${
-                    saving || processingPayment || !savedToSheet || !selectedPaymentMethod
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700'
-                  }`}
+                  onClick={handlePayWithDoku}
+                  className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all transform hover:scale-105"
                 >
-                  {processingPayment ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="animate-spin">⏳</span> Membuat Pembayaran...
-                    </span>
-                  ) : saving ? (
-                    'Menyimpan...'
-                  ) : !selectedPaymentMethod ? (
-                    'Pilih Metode Pembayaran'
-                  ) : (
-                    '💳 Bayar Sekarang'
-                  )}
-                </button>
-
-                {paymentLink && (
-                  <div className="mt-6 space-y-3">
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                      <p className="text-green-700 font-medium">✓ Link pembayaran berhasil dibuat!</p>
-                    </div>
-                    <a
-                      href={paymentLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full py-4 px-6 rounded-2xl bg-green-500 text-white text-center font-bold hover:bg-green-600"
-                    >
-                      🔗 Buka Halaman Pembayaran DOKU
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentLink(null)
-                        setSelectedPaymentMethod(null)
-                      }}
-                      className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50"
-                    >
-                      Pilih Metode Lain
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {!paymentConfirmed ? (
-                <button
-                  type="button"
-                  onClick={handleConfirmPayment}
-                  disabled={!savedToSheet || !paymentLink}
-                  className={`w-full py-4 px-6 rounded-2xl transition-all duration-300 font-bold text-lg ${
-                    !savedToSheet || !paymentLink
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-amber-500 text-white hover:bg-amber-600'
-                  }`}
-                >
-                  ✓ Konfirmasi Pembayaran
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleWhatsAppConfirmation}
-                  className="w-full py-4 px-6 rounded-2xl bg-green-500 text-white font-bold text-lg hover:bg-green-600"
-                >
-                  💬 Kirim Bukti ke WhatsApp
+                  🔗 Buka Simulator Pembayaran DOKU
                 </button>
               )}
 
-              <Link
-                href="/"
-                className="block text-center text-gray-600 hover:text-gray-900"
-              >
-                ← Kembali ke Toko
-              </Link>
+              {paymentStep === 'processing' && (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-gray-600">Memproses pembayaran...</p>
+                </div>
+              )}
+
+              {paymentStep === 'done' && (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                    <p className="text-green-700 font-medium">✓ Simulator DOKU dibuka!</p>
+                    <p className="text-sm text-green-600">Lanjutkan pembayaran di tab baru</p>
+                  </div>
+                  
+                  <button
+                    onClick={handlePayWithDoku}
+                    className="w-full py-3 border-2 border-purple-500 text-purple-600 font-bold rounded-xl hover:bg-purple-50"
+                  >
+                    🔄 Buka Ulang Simulator
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Payment Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="font-bold text-blue-900 mb-3">Cara Pembayaran:</h3>
+              <ol className="text-sm text-blue-800 space-y-2">
+                <li>1. Klik tombol "Buka Simulator Pembayaran DOKU"</li>
+                <li>2. Di halaman DOKU, pilih metode pembayaran:</li>
+                <li className="ml-4">• Virtual Account (BCA, BRI, Mandiri, dll)</li>
+                <li className="ml-4">• E-Wallet (DANA, OVO, ShopeePay)</li>
+                <li className="ml-4">• QRIS</li>
+                <li className="ml-4">• Kartu Kredit</li>
+                <li className="ml-4">• Alfamart/Indomaret</li>
+                <li>3. Ikuti instruksi pembayaran</li>
+                <li>4. Simpan bukti transaksi</li>
+                <li>5. Klik tombol WhatsApp di bawah untuk konfirmasi</li>
+              </ol>
+            </div>
+
+            {/* WhatsApp Confirmation */}
+            <button
+              onClick={handleWhatsAppConfirmation}
+              className="w-full py-4 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-5.031 1.378c-3.055 2.364-3.905 6.75-1.89 10.525 1.891 3.368 5.853 4.795 9.797 3.488 3.368-1.079 5.82-4.15 5.428-7.418-.167-1.334-1.01-2.502-2.149-3.162-1.147-.medalist-2.295-1.023-3.958-.645z"/>
+              </svg>
+              Hubungi Admin via WhatsApp
+            </button>
+
+            <Link href="/" className="block text-center text-gray-600 hover:text-gray-900">
+              ← Kembali ke Toko
+            </Link>
           </div>
         </div>
       </div>
