@@ -44,8 +44,28 @@ h1 {
   @apply font-medium text-4xl md:text-5xl tracking-normal text-gray-950 leading-tight;
 }
 
+/* h1 with dark background - use white text */
+h1.text-white,
+.bg-dark h1,
+.bg-gray-900 h1,
+.bg-slate-900 h1,
+.bg-gradient-to-br h1,
+.bg-gradient-to-r h1 {
+  @apply text-white;
+}
+
 h2 { 
   @apply font-medium text-3xl md:text-4xl tracking-normal text-gray-900 leading-snug;
+}
+
+/* h2 with dark background - use white text */
+h2.text-white,
+.bg-dark h2,
+.bg-gray-900 h2,
+.bg-slate-900 h2,
+.bg-gradient-to-br h2,
+.bg-gradient-to-r h2 {
+  @apply text-white;
 }
 
 h3 { 

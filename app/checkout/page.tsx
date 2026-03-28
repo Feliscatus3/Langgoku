@@ -199,7 +199,7 @@ Mohon info cara pembayarannya!`
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-12">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold">Checkout</h1>
+          <h1 className="text-3xl font-bold text-white">Checkout</h1>
           <p className="text-blue-200">Pesanan Anda di {getStoreName()}</p>
         </div>
       </div>
