@@ -6,6 +6,7 @@ import ProductGrid from '@/components/ProductGrid'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import EmptyState from '@/components/EmptyState'
 import TestimoniesSlider from '@/components/TestimoniesSlider'
+import AnnouncementSection from '@/components/AnnouncementSection'
 import Link from 'next/link'
 
 export default function Home() {
@@ -45,6 +46,9 @@ export default function Home() {
 
   return (
     <div className="bg-white">
+      {/* Announcement Section */}
+      <AnnouncementSection />
+
       {/* Hero Section with Modern Design */}
       <div className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
         {/* Background Pattern */}
