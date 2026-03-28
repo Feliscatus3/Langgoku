@@ -56,12 +56,17 @@ export default function AnnouncementPopup() {
         const activeAds = (promoData.data as PromoAd[]).filter(ad => ad.Aktif !== false)
         if (activeAds.length > 0) {
           setPromoAds(activeAds)
-          // Check if already shown today
+          // Check if already dismissed within 1 hour
           const promoDismissed = localStorage.getItem('promo_ad_dismissed')
-          const today = new Date().toDateString()
-          if (promoDismissed !== today) {
-            setShowPromoAd(true)
+          if (promoDismissed) {
+            const dismissTime = new Date(promoDismissed)
+            const now = new Date()
+            if (dismissTime > now) {
+              // Still within 1 hour, don't show
+              return
+            }
           }
+          setShowPromoAd(true)
         }
       }
     } catch (err) {
@@ -79,8 +84,10 @@ export default function AnnouncementPopup() {
 
   const closePromoAd = () => {
     setShowPromoAd(false)
-    // Remember for today
-    localStorage.setItem('promo_ad_dismissed', new Date().toDateString())
+    // Remember for 1 hour
+    const oneHourLater = new Date()
+    oneHourLater.setHours(oneHourLater.getHours() + 1)
+    localStorage.setItem('promo_ad_dismissed', oneHourLater.toISOString())
   }
 
   const nextPromo = () => {
@@ -160,34 +167,33 @@ export default function AnnouncementPopup() {
         </div>
       )}
 
-      {/* Promo Ad Popup */}
+      {/* Promo Ad Popup - Bottom position, not full screen */}
       {showPromoAd && promoAds.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+          {/* Backdrop for mobile */}
           <div 
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60"
             onClick={closePromoAd}
           ></div>
           
-          {/* Content */}
-          <div className="relative max-w-md w-full">
+          {/* Content - Slides up from bottom on mobile */}
+          <div className="relative bg-white rounded-t-2xl shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
             {/* Close button */}
             <button
               onClick={closePromoAd}
-              className="absolute -top-10 right-0 text-white hover:text-gray-300 flex items-center gap-2"
+              className="absolute top-3 right-3 z-10 bg-gray-100 hover:bg-gray-200 rounded-full p-1.5"
             >
-              <span className="text-sm">Tutup</span>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
             
-            {/* Image */}
+            {/* Image - Smaller aspect ratio for mobile */}
             <div 
-              className="relative bg-white rounded-2xl shadow-2xl overflow-hidden cursor-pointer hover:shadow-3xl transition-shadow"
+              className="relative cursor-pointer"
               onClick={handlePromoClick}
             >
-              <div className="aspect-[4/5] bg-gray-100 relative">
+              <div className="aspect-[16/9] bg-gray-100 relative">
                 {promoAds[currentPromoIndex]['URL Gambar'] ? (
                   <img 
                     src={promoAds[currentPromoIndex]['URL Gambar']}
@@ -205,7 +211,101 @@ export default function AnnouncementPopup() {
                   <>
                     <button
                       onClick={(e) => { e.stopPropagation(); prevPromo() }}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md"
+                    >
+                      <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); nextPromo() }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md"
+                    >
+                      <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+              
+              {/* Info */}
+              {(promoAds[currentPromoIndex].Judul || promoAds[currentPromoIndex].Deskripsi) && (
+                <div className="p-3 bg-white">
+                  {promoAds[currentPromoIndex].Judul && (
+                    <h3 className="font-bold text-gray-900 text-sm">{promoAds[currentPromoIndex].Judul}</h3>
+                  )}
+                  {promoAds[currentPromoIndex].Deskripsi && (
+                    <p className="text-xs text-gray-600 mt-1">{promoAds[currentPromoIndex].Deskripsi}</p>
+                  )}
+                </div>
+              )}
+              
+              {/* Dots indicator */}
+              {promoAds.length > 1 && (
+                <div className="flex justify-center gap-1.5 pb-2">
+                  {promoAds.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setCurrentPromoIndex(idx) }}
+                      className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                        idx === currentPromoIndex ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Promo Ad Popup - Center position for desktop */}
+      {showPromoAd && promoAds.length > 0 && (
+        <div className="hidden md:block fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={closePromoAd}
+          ></div>
+          
+          {/* Content */}
+          <div className="relative max-w-lg w-full">
+            {/* Close button */}
+            <button
+              onClick={closePromoAd}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 flex items-center gap-2"
+            >
+              <span className="text-sm">Tutup</span>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Image */}
+            <div 
+              className="relative bg-white rounded-2xl shadow-2xl overflow-hidden cursor-pointer hover:shadow-3xl transition-shadow"
+              onClick={handlePromoClick}
+            >
+              <div className="aspect-[4/3] bg-gray-100 relative">
+                {promoAds[currentPromoIndex]['URL Gambar'] ? (
+                  <img 
+                    src={promoAds[currentPromoIndex]['URL Gambar']}
+                    alt={promoAds[currentPromoIndex].Judul || 'Promo'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    Tidak ada gambar
+                  </div>
+                )}
+                
+                {/* Navigation arrows if multiple ads */}
+                {promoAds.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); prevPromo() }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg"
                     >
                       <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -213,7 +313,7 @@ export default function AnnouncementPopup() {
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); nextPromo() }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg"
                     >
                       <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

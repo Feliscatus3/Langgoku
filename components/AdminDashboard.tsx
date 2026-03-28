@@ -286,7 +286,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <div>
                 {/* Welcome Section */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white mb-8">
-                  <h2 className="text-3xl font-bold mb-2">{getGreeting()} 👋</h2>
+                  <h2 className="text-3xl font-bold mb-2 text-white">{getGreeting()} 👋</h2>
                   <p className="text-blue-100 text-lg">Selamat datang di panel admin {settings?.storeName || 'Langgoku'}</p>
                   <p className="text-blue-200 text-sm mt-2">{formatDate()}</p>
                 </div>
