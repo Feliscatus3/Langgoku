@@ -51,7 +51,7 @@ h1.text-white,
 .bg-slate-900 h1,
 .bg-gradient-to-br h1,
 .bg-gradient-to-r h1 {
-  @apply text-white;
+  color: white;
 }
 
 h2 { 
@@ -65,7 +65,7 @@ h2.text-white,
 .bg-slate-900 h2,
 .bg-gradient-to-br h2,
 .bg-gradient-to-r h2 {
-  @apply text-white;
+  color: white;
 }
 
 h3 { 
