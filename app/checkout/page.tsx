@@ -164,10 +164,12 @@ export default function CheckoutPage() {
     const promoInfo = promoApplied ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})` : ''
     const uniqueCodeNum = parseInt(checkoutData.uniqueCode) || 0
     
+    const productDuration = checkoutData.productDuration || 'Tidak ada durasi'
+    
     const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
 
 📦 Produk: ${checkoutData.productName}
-⏱️ Durasi: ${checkoutData.productDuration}
+⏱️ Durasi: ${productDuration}
 👤 Nama: ${checkoutData.buyerName}
 📱 WhatsApp: ${checkoutData.buyerPhone}
 💵 Harga Awal: ${formatPrice(checkoutData.originalPrice)}${promoInfo}
