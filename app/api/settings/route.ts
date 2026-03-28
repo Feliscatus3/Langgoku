@@ -51,7 +51,10 @@ export async function POST(request: NextRequest) {
       storeName, 
       storeDescription,
       defaultPaymentMethod,
-      notificationEnabled 
+      notificationEnabled,
+      maintenanceMode,
+      announcementText,
+      announcementEnabled
     } = body
 
     // Validate required fields
@@ -91,6 +94,9 @@ export async function POST(request: NextRequest) {
         storeDescription: storeDescription || '',
         defaultPaymentMethod: defaultPaymentMethod || 'QRIS',
         notificationEnabled: notificationEnabled !== false,
+        maintenanceMode: maintenanceMode === true,
+        announcementText: announcementText || '',
+        announcementEnabled: announcementEnabled === true,
       }),
       signal: AbortSignal.timeout(30000)
     })
