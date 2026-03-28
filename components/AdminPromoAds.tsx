@@ -12,14 +12,72 @@ interface PromoAd {
   'Tanggal Dibuat': string
 }
 
+// Toast component
+function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
+  return (
+    <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ${
+      type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+    }`}>
+      <div className="flex items-center gap-3">
+        <span className="text-xl">
+          {type === 'success' ? '✓' : '✕'}
+        </span>
+        <p className="font-medium">{message}</p>
+        <button onClick={onClose} className="ml-4 text-white/80 hover:text-white">
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Confirm Modal component
+function ConfirmModal({ title, message, confirmText, cancelText, type, onConfirm, onCancel }: {
+  title: string
+  message: string
+  confirmText: string
+  cancelText: string
+  type: 'delete'
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">{title}</h3>
+        <p className="text-gray-600 mb-6">{message}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-3 rounded-lg text-white font-medium transition-colors bg-red-500 hover:bg-red-600"
+          >
+            {confirmText}
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+          >
+            {cancelText}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPromoAds() {
   const [promoAds, setPromoAds] = useState<PromoAd[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingAd, setEditingAd] = useState<PromoAd | null>(null)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  } | null>(null)
 
   const [formData, setFormData] = useState({
     imageUrl: '',
@@ -50,8 +108,7 @@ export default function AdminPromoAds() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setError(null)
-    setSuccess(null)
+    setToast(null)
 
     try {
       const url = editingAd 
@@ -69,17 +126,17 @@ export default function AdminPromoAds() {
       const result = await response.json()
 
       if (result.success) {
-        setSuccess(editingAd ? 'Iklan promo berhasil diperbarui!' : 'Iklan promo berhasil ditambahkan!')
+        setToast({ message: editingAd ? 'Iklan promo berhasil diperbarui!' : 'Iklan promo berhasil ditambahkan!', type: 'success' })
         setShowAddForm(false)
         setEditingAd(null)
         resetForm()
         loadPromoAds()
-        setTimeout(() => setSuccess(null), 3000)
+        setTimeout(() => setToast(null), 3000)
       } else {
-        setError(result.message || 'Gagal menyimpan iklan promo')
+        setToast({ message: result.message || 'Gagal menyimpan iklan promo', type: 'error' })
       }
     } catch (err) {
-      setError('Terjadi kesalahan saat menyimpan')
+      setToast({ message: 'Terjadi kesalahan saat menyimpan', type: 'error' })
     } finally {
       setSaving(false)
     }
@@ -107,14 +164,14 @@ export default function AdminPromoAds() {
       const result = await response.json()
 
       if (result.success) {
-        setSuccess('Iklan promo berhasil dihapus!')
+        setToast({ message: 'Iklan promo berhasil dihapus!', type: 'success' })
         loadPromoAds()
-        setTimeout(() => setSuccess(null), 3000)
+        setTimeout(() => setToast(null), 3000)
       } else {
-        setError(result.message || 'Gagal menghapus iklan promo')
+        setToast({ message: result.message || 'Gagal menghapus iklan promo', type: 'error' })
       }
     } catch (err) {
-      setError('Terjadi kesalahan saat menghapus')
+      setToast({ message: 'Terjadi kesalahan saat menghapus', type: 'error' })
     }
   }
 
@@ -169,16 +226,13 @@ export default function AdminPromoAds() {
         </button>
       </div>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
-          ✓ {success}
-        </div>
-      )}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-          {error}
-        </div>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
       )}
 
       {/* Add/Edit Form */}
