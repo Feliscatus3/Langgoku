@@ -339,8 +339,8 @@ export default function AdminProductManager() {
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="card p-8 mb-8 shadow-lg border border-gray-200">
-          <h3 className="text-2xl font-bold text-gray-950 mb-6">
+        <div className="card p-4 md:p-8 mb-8 shadow-lg border border-gray-200">
+          <h3 className="text-xl md:text-2xl font-bold text-gray-950 mb-4 md:mb-6">
             {editingId ? 'Edit Produk' : 'Tambah Produk Baru'}
           </h3>
           <div className="space-y-4">
@@ -447,7 +447,7 @@ export default function AdminProductManager() {
 
       {/* Products List */}
       {products.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg border border-gray-200">
           <p className="text-gray-600 mb-4">Belum ada produk</p>
           <button
             onClick={() => setShowForm(true)}
@@ -457,11 +457,11 @@ export default function AdminProductManager() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {products.map(product => (
-            <div key={product.id} className="card p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div key={product.id} className="card p-4 md:p-6 shadow-sm hover:shadow-md transition-shadow">
               {product.image && (
-                <div className="w-full h-40 bg-gray-200 rounded-lg mb-4 overflow-hidden relative">
+                <div className="w-full h-32 md:h-40 bg-gray-200 rounded-lg mb-4 overflow-hidden relative">
                   <Image
                     src={product.image}
                     alt={product.name}
@@ -470,25 +470,25 @@ export default function AdminProductManager() {
                   />
                 </div>
               )}
-              <h3 className="font-bold text-lg text-gray-950 mb-2">{product.name}</h3>
-              <div className="space-y-2 mb-4 text-sm text-gray-600">
+              <h3 className="font-bold text-base md:text-lg text-gray-950 mb-2 truncate">{product.name}</h3>
+              <div className="space-y-1 md:space-y-2 mb-3 md:mb-4 text-xs md:text-sm text-gray-600">
                 <p>Harga: <span className="font-semibold text-gray-950">{formatPrice(product.price)}</span></p>
                 <p>Durasi: {product.duration}</p>
                 <p>Stok: {product.stock}</p>
               </div>
               {product.description && (
-                <p className="text-xs text-gray-600 mb-4 line-clamp-2">{product.description}</p>
+                <p className="text-xs text-gray-600 mb-3 md:mb-4 line-clamp-2">{product.description}</p>
               )}
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(product)}
-                  className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm font-medium transition-colors"
+                  className="flex-1 px-2 md:px-3 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs md:text-sm font-medium transition-colors"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(product.id, product.name)}
-                  className="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-medium transition-colors"
+                  className="flex-1 px-2 md:px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs md:text-sm font-medium transition-colors"
                 >
                   Hapus
                 </button>

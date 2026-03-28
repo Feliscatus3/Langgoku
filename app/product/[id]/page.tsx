@@ -65,6 +65,7 @@ export default function ProductDetail() {
     const checkoutData = {
       productId: product?.id,
       productName: product?.name,
+      productDuration: product?.duration,
       originalPrice: product?.price,
       uniqueCode,
       finalPrice,
