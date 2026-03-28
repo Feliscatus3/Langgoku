@@ -94,15 +94,6 @@ export default function MaintenancePage() {
           <p>Toko akan kembali online segera!</p>
         </div>
 
-        {/* Admin Link */}
-        <div className="mt-8 pt-8 border-t border-gray-800">
-          <a 
-            href="/admin"
-            className="text-gray-500 hover:text-gray-400 text-sm transition-colors"
-          >
-            ← Masuk ke Admin Panel
-          </a>
-        </div>
       </div>
     </div>
   )

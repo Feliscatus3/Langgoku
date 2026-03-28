@@ -49,7 +49,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
       <div className="max-w-md w-full space-y-8 card p-8 border border-gray-300 shadow-2xl">
         <div>
           <h2 className="text-4xl font-bold text-center text-gradient mb-3">
-            🔐 Admin Panel
+            Admin Panel
           </h2>
           <p className="text-center text-gray-700 font-medium">
             Masukkan kredensial admin Anda

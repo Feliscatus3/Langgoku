@@ -5,6 +5,7 @@ import AdminProductManager from './AdminProductManager'
 import AdminBuyerManager from './AdminBuyerManager'
 import AdminSettings from './AdminSettings'
 import AdminPromoCodes from './AdminPromoCodes'
+import AdminPromoAds from './AdminPromoAds'
 
 interface AdminDashboardProps {
   onLogout: () => void
@@ -33,7 +34,7 @@ interface Settings {
   storeEmail: string
 }
 
-type TabType = 'dashboard' | 'products' | 'buyers' | 'promo' | 'settings'
+type TabType = 'dashboard' | 'products' | 'buyers' | 'promo' | 'ads' | 'settings'
 
 export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard')
@@ -151,6 +152,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     { id: 'products', label: 'Produk', icon: '📦' },
     { id: 'buyers', label: 'Pembeli', icon: '👥' },
     { id: 'promo', label: 'Kode Promo', icon: '🎫' },
+    { id: 'ads', label: 'Iklan/Promo', icon: '📢' },
     { id: 'settings', label: 'Pengaturan', icon: '⚙️' },
   ]
 
@@ -252,25 +254,27 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen">
         {/* Top Header */}
-        <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="bg-gray-900 md:bg-white border-b border-gray-800 md:border-gray-200 sticky top-0 z-30">
           <div className="flex items-center p-4 md:p-6">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="md:hidden p-2 hover:bg-white/20 rounded-lg transition-colors"
+              aria-label="Toggle menu"
             >
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             <div className="flex-1 ml-4">
-              <h1 className="text-2xl font-medium text-gray-950">
+              <h1 className="text-xl md:text-2xl font-medium text-white md:text-gray-950">
                 {activeTab === 'dashboard' && 'Dashboard'}
                 {activeTab === 'products' && 'Manajemen Produk'}
                 {activeTab === 'buyers' && 'Manajemen Pembeli'}
                 {activeTab === 'promo' && 'Kode Promo'}
+                {activeTab === 'ads' && 'Iklan & Promo'}
                 {activeTab === 'settings' && 'Pengaturan Toko'}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">Kelola data toko Anda</p>
+              <p className="text-sm text-gray-400 md:text-gray-500 mt-1">Kelola data toko Anda</p>
             </div>
           </div>
         </div>
@@ -452,6 +456,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
             {activeTab === 'products' && <AdminProductManager />}
             {activeTab === 'buyers' && <AdminBuyerManager />}
             {activeTab === 'promo' && <AdminPromoCodes />}
+            {activeTab === 'ads' && <AdminPromoAds />}
             {activeTab === 'settings' && <AdminSettings />}
           </div>
         </div>
