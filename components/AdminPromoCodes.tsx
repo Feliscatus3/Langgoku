@@ -156,14 +156,14 @@ export default function AdminPromoCodes() {
   return (
     <div className="max-w-4xl">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-2xl md:text-3xl font-medium text-gray-950">Kode Promo</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-medium text-gray-950">Kode Promo</h2>
           <p className="text-gray-500 text-sm mt-1">Kelola kode promo dan diskon</p>
         </div>
         <button
           onClick={() => { setShowAddForm(true); setEditingPromo(null); resetForm() }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
         >
           + Tambah Kode Promo
         </button>
@@ -333,72 +333,74 @@ export default function AdminPromoCodes() {
 
       {/* Promo Codes Table */}
       {promoCodes.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 text-center">
           <p className="text-gray-500">Belum ada kode promo. Klik tombol "Tambah Kode Promo" untuk membuat.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Kode</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Diskon</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Min. Belanja</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Batas</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Kadaluarsa</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {promoCodes.map((promo) => (
-                <tr key={promo.ID} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-blue-600">{promo['Kode Promo']}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {promo['Tipe Diskon'] === 'percentage' 
-                      ? `${promo.Diskon}%`
-                      : `Rp ${promo.Diskon.toLocaleString('id-ID')}`}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    Rp {promo['Minimal Pembelian']?.toLocaleString('id-ID') || 0}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {promo['Batas Penggunaan'] > 0 
-                      ? `${promo['Penggunaan Saat Ini'] || 0}/${promo['Batas Penggunaan']}`
-                      : '∞'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {promo['Tanggal Kadaluarsa'] || '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      promo.Status === 'Aktif' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {promo.Status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleEdit(promo)}
-                      className="text-blue-600 hover:text-blue-800 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(promo.ID)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Hapus
-                    </button>
-                  </td>
+        <div className="w-full overflow-x-auto -mx-2 md:mx-0">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden min-w-[600px]">
+            <table className="w-full min-w-[600px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-gray-600">Kode</th>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-gray-600">Diskon</th>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-gray-600 hidden sm:table-cell">Min. Belanja</th>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-gray-600 hidden md:table-cell">Batas</th>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-gray-600">Kadaluarsa</th>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-gray-600">Status</th>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-right text-xs md:text-sm font-medium text-gray-600">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {promoCodes.map((promo) => (
+                  <tr key={promo.ID} className="hover:bg-gray-50">
+                    <td className="px-3 md:px-4 py-2 md:py-3">
+                      <span className="font-medium text-blue-600 text-xs md:text-sm">{promo['Kode Promo']}</span>
+                    </td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm">
+                      {promo['Tipe Diskon'] === 'percentage' 
+                        ? `${promo.Diskon}%`
+                        : `Rp ${promo.Diskon.toLocaleString('id-ID')}`}
+                    </td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm hidden sm:table-cell">
+                      Rp {promo['Minimal Pembelian']?.toLocaleString('id-ID') || 0}
+                    </td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm hidden md:table-cell">
+                      {promo['Batas Penggunaan'] > 0 
+                        ? `${promo['Penggunaan Saat Ini'] || 0}/${promo['Batas Penggunaan']}`
+                        : '∞'}
+                    </td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
+                      {promo['Tanggal Kadaluarsa'] ? new Date(promo['Tanggal Kadaluarsa']).toLocaleDateString('id-ID') : '-'}
+                    </td>
+                    <td className="px-3 md:px-4 py-2 md:py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        promo.Status === 'Aktif' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {promo.Status}
+                      </span>
+                    </td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-right">
+                      <button
+                        onClick={() => handleEdit(promo)}
+                        className="text-blue-600 hover:text-blue-800 mr-2 md:mr-3 text-xs md:text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(promo.ID)}
+                        className="text-red-600 hover:text-red-800 text-xs md:text-sm"
+                      >
+                        Hapus
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
