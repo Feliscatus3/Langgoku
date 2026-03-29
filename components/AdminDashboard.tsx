@@ -194,11 +194,11 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
   return (
     <div className="bg-white min-h-screen flex">
-      {/* Sidebar */}
+      {/* Sidebar - Full screen on mobile */}
       <aside
-        className={`fixed md:relative w-64 bg-gray-900 text-white transition-transform duration-300 z-20 h-screen flex flex-col ${
+        className={`fixed inset-y-0 left-0 w-64 bg-gray-900 text-white transition-transform duration-300 z-30 md:z-20 h-full flex flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0`}
+        } md:translate-x-0 md:relative`}
       >
         {/* Sidebar Header */}
         <div className="p-6 border-b border-gray-800">
@@ -280,8 +280,8 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 p-4 md:p-8 overflow-auto">
-          <div className="w-full">
+        <div className="flex-1 p-2 md:p-8 overflow-auto">
+          <div className="w-full max-w-full">
             {activeTab === 'dashboard' && (
               <div>
                 {/* Welcome Section */}
