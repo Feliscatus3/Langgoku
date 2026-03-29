@@ -313,23 +313,24 @@ export default function AdminProductManager() {
         />
       )}
 
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-gray-950 mb-1">Manajemen Produk</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-950 mb-1">Manajemen Produk</h2>
           <p className="text-gray-600 text-sm">Kelola catalog produk premium Anda</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full sm:w-auto gap-2 overflow-x-auto">
           <button
             onClick={handleRefresh}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap text-sm"
           >
-            <span>🔄</span>
-            Refresh
+            <span className="text-sm sm:text-base">🔄</span>
+            <span className="hidden sm:inline">Refresh</span>
+            <span className="sm:hidden">↻</span>
           </button>
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="btn-primary whitespace-nowrap"
+              className="btn-primary whitespace-nowrap text-sm px-3 sm:px-4 py-2"
             >
               + Tambah Produk
             </button>
