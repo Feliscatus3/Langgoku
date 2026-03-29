@@ -252,7 +252,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen">
+      <main className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* Top Header */}
         <div className="bg-gray-900 md:bg-white border-b border-gray-800 md:border-gray-200 sticky top-0 z-30">
           <div className="flex items-center p-4 md:p-6">

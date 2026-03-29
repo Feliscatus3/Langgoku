@@ -290,7 +290,7 @@ export default function AdminProductManager() {
   )
 
   return (
-    <div>
+    <div className="overflow-x-auto">
       {/* Toast Notification */}
       {toast && (
         <Toast 
