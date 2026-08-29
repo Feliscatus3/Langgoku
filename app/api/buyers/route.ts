@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, phone, product, duration, startDate, endDate } = body
+    const { name, phone, product, duration, startDate, endDate, variantId, variantName } = body
 
     // Validasi required fields
     if (!name || !phone || !product || !duration || !startDate) {
@@ -59,6 +59,8 @@ export async function POST(request: NextRequest) {
       duration,
       startDate,
       endDate: endDate || '',
+      variantId,
+      variantName,
     })
 
     if (!result.success) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGoogleSheetsData } from '@/lib/googleSheets'
+import { getGoogleSheetsData, getProductVariants } from '@/lib/googleSheets'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,10 +16,23 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Fetch variants for each product
+    const productsWithVariants = await Promise.all(
+      products.map(async (product) => {
+        const variants = await getProductVariants(product.id)
+        // Filter only active variants
+        const activeVariants = variants.filter((v: any) => v.status === 'active')
+        return {
+          ...product,
+          variants: activeVariants
+        }
+      })
+    )
+
     return NextResponse.json({
       success: true,
       message: 'Produk berhasil diambil',
-      data: products,
+      data: productsWithVariants,
     })
   } catch (error) {
     console.error('Error fetching products:', error)

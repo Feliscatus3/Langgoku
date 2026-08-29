@@ -14,6 +14,8 @@ interface CheckoutData {
   finalPrice: number
   buyerName: string
   buyerPhone: string
+  variantId?: string
+  variantName?: string
 }
 
 interface Settings {
@@ -164,11 +166,13 @@ export default function CheckoutPage() {
     const promoInfo = promoApplied ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})` : ''
     const uniqueCodeNum = parseInt(checkoutData.uniqueCode) || 0
     
-    const productDuration = checkoutData.productDuration || 'Tidak ada durasi'
+    const productDuration = checkoutData.productDuration || (checkoutData.variantName ? `${checkoutData.variantName} (${checkoutData.productDuration})` : 'Tidak ada durasi')
     
-    const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
+    const variantInfo = checkoutData.variantName ? `\n🎯 Varian: ${checkoutData.variantName}` : ''
 
-📦 Produk: ${checkoutData.productName}
+const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
+
+📦 Produk: ${checkoutData.productName}${variantInfo}
 ⏱️ Durasi: ${productDuration}
 👤 Nama: ${checkoutData.buyerName}
 📱 WhatsApp: ${checkoutData.buyerPhone}
@@ -215,11 +219,16 @@ Mohon info cara pembayarannya!`
             
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-xl">
-                  <p className="text-sm text-gray-600">Produk</p>
-                  <p className="text-xl font-bold">{checkoutData.productName}</p>
-                  <p className="text-gray-600">{checkoutData.productDuration}</p>
-                </div>
+<div className="bg-blue-50 p-4 rounded-xl">
+  <p className="text-sm text-gray-600">Produk</p>
+  <p className="text-xl font-bold">{checkoutData.productName}</p>
+  {checkoutData.variantName && (
+    <p className="text-sm text-purple-600 font-medium mt-1">
+      Varian: {checkoutData.variantName}
+    </p>
+  )}
+  <p className="text-gray-600">{productDuration}</p>
+</div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-xl">

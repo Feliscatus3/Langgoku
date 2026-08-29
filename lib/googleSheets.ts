@@ -11,13 +11,18 @@ const COLUMN_MAP: { [key: string]: string } = {
   'Deskripsi': 'description',
   'Tanggal Dibuat': 'createdAt',
   'Gambar URL': 'image',
+  // Product Variant columns
+  'Product ID': 'productId',
+  'Nama Varian': 'name',
+  'Durasi (Hari)': 'durationDays',
+  'Status': 'status',
+  'Urutan': 'sortOrder',
   // Buyer columns
   'Nama': 'name',
   'No WhatsApp': 'phone',
   'Produk': 'product',
   'Tanggal Mulai': 'startDate',
   'Tanggal Selesai': 'endDate',
-  'Status': 'status',
   'Sisa Hari': 'remainingDays',
   'Metode Pembayaran': 'paymentMethod',
   'No Admin WhatsApp': 'adminPhone',
@@ -172,6 +177,132 @@ export async function deleteProductFromGoogleSheets(id: string) {
   
   if (!data.success) {
     throw new Error(data.message || 'Failed to delete product')
+  }
+
+  return data
+}
+
+// Product Variant functions
+export async function getProductVariants(productId: string) {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      console.error('[GoogleSheets] URL not configured.')
+      return []
+    }
+
+    const url = `${APPS_SCRIPT_URL}?action=getProductVariants&productId=${encodeURIComponent(productId)}`
+    const response = await fetch(url, { 
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(30000)
+    })
+    
+    if (!response.ok) {
+      console.error('[GoogleSheets] HTTP Error:', response.status)
+      return []
+    }
+
+    const data = await response.json()
+    
+    if (!data.success) {
+      console.warn('[GoogleSheets] API Error:', data.message)
+      return []
+    }
+
+    const mappedData = (data.data || []).map((item: any) => mapColumnNames(item))
+    console.log('[GoogleSheets] Variants fetched:', mappedData.length)
+    return mappedData
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch variants error:', error)
+    return []
+  }
+}
+
+export async function addProductVariantToGoogleSheets(variant: {
+  productId: string
+  name: string
+  durationDays: number
+  price: number
+  status?: 'active' | 'inactive'
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'addProductVariant',
+      ...variant
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to add variant')
+  }
+
+  return data
+}
+
+export async function updateProductVariantInGoogleSheets(variant: {
+  id: string
+  name?: string
+  durationDays?: number
+  price?: number
+  status?: 'active' | 'inactive'
+  sortOrder?: number
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'updateProductVariant',
+      ...variant
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to update variant')
+  }
+
+  return data
+}
+
+export async function deleteProductVariantFromGoogleSheets(id: string) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'deleteProductVariant',
+      id
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to delete variant')
   }
 
   return data

@@ -121,6 +121,8 @@ export async function addBuyerToSheet(buyer: {
   duration: string
   startDate: string
   endDate: string
+  variantId?: string
+  variantName?: string
 }): Promise<AppsScriptResponse> {
   return callAppsScript('addBuyer', 'POST', buyer)
 }

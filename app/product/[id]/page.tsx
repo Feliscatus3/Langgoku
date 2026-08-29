@@ -7,6 +7,16 @@ import Link from 'next/link'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { formatPrice } from '@/lib/googleSheets'
 
+interface ProductVariant {
+  id: string
+  productId: string
+  name: string
+  durationDays: number
+  price: number
+  status: 'active' | 'inactive'
+  sortOrder: number
+}
+
 interface Product {
   id: string
   name: string
@@ -15,6 +25,7 @@ interface Product {
   stock: number
   image?: string
   description?: string
+  variants?: ProductVariant[]
 }
 
 export default function ProductDetail() {
@@ -26,6 +37,7 @@ export default function ProductDetail() {
   const [buyerName, setBuyerName] = useState('')
   const [buyerPhone, setBuyerPhone] = useState('')
   const [showCheckout, setShowCheckout] = useState(false)
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
 
   const fetchProduct = useCallback(async () => {
     try {
@@ -38,6 +50,10 @@ export default function ProductDetail() {
       }
 
       setProduct(data.data)
+      // Auto-select first active variant if available
+      if (data.data.variants && data.data.variants.length > 0) {
+        setSelectedVariant(data.data.variants[0])
+      }
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan')
@@ -57,20 +73,27 @@ export default function ProductDetail() {
       return
     }
 
+    // Use selected variant price if available, otherwise use product base price
+    const finalPrice = selectedVariant ? selectedVariant.price : (product?.price || 0)
+    const productDuration = selectedVariant ? `${selectedVariant.durationDays} Hari` : product?.duration
+
     // Generate unique code
     const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase()
-    const finalPrice = (product?.price || 0) + parseInt(uniqueCode.charCodeAt(0).toString())
+    const uniqueCodeNum = parseInt(uniqueCode.charCodeAt(0).toString())
+    const priceWithCode = finalPrice + uniqueCodeNum
 
     // Prepare checkout data
     const checkoutData = {
       productId: product?.id,
       productName: product?.name,
-      productDuration: product?.duration,
-      originalPrice: product?.price,
+      productDuration,
+      originalPrice: finalPrice,
       uniqueCode,
-      finalPrice,
+      finalPrice: priceWithCode,
       buyerName: buyerName.trim(),
       buyerPhone: buyerPhone.trim(),
+      variantId: selectedVariant?.id,
+      variantName: selectedVariant?.name,
     }
 
     // Store in session and redirect to checkout
@@ -145,7 +168,9 @@ export default function ProductDetail() {
               {/* Product Stats */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">{product.duration}</div>
+                  <div className="text-3xl font-bold text-blue-600 mb-2">
+                    {selectedVariant ? `${selectedVariant.durationDays} Hari` : product.duration}
+                  </div>
                   <p className="text-gray-600 font-medium">Durasi Aktif</p>
                 </div>
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 text-center">
@@ -166,6 +191,31 @@ export default function ProductDetail() {
                 </p>
               </div>
 
+              {/* Variant Selector */}
+              {product.variants && product.variants.length > 1 && (
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Pilih Masa Berlaku
+                  </label>
+                  <select
+                    value={selectedVariant?.id || ''}
+                    onChange={(e) => {
+                      const variantId = e.target.value
+                      const variant = product.variants?.find(v => v.id === variantId)
+                      setSelectedVariant(variant || null)
+                    }}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-medium bg-white"
+                  >
+                    {product.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name} — {formatPrice(variant.price)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">Harga akan berubah otomatis sesuai pilihan Anda</p>
+                </div>
+              )}
+
               {/* Price Section */}
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-8">
                 <div className="flex items-center gap-4 mb-4">
@@ -175,7 +225,7 @@ export default function ProductDetail() {
                   <div>
                     <p className="text-sm font-semibold text-amber-800">Harga Spesial</p>
                     <p className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600">
-                      {formatPrice(product.price)}
+                      {formatPrice(selectedVariant ? selectedVariant.price : product.price)}
                     </p>
                   </div>
                 </div>
