@@ -14,7 +14,9 @@ const COLUMN_MAP: { [key: string]: string } = {
   // Product Variant columns
   'Product ID': 'productId',
   'Nama Varian': 'name',
-  'Durasi (Hari)': 'durationDays',
+  'Durasi (Nilai)': 'durationValue',
+  'Durasi (Satuan)': 'durationUnit',
+  'Harga Varian': 'price',
   'Status': 'status',
   'Urutan': 'sortOrder',
   // Buyer columns
@@ -303,6 +305,387 @@ export async function deleteProductVariantFromGoogleSheets(id: string) {
   
   if (!data.success) {
     throw new Error(data.message || 'Failed to delete variant')
+  }
+
+  return data
+}
+
+// Variant Attribute functions
+export async function getVariantAttributes(productId: string) {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      console.error('[GoogleSheets] URL not configured.')
+      return []
+    }
+
+    const url = `${APPS_SCRIPT_URL}?action=getVariantAttributes&productId=${encodeURIComponent(productId)}`
+    const response = await fetch(url, { 
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(30000)
+    })
+    
+    if (!response.ok) {
+      console.error('[GoogleSheets] HTTP Error:', response.status)
+      return []
+    }
+
+    const data = await response.json()
+    
+    if (!data.success) {
+      console.warn('[GoogleSheets] API Error:', data.message)
+      return []
+    }
+
+    const mappedData = (data.data || []).map((item: any) => mapColumnNames(item))
+    console.log('[GoogleSheets] Variant attributes fetched:', mappedData.length)
+    return mappedData
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch variant attributes error:', error)
+    return []
+  }
+}
+
+export async function addVariantAttributeToGoogleSheets(attr: {
+  productId: string
+  name: string
+  status?: 'active' | 'inactive'
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'addVariantAttribute',
+      ...attr
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to add variant attribute')
+  }
+
+  return data
+}
+
+export async function updateVariantAttributeInGoogleSheets(attr: {
+  id: string
+  name?: string
+  sortOrder?: number
+  status?: 'active' | 'inactive'
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'updateVariantAttribute',
+      ...attr
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to update variant attribute')
+  }
+
+  return data
+}
+
+export async function deleteVariantAttributeFromGoogleSheets(id: string) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'deleteVariantAttribute',
+      id
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to delete variant attribute')
+  }
+
+  return data
+}
+
+// Attribute Option functions
+export async function getAttributeOptions(attributeId: string) {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      console.error('[GoogleSheets] URL not configured.')
+      return []
+    }
+
+    const url = `${APPS_SCRIPT_URL}?action=getAttributeOptions&attributeId=${encodeURIComponent(attributeId)}`
+    const response = await fetch(url, { 
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(30000)
+    })
+    
+    if (!response.ok) {
+      console.error('[GoogleSheets] HTTP Error:', response.status)
+      return []
+    }
+
+    const data = await response.json()
+    
+    if (!data.success) {
+      console.warn('[GoogleSheets] API Error:', data.message)
+      return []
+    }
+
+    const mappedData = (data.data || []).map((item: any) => mapColumnNames(item))
+    console.log('[GoogleSheets] Attribute options fetched:', mappedData.length)
+    return mappedData
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch attribute options error:', error)
+    return []
+  }
+}
+
+export async function addAttributeOptionToGoogleSheets(option: {
+  attributeId: string
+  name: string
+  status?: 'active' | 'inactive'
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'addAttributeOption',
+      ...option
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to add attribute option')
+  }
+
+  return data
+}
+
+export async function updateAttributeOptionInGoogleSheets(option: {
+  id: string
+  name?: string
+  sortOrder?: number
+  status?: 'active' | 'inactive'
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'updateAttributeOption',
+      ...option
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to update attribute option')
+  }
+
+  return data
+}
+
+export async function deleteAttributeOptionFromGoogleSheets(id: string) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'deleteAttributeOption',
+      id
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to delete attribute option')
+  }
+
+  return data
+}
+
+// Variant Combination functions
+export async function getVariantCombinations(productId: string) {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      console.error('[GoogleSheets] URL not configured.')
+      return []
+    }
+
+    const url = `${APPS_SCRIPT_URL}?action=getVariantCombinations&productId=${encodeURIComponent(productId)}`
+    const response = await fetch(url, { 
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(30000)
+    })
+    
+    if (!response.ok) {
+      console.error('[GoogleSheets] HTTP Error:', response.status)
+      return []
+    }
+
+    const data = await response.json()
+    
+    if (!data.success) {
+      console.warn('[GoogleSheets] API Error:', data.message)
+      return []
+    }
+
+    const mappedData = (data.data || []).map((item: any) => {
+      const mapped = mapColumnNames(item)
+      // Parse the options JSON
+      if (mapped.options) {
+        try {
+          mapped.options = JSON.parse(mapped.options)
+        } catch (e) {
+          mapped.options = {}
+        }
+      }
+      return mapped
+    })
+    console.log('[GoogleSheets] Variant combinations fetched:', mappedData.length)
+    return mappedData
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch variant combinations error:', error)
+    return []
+  }
+}
+
+export async function addVariantCombinationToGoogleSheets(combo: {
+  productId: string
+  price: number
+  status?: 'active' | 'inactive'
+  stock?: number
+  options: Record<string, string>
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'addVariantCombination',
+      ...combo
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to add variant combination')
+  }
+
+  return data
+}
+
+export async function updateVariantCombinationInGoogleSheets(combo: {
+  id: string
+  price?: number
+  status?: 'active' | 'inactive'
+  stock?: number
+  sortOrder?: number
+  options?: Record<string, string>
+}) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'updateVariantCombination',
+      ...combo
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to update variant combination')
+  }
+
+  return data
+}
+
+export async function deleteVariantCombinationFromGoogleSheets(id: string) {
+  if (!APPS_SCRIPT_URL) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
+  }
+
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'deleteVariantCombination',
+      id
+    }),
+    signal: AbortSignal.timeout(30000)
+  })
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to delete variant combination')
   }
 
   return data

@@ -11,6 +11,9 @@ const SPREADSHEET_ID = '1P7STjDhVEfCS8y55uWpYNE1nx54o6WEChuBMhR5psOE';
 const SHEETS = {
   PRODUCTS: 'Produk',
   PRODUCT_VARIANTS: 'Produk Varian',
+  VARIANT_ATTRIBUTES: 'Varian Atribut',
+  ATTRIBUTE_OPTIONS: 'Atribut Opsi',
+  VARIANT_COMBINATIONS: 'Varian Kombinasi',
   BUYERS: 'Pembeli',
   LOGS: 'Logs',
   SETTINGS: 'Pengaturan',
@@ -48,6 +51,30 @@ function doGet(e) {
         return getPromoAds();
       case 'testConnection':
         return testConnection();
+      case 'getVariantAttributes':
+        return getVariantAttributes(params.productId);
+      case 'addVariantAttribute':
+        return addVariantAttribute(params);
+      case 'updateVariantAttribute':
+        return updateVariantAttribute(params);
+      case 'deleteVariantAttribute':
+        return deleteVariantAttribute(params.id);
+      case 'getAttributeOptions':
+        return getAttributeOptions(params.attributeId);
+      case 'addAttributeOption':
+        return addAttributeOption(params);
+      case 'updateAttributeOption':
+        return updateAttributeOption(params);
+      case 'deleteAttributeOption':
+        return deleteAttributeOption(params.id);
+      case 'getVariantCombinations':
+        return getVariantCombinations(params.productId);
+      case 'addVariantCombination':
+        return addVariantCombination(params);
+      case 'updateVariantCombination':
+        return updateVariantCombination(params);
+      case 'deleteVariantCombination':
+        return deleteVariantCombination(params.id);
       default:
         return sendResponse({
           success: false,
@@ -135,6 +162,30 @@ function doPost(e) {
         return updateProductVariant(params);
       case 'deleteProductVariant':
         return deleteProductVariant(params.id);
+      case 'getVariantAttributes':
+        return getVariantAttributes(params.productId);
+      case 'addVariantAttribute':
+        return addVariantAttribute(params);
+      case 'updateVariantAttribute':
+        return updateVariantAttribute(params);
+      case 'deleteVariantAttribute':
+        return deleteVariantAttribute(params.id);
+      case 'getAttributeOptions':
+        return getAttributeOptions(params.attributeId);
+      case 'addAttributeOption':
+        return addAttributeOption(params);
+      case 'updateAttributeOption':
+        return updateAttributeOption(params);
+      case 'deleteAttributeOption':
+        return deleteAttributeOption(params.id);
+      case 'getVariantCombinations':
+        return getVariantCombinations(params.productId);
+      case 'addVariantCombination':
+        return addVariantCombination(params);
+      case 'updateVariantCombination':
+        return updateVariantCombination(params);
+      case 'deleteVariantCombination':
+        return deleteVariantCombination(params.id);
       default:
         return sendResponse({
           success: false,
@@ -317,7 +368,7 @@ function addProductVariant(variant) {
   let maxSortOrder = 0;
   for (let i = 1; i < data.length; i++) {
     if (data[i][1] === variant.productId) {
-      const sortOrder = parseNumber(data[i][6] || 0);
+      const sortOrder = parseNumber(data[i][7] || 0);
       if (sortOrder > maxSortOrder) maxSortOrder = sortOrder;
     }
   }
@@ -326,7 +377,8 @@ function addProductVariant(variant) {
     newId,
     variant.productId || '',
     variant.name || '',
-    parseNumber(variant.durationDays),
+    parseNumber(variant.durationValue),
+    variant.durationUnit || 'Hari',
     parseNumber(variant.price),
     variant.status || 'active',
     maxSortOrder + 1
@@ -359,10 +411,11 @@ function updateProductVariant(variant) {
     if (data[i][0] === variant.id) {
       const row = i + 1;
       if (variant.name !== undefined) sheet.getRange(row, 3).setValue(variant.name || '');
-      if (variant.durationDays !== undefined) sheet.getRange(row, 4).setValue(parseNumber(variant.durationDays));
-      if (variant.price !== undefined) sheet.getRange(row, 5).setValue(parseNumber(variant.price));
-      if (variant.status !== undefined) sheet.getRange(row, 6).setValue(variant.status || 'active');
-      if (variant.sortOrder !== undefined) sheet.getRange(row, 7).setValue(parseNumber(variant.sortOrder));
+      if (variant.durationValue !== undefined) sheet.getRange(row, 4).setValue(parseNumber(variant.durationValue));
+      if (variant.durationUnit !== undefined) sheet.getRange(row, 5).setValue(variant.durationUnit || 'Hari');
+      if (variant.price !== undefined) sheet.getRange(row, 6).setValue(parseNumber(variant.price));
+      if (variant.status !== undefined) sheet.getRange(row, 7).setValue(variant.status || 'active');
+      if (variant.sortOrder !== undefined) sheet.getRange(row, 8).setValue(parseNumber(variant.sortOrder));
       
       return sendResponse({ success: true, message: 'Varian berhasil diperbarui' });
     }
@@ -387,6 +440,353 @@ function deleteProductVariant(id) {
   }
   
   return sendResponse({ success: false, message: 'Varian tidak ditemukan' });
+}
+
+// ==============================
+// VARIANT ATTRIBUTE FUNCTIONS
+// ==============================
+
+function getVariantAttributes(productId) {
+  if (!productId) return sendResponse({ success: false, message: 'Product ID diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Atribut tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
+  const headers = data[0];
+  const attributes = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === productId) {
+      attributes.push(objectToData(headers, data[i]));
+    }
+  }
+  
+  attributes.sort((a, b) => parseNumber(a['Urutan'] || 0) - parseNumber(b['Urutan'] || 0));
+  
+  return sendResponse({ success: true, data: attributes, count: attributes.length });
+}
+
+function addVariantAttribute(attr) {
+  console.log('addVariantAttribute called with:', JSON.stringify(attr));
+  
+  if (!attr || !attr.productId) {
+    return sendResponse({ success: false, message: 'Product ID diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Atribut tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const newId = 'ATTR_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  const data = sheet.getDataRange().getValues();
+  let maxSortOrder = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === attr.productId) {
+      const sortOrder = parseNumber(data[i][3] || 0);
+      if (sortOrder > maxSortOrder) maxSortOrder = sortOrder;
+    }
+  }
+  
+  const rowData = [
+    newId,
+    attr.productId || '',
+    attr.name || '',
+    maxSortOrder + 1,
+    attr.status || 'active'
+  ];
+  
+  sheet.appendRow(rowData);
+  
+  console.log('Variant attribute added with ID:', newId);
+  
+  return sendResponse({
+    success: true,
+    message: 'Atribut berhasil ditambahkan',
+    data: { id: newId }
+  });
+}
+
+function updateVariantAttribute(attr) {
+  console.log('updateVariantAttribute called with:', JSON.stringify(attr));
+  
+  if (!attr || !attr.id) {
+    return sendResponse({ success: false, message: 'ID atribut diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Atribut tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === attr.id) {
+      const row = i + 1;
+      if (attr.name !== undefined) sheet.getRange(row, 3).setValue(attr.name || '');
+      if (attr.sortOrder !== undefined) sheet.getRange(row, 4).setValue(parseNumber(attr.sortOrder));
+      if (attr.status !== undefined) sheet.getRange(row, 5).setValue(attr.status || 'active');
+      
+      return sendResponse({ success: true, message: 'Atribut berhasil diperbarui' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Atribut tidak ditemukan' });
+}
+
+function deleteVariantAttribute(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID atribut diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Atribut tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return sendResponse({ success: true, message: 'Atribut berhasil dihapus' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Atribut tidak ditemukan' });
+}
+
+// ==============================
+// ATTRIBUTE OPTION FUNCTIONS
+// ==============================
+
+function getAttributeOptions(attributeId) {
+  if (!attributeId) return sendResponse({ success: false, message: 'Attribute ID diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Atribut Opsi tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
+  const headers = data[0];
+  const options = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === attributeId) {
+      options.push(objectToData(headers, data[i]));
+    }
+  }
+  
+  options.sort((a, b) => parseNumber(a['Urutan'] || 0) - parseNumber(b['Urutan'] || 0));
+  
+  return sendResponse({ success: true, data: options, count: options.length });
+}
+
+function addAttributeOption(option) {
+  console.log('addAttributeOption called with:', JSON.stringify(option));
+  
+  if (!option || !option.attributeId) {
+    return sendResponse({ success: false, message: 'Attribute ID diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Atribut Opsi tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const newId = 'OPT_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  const data = sheet.getDataRange().getValues();
+  let maxSortOrder = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === option.attributeId) {
+      const sortOrder = parseNumber(data[i][3] || 0);
+      if (sortOrder > maxSortOrder) maxSortOrder = sortOrder;
+    }
+  }
+  
+  const rowData = [
+    newId,
+    option.attributeId || '',
+    option.name || '',
+    maxSortOrder + 1,
+    option.status || 'active'
+  ];
+  
+  sheet.appendRow(rowData);
+  
+  console.log('Attribute option added with ID:', newId);
+  
+  return sendResponse({
+    success: true,
+    message: 'Opsi atribut berhasil ditambahkan',
+    data: { id: newId }
+  });
+}
+
+function updateAttributeOption(option) {
+  console.log('updateAttributeOption called with:', JSON.stringify(option));
+  
+  if (!option || !option.id) {
+    return sendResponse({ success: false, message: 'ID opsi diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Atribut Opsi tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === option.id) {
+      const row = i + 1;
+      if (option.name !== undefined) sheet.getRange(row, 3).setValue(option.name || '');
+      if (option.sortOrder !== undefined) sheet.getRange(row, 4).setValue(parseNumber(option.sortOrder));
+      if (option.status !== undefined) sheet.getRange(row, 5).setValue(option.status || 'active');
+      
+      return sendResponse({ success: true, message: 'Opsi atribut berhasil diperbarui' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Opsi atribut tidak ditemukan' });
+}
+
+function deleteAttributeOption(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID opsi diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Atribut Opsi tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return sendResponse({ success: true, message: 'Opsi atribut berhasil dihapus' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Opsi atribut tidak ditemukan' });
+}
+
+// ==============================
+// VARIANT COMBINATION FUNCTIONS
+// ==============================
+
+function getVariantCombinations(productId) {
+  if (!productId) return sendResponse({ success: false, message: 'Product ID diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_COMBINATIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Kombinasi tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return sendResponse({ success: true, data: [], count: 0 });
+  }
+  
+  const headers = data[0];
+  const combinations = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === productId) {
+      combinations.push(objectToData(headers, data[i]));
+    }
+  }
+  
+  combinations.sort((a, b) => parseNumber(a['Urutan'] || 0) - parseNumber(b['Urutan'] || 0));
+  
+  return sendResponse({ success: true, data: combinations, count: combinations.length });
+}
+
+function addVariantCombination(combo) {
+  console.log('addVariantCombination called with:', JSON.stringify(combo));
+  
+  if (!combo || !combo.productId) {
+    return sendResponse({ success: false, message: 'Product ID diperlukan' });
+  }
+  
+  if (!combo.options || Object.keys(combo.options).length === 0) {
+    return sendResponse({ success: false, message: 'Opsi kombinasi diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_COMBINATIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Kombinasi tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
+  
+  const newId = 'COMBO_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  const data = sheet.getDataRange().getValues();
+  let maxSortOrder = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === combo.productId) {
+      const sortOrder = parseNumber(data[i][5] || 0);
+      if (sortOrder > maxSortOrder) maxSortOrder = sortOrder;
+    }
+  }
+  
+  const rowData = [
+    newId,
+    combo.productId || '',
+    parseNumber(combo.price),
+    combo.status || 'active',
+    parseNumber(combo.stock || 0),
+    maxSortOrder + 1,
+    JSON.stringify(combo.options)
+  ];
+  
+  sheet.appendRow(rowData);
+  
+  console.log('Variant combination added with ID:', newId);
+  
+  return sendResponse({
+    success: true,
+    message: 'Kombinasi varian berhasil ditambahkan',
+    data: { id: newId }
+  });
+}
+
+function updateVariantCombination(combo) {
+  console.log('updateVariantCombination called with:', JSON.stringify(combo));
+  
+  if (!combo || !combo.id) {
+    return sendResponse({ success: false, message: 'ID kombinasi diperlukan' });
+  }
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_COMBINATIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Kombinasi tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === combo.id) {
+      const row = i + 1;
+      if (combo.price !== undefined) sheet.getRange(row, 3).setValue(parseNumber(combo.price));
+      if (combo.status !== undefined) sheet.getRange(row, 4).setValue(combo.status || 'active');
+      if (combo.stock !== undefined) sheet.getRange(row, 5).setValue(parseNumber(combo.stock));
+      if (combo.sortOrder !== undefined) sheet.getRange(row, 6).setValue(parseNumber(combo.sortOrder));
+      if (combo.options !== undefined) sheet.getRange(row, 7).setValue(JSON.stringify(combo.options));
+      
+      return sendResponse({ success: true, message: 'Kombinasi varian berhasil diperbarui' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Kombinasi varian tidak ditemukan' });
+}
+
+function deleteVariantCombination(id) {
+  if (!id) return sendResponse({ success: false, message: 'ID kombinasi diperlukan' });
+  
+  const sheet = getSheetByName(SHEETS.VARIANT_COMBINATIONS);
+  if (!sheet) return sendResponse({ success: false, message: 'Sheet Varian Kombinasi tidak ditemukan' });
+  
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return sendResponse({ success: true, message: 'Kombinasi varian berhasil dihapus' });
+    }
+  }
+  
+  return sendResponse({ success: false, message: 'Kombinasi varian tidak ditemukan' });
 }
 
 // ==============================
@@ -1091,7 +1491,28 @@ function initializeSheets() {
   if (!ss.getSheetByName(SHEETS.PRODUCT_VARIANTS)) {
     const variantsSheet = ss.insertSheet(SHEETS.PRODUCT_VARIANTS);
     variantsSheet.appendRow([
-      'ID', 'Product ID', 'Nama Varian', 'Durasi (Hari)', 'Harga', 'Status', 'Urutan'
+      'ID', 'Product ID', 'Nama Varian', 'Durasi (Nilai)', 'Durasi (Satuan)', 'Harga Varian', 'Status', 'Urutan'
+    ]);
+  }
+  
+  if (!ss.getSheetByName(SHEETS.VARIANT_ATTRIBUTES)) {
+    const attrSheet = ss.insertSheet(SHEETS.VARIANT_ATTRIBUTES);
+    attrSheet.appendRow([
+      'ID', 'Product ID', 'Nama Atribut', 'Urutan', 'Status'
+    ]);
+  }
+  
+  if (!ss.getSheetByName(SHEETS.ATTRIBUTE_OPTIONS)) {
+    const optionSheet = ss.insertSheet(SHEETS.ATTRIBUTE_OPTIONS);
+    optionSheet.appendRow([
+      'ID', 'Attribute ID', 'Nama Opsi', 'Urutan', 'Status'
+    ]);
+  }
+  
+  if (!ss.getSheetByName(SHEETS.VARIANT_COMBINATIONS)) {
+    const comboSheet = ss.insertSheet(SHEETS.VARIANT_COMBINATIONS);
+    comboSheet.appendRow([
+      'ID', 'Product ID', 'Harga', 'Status', 'Stok', 'Urutan', 'Opsi (JSON)'
     ]);
   }
   

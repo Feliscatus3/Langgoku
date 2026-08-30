@@ -1,5 +1,16 @@
 import ProductCard from './ProductCard'
 
+interface ProductVariant {
+  id: string
+  productId: string
+  name: string
+  durationValue: number
+  durationUnit: string
+  price: number
+  status: string
+  sortOrder: number
+}
+
 interface Product {
   id: string
   name: string
@@ -7,6 +18,7 @@ interface Product {
   duration: string
   stock: number
   image?: string
+  variants?: ProductVariant[]
 }
 
 interface ProductGridProps {

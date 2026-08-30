@@ -11,6 +11,14 @@ interface ProductCardProps {
     duration: string
     stock: number
     image?: string
+    variants?: Array<{
+      id: string
+      name: string
+      durationValue: number
+      durationUnit: string
+      price: number
+      status: string
+    }>
   }
 }
 
@@ -62,6 +70,15 @@ export default function ProductCard({ product }: ProductCardProps) {
               {formattedPrice}
             </span>
           </div>
+
+          {/* Variant Indicator */}
+          {product.variants && product.variants.length > 0 && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                {product.variants.filter(v => v.status === 'active').length} pilihan durasi
+              </span>
+            </div>
+          )}
 
           {/* Stock Status */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">

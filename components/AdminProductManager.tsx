@@ -9,7 +9,8 @@ interface ProductVariant {
   id: string
   productId: string
   name: string
-  durationDays: number
+  durationValue: number
+  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
   price: number
   status: 'active' | 'inactive'
   sortOrder: number
@@ -134,7 +135,8 @@ export default function AdminProductManager() {
   const [showVariants, setShowVariants] = useState<string | null>(null)
   const [variantFormData, setVariantFormData] = useState<Partial<ProductVariant>>({
     name: '',
-    durationDays: 1,
+    durationValue: 1,
+    durationUnit: 'Hari',
     price: 0,
     status: 'active'
   })
@@ -332,17 +334,17 @@ export default function AdminProductManager() {
     if (showVariants === productId) {
       setShowVariants(null)
       setEditingVariantId(null)
-      setVariantFormData({ name: '', durationDays: 1, price: 0, status: 'active' })
+      setVariantFormData({ name: '', durationValue: 1, durationUnit: 'Hari', price: 0, status: 'active' })
     } else {
       setShowVariants(productId)
       setEditingVariantId(null)
-      setVariantFormData({ name: '', durationDays: 1, price: 0, status: 'active' })
+      setVariantFormData({ name: '', durationValue: 1, durationUnit: 'Hari', price: 0, status: 'active' })
     }
   }
 
   const handleAddVariant = async () => {
     if (!showVariants) return
-    if (!variantFormData.name || !variantFormData.durationDays || !variantFormData.price) {
+    if (!variantFormData.name || !variantFormData.durationValue || !variantFormData.price) {
       showVariantToast('Harap isi semua field varian (*)', 'error')
       return
     }
@@ -354,7 +356,8 @@ export default function AdminProductManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: variantFormData.name,
-          durationDays: variantFormData.durationDays,
+          durationValue: variantFormData.durationValue,
+          durationUnit: variantFormData.durationUnit,
           price: variantFormData.price,
           status: variantFormData.status
         })
@@ -386,7 +389,8 @@ export default function AdminProductManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: variantFormData.name,
-          durationDays: variantFormData.durationDays,
+          durationValue: variantFormData.durationValue,
+          durationUnit: variantFormData.durationUnit,
           price: variantFormData.price,
           status: variantFormData.status
         })
@@ -448,7 +452,8 @@ export default function AdminProductManager() {
     setEditingVariantId(variant.id)
     setVariantFormData({
       name: variant.name,
-      durationDays: variant.durationDays,
+      durationValue: variant.durationValue,
+      durationUnit: variant.durationUnit,
       price: variant.price,
       status: variant.status
     })
@@ -458,7 +463,8 @@ export default function AdminProductManager() {
     setEditingVariantId(null)
     setVariantFormData({
       name: '',
-      durationDays: 1,
+      durationValue: 1,
+      durationUnit: 'Hari',
       price: 0,
       status: 'active'
     })
@@ -644,7 +650,7 @@ export default function AdminProductManager() {
             Tambah Produk Pertama
           </button>
         </div>
-) : (
+      ) : (
         <div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {products.map(product => (
@@ -698,153 +704,169 @@ export default function AdminProductManager() {
             ))}
           </div>
           {showVariants && (
-        <div className="card p-4 md:p-8 mb-8 shadow-lg border border-gray-200 mt-8" style={{ animation: 'slideDown 0.3s ease' }}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl md:text-2xl font-bold text-gray-950">Manajemen Varian</h3>
-            <button
-              onClick={() => handleShowVariants(showVariants)}
-              className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              ✕ Tutup
-            </button>
-          </div>
-          
-          {/* Variant Toast */}
-          {variantToast && (
-            <Toast 
-              message={variantToast.message} 
-              type={variantToast.type} 
-              onClose={() => setVariantToast(null)} 
-            />
-          )}
-
-          {/* Add/Edit Variant Form */}
-          <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-            <h4 className="text-lg font-semibold text-gray-950 mb-4">
-              {editingVariantId ? 'Edit Varian' : 'Tambah Varian Baru'}
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Varian *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: 1 Hari, 7 Hari, 30 Hari"
-                  value={variantFormData.name || ''}
-                  onChange={(e) => setVariantFormData({ ...variantFormData, name: e.target.value })}
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Durasi (Hari) *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="Contoh: 1, 7, 30"
-                  value={variantFormData.durationDays || 1}
-                  onChange={(e) => setVariantFormData({ ...variantFormData, durationDays: parseInt(e.target.value) || 1 })}
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Harga (IDR) *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Contoh: 1000"
-                  value={variantFormData.price || 0}
-                  onChange={(e) => setVariantFormData({ ...variantFormData, price: parseInt(e.target.value) || 0 })}
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={variantFormData.status || 'active'}
-                  onChange={(e) => setVariantFormData({ ...variantFormData, status: e.target.value as 'active' | 'inactive' })}
-                  className="input-field w-full"
-                >
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Nonaktif</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={editingVariantId ? handleUpdateVariant : handleAddVariant}
-                disabled={variantSubmitting}
-                className="btn-primary flex-1"
-              >
-                {variantSubmitting ? 'Menyimpan...' : (editingVariantId ? 'Update Varian' : 'Tambah Varian')}
-              </button>
-              {editingVariantId && (
+            <div className="card p-4 md:p-8 mb-8 shadow-lg border border-gray-200 mt-8" style={{ animation: 'slideDown 0.3s ease' }}>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl md:text-2xl font-bold text-gray-950">Manajemen Varian</h3>
                 <button
-                  onClick={resetVariantForm}
-                  disabled={variantSubmitting}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => handleShowVariants(showVariants)}
+                  className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  Batal
+                  ✕ Tutup
                 </button>
+              </div>
+              
+              {/* Variant Toast */}
+              {variantToast && (
+                <Toast 
+                  message={variantToast.message} 
+                  type={variantToast.type} 
+                  onClose={() => setVariantToast(null)} 
+                />
               )}
-            </div>
-          </div>
 
-          {/* Variants List */}
-          {variants.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-gray-600 mb-4">Belum ada varian untuk produk ini</p>
-              <p className="text-sm text-gray-500">Klik "Tambah Varian Baru" di atas untuk menambahkan pilihan masa berlaku</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <h4 className="text-lg font-semibold text-gray-950 mb-3">Daftar Varian</h4>
-              {variants.map((variant) => {
-              return (
-                <div key={variant.id} className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="font-semibold text-gray-950">{variant.name}</span>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        variant.status === 'active'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {variant.status === 'active' ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                      <span className="text-sm text-gray-500">Urutan: {variant.sortOrder}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span>Durasi: <span className="font-medium text-gray-950">{variant.durationDays} Hari</span></span>
-                      <span>Harga: <span className="font-semibold text-blue-600">{formatPrice(variant.price)}</span></span>
-                    </div>
+              {/* Add/Edit Variant Form */}
+              <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-950 mb-4">
+                  {editingVariantId ? 'Edit Varian' : 'Tambah Varian Baru'}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama Varian *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: 1 Jam, 1 Hari, 1 Bulan"
+                      value={variantFormData.name || ''}
+                      onChange={(e) => setVariantFormData({ ...variantFormData, name: e.target.value })}
+                      className="input-field w-full"
+                    />
                   </div>
-                  <div className="flex gap-2 sm:flex-nowrap">
-                    <button
-                      onClick={() => handleEditVariant(variant)}
-                      className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium transition-colors whitespace-nowrap"
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durasi (Nilai) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Contoh: 1, 3, 7"
+                      value={variantFormData.durationValue || 1}
+                      onChange={(e) => setVariantFormData({ ...variantFormData, durationValue: parseInt(e.target.value) || 1 })}
+                      className="input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Satuan *
+                    </label>
+                    <select
+                      value={variantFormData.durationUnit || 'Hari'}
+                      onChange={(e) => setVariantFormData({ ...variantFormData, durationUnit: e.target.value as 'Jam' | 'Hari' | 'Bulan' | 'Lifetime' })}
+                      className="input-field w-full"
                     >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteVariant(variant.id, variant.name)}
-                      className="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors whitespace-nowrap"
+                      <option value="Jam">Jam</option>
+                      <option value="Hari">Hari</option>
+                      <option value="Bulan">Bulan</option>
+                      <option value="Lifetime">Lifetime</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Harga (IDR) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Contoh: 1000"
+                      value={variantFormData.price || 0}
+                      onChange={(e) => setVariantFormData({ ...variantFormData, price: parseInt(e.target.value) || 0 })}
+                      className="input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={variantFormData.status || 'active'}
+                      onChange={(e) => setVariantFormData({ ...variantFormData, status: e.target.value as 'active' | 'inactive' })}
+                      className="input-field w-full"
                     >
-                      Hapus
-                    </button>
+                      <option value="active">Aktif</option>
+                      <option value="inactive">Nonaktif</option>
+                    </select>
                   </div>
                 </div>
-              )
-            })}
+                <div className="flex gap-3">
+                  <button
+                    onClick={editingVariantId ? handleUpdateVariant : handleAddVariant}
+                    disabled={variantSubmitting}
+                    className="btn-primary flex-1"
+                  >
+                    {variantSubmitting ? 'Menyimpan...' : (editingVariantId ? 'Update Varian' : 'Tambah Varian')}
+                  </button>
+                  {editingVariantId && (
+                    <button
+                      onClick={resetVariantForm}
+                      disabled={variantSubmitting}
+                      className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Batal
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Variants List */}
+              {variants.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-gray-600 mb-4">Belum ada varian untuk produk ini</p>
+                  <p className="text-sm text-gray-500">Klik "Tambah Varian Baru" di atas untuk menambahkan pilihan masa berlaku</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <h4 className="text-lg font-semibold text-gray-950 mb-3">Daftar Varian</h4>
+                  {variants.map((variant) => {
+                  return (
+                    <div key={variant.id} className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="font-semibold text-gray-950">{variant.name}</span>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            variant.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {variant.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                          <span className="text-sm text-gray-500">Urutan: {variant.sortOrder}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span>Durasi: <span className="font-medium text-gray-950">{variant.durationValue} {variant.durationUnit}</span></span>
+                          <span>Harga: <span className="font-semibold text-blue-600">{formatPrice(variant.price)}</span></span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 sm:flex-nowrap">
+                        <button
+                          onClick={() => handleEditVariant(variant)}
+                          className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium transition-colors whitespace-nowrap"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVariant(variant.id, variant.name)}
+                          className="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors whitespace-nowrap"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                </div>
+              )}
             </div>
           )}
-          </div>
         </div>
       )}
     </div>

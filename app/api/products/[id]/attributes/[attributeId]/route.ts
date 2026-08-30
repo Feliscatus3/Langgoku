@@ -4,7 +4,7 @@ const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_P
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; variantId: string } }
+  { params }: { params: { id: string; attributeId: string } }
 ) {
   try {
     if (!APPS_SCRIPT_URL) {
@@ -15,20 +15,17 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, durationValue, durationUnit, price, status, sortOrder } = body
+    const { name, sortOrder, status } = body
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'updateProductVariant',
-        id: params.variantId,
+        action: 'updateVariantAttribute',
+        id: params.attributeId,
         name,
-        durationValue: durationValue !== undefined ? parseInt(durationValue) : undefined,
-        durationUnit,
-        price: price !== undefined ? parseInt(price) : undefined,
-        status,
-        sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : undefined
+        sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : undefined,
+        status
       }),
       signal: AbortSignal.timeout(30000)
     })
@@ -36,9 +33,9 @@ export async function PUT(
     const result = await response.json()
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error updating variant:', error)
+    console.error('Error updating variant attribute:', error)
     return NextResponse.json(
-      { success: false, message: 'Gagal memperbarui varian' },
+      { success: false, message: 'Gagal memperbarui atribut varian' },
       { status: 500 }
     )
   }
@@ -46,7 +43,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; variantId: string } }
+  { params }: { params: { id: string; attributeId: string } }
 ) {
   try {
     if (!APPS_SCRIPT_URL) {
@@ -60,8 +57,8 @@ export async function DELETE(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'deleteProductVariant',
-        id: params.variantId
+        action: 'deleteVariantAttribute',
+        id: params.attributeId
       }),
       signal: AbortSignal.timeout(30000)
     })
@@ -69,9 +66,9 @@ export async function DELETE(
     const result = await response.json()
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error deleting variant:', error)
+    console.error('Error deleting variant attribute:', error)
     return NextResponse.json(
-      { success: false, message: 'Gagal menghapus varian' },
+      { success: false, message: 'Gagal menghapus atribut varian' },
       { status: 500 }
     )
   }

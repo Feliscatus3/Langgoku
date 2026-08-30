@@ -53,6 +53,11 @@ export default function CheckoutPage() {
   
   // Price after promo
   const [discountAmount, setDiscountAmount] = useState(0)
+  
+  // Variant price validation
+  const [variantValidated, setVariantValidated] = useState(false)
+  const [validatedPrice, setValidatedPrice] = useState<number | null>(null)
+  const [priceMismatch, setPriceMismatch] = useState(false)
 
   useEffect(() => {
     const data = sessionStorage.getItem('checkoutData')
@@ -74,11 +79,39 @@ export default function CheckoutPage() {
         setSettings(data.data)
         console.log('Admin phone from settings:', data.data.adminPhone)
       }
+
+      // Validate variant price from backend if variantId exists
+      if (checkoutData?.variantId) {
+        await validateVariantPrice(checkoutData.variantId)
+      }
     } catch (err) {
       console.error('Error loading settings:', err)
     } finally {
       setLoading(false)
       setSettingsLoading(false)
+    }
+  }
+
+  const validateVariantPrice = async (variantId: string) => {
+    try {
+      const response = await fetch(`/api/products/${checkoutData?.productId}/variants/${variantId}`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        const backendPrice = result.data.price
+        const frontendPrice = checkoutData?.originalPrice || 0
+        
+        setValidatedPrice(backendPrice)
+        setVariantValidated(true)
+        
+        // Check if price matches (allow small difference for unique code)
+        if (Math.abs(backendPrice - frontendPrice) > 100) {
+          setPriceMismatch(true)
+          console.warn('Price mismatch detected:', { backendPrice, frontendPrice })
+        }
+      }
+    } catch (err) {
+      console.error('Error validating variant price:', err)
     }
   }
 
@@ -151,6 +184,9 @@ export default function CheckoutPage() {
     return settings?.storeName || 'Langgoku'
   }
 
+  // Compute product duration for display
+  const productDuration = checkoutData?.productDuration || (checkoutData?.variantName ? `${checkoutData.variantName} (${checkoutData.productDuration})` : 'Tidak ada durasi')
+
   const handleWhatsAppConfirmation = () => {
     if (!checkoutData) return
 
@@ -162,21 +198,21 @@ export default function CheckoutPage() {
       return
     }
 
-    const finalPrice = checkoutData.finalPrice - discountAmount
+    // Use validated price from backend if available, otherwise use frontend price
+    const basePrice = validatedPrice !== null ? validatedPrice : checkoutData.originalPrice
+    const finalPrice = basePrice - discountAmount
     const promoInfo = promoApplied ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})` : ''
     const uniqueCodeNum = parseInt(checkoutData.uniqueCode) || 0
     
-    const productDuration = checkoutData.productDuration || (checkoutData.variantName ? `${checkoutData.variantName} (${checkoutData.productDuration})` : 'Tidak ada durasi')
-    
     const variantInfo = checkoutData.variantName ? `\n🎯 Varian: ${checkoutData.variantName}` : ''
 
-const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
+    const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
 
 📦 Produk: ${checkoutData.productName}${variantInfo}
 ⏱️ Durasi: ${productDuration}
 👤 Nama: ${checkoutData.buyerName}
 📱 WhatsApp: ${checkoutData.buyerPhone}
-💵 Harga Awal: ${formatPrice(checkoutData.originalPrice)}${promoInfo}
+💵 Harga Awal: ${formatPrice(basePrice)}${promoInfo}
 💰 Kode Pembayaran: ${checkoutData.uniqueCode}
 💳 Total Bayar: ${formatPrice(finalPrice + uniqueCodeNum)}
 
@@ -198,7 +234,8 @@ Mohon info cara pembayarannya!`
     )
   }
 
-  const finalTotal = checkoutData.finalPrice - discountAmount
+  const basePrice = validatedPrice !== null ? validatedPrice : checkoutData.originalPrice
+  const finalTotal = basePrice - discountAmount
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -261,7 +298,13 @@ Mohon info cara pembayarannya!`
 
                 <div className="bg-green-50 p-4 rounded-xl">
                   <p className="text-sm text-gray-600">Subtotal</p>
-                  <p className="text-lg font-semibold">{formatPrice(checkoutData.originalPrice)}</p>
+                  <p className="text-lg font-semibold">{formatPrice(validatedPrice !== null ? validatedPrice : checkoutData.originalPrice)}</p>
+                  {validatedPrice !== null && validatedPrice !== checkoutData.originalPrice && (
+                    <p className="text-xs text-blue-600 mt-1">Harga divalidasi dari backend</p>
+                  )}
+                  {priceMismatch && (
+                    <p className="text-xs text-red-600 mt-1">⚠ Perbedaan harga terdeteksi - menggunakan harga backend</p>
+                  )}
                 </div>
 
                 {promoApplied && discountAmount > 0 && (
@@ -283,6 +326,9 @@ Mohon info cara pembayarannya!`
                   <p className="text-3xl font-bold text-blue-600">{formatPrice(finalTotal)}</p>
                   {discountAmount > 0 && (
                     <p className="text-xs text-green-600 mt-1">Termasuk kode unik</p>
+                  )}
+                  {validatedPrice !== null && validatedPrice !== checkoutData.originalPrice && (
+                    <p className="text-xs text-blue-600 mt-1">Harga divalidasi dari backend</p>
                   )}
                 </div>
               </div>

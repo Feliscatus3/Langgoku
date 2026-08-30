@@ -14,15 +14,15 @@ export async function GET(
       )
     }
 
-    const url = `${APPS_SCRIPT_URL}?action=getProductVariants&productId=${encodeURIComponent(params.id)}`
+    const url = `${APPS_SCRIPT_URL}?action=getVariantCombinations&productId=${encodeURIComponent(params.id)}`
     const response = await fetch(url, { signal: AbortSignal.timeout(30000) })
     const result = await response.json()
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error fetching variants:', error)
+    console.error('Error fetching variant combinations:', error)
     return NextResponse.json(
-      { success: false, message: 'Gagal mengambil varian' },
+      { success: false, message: 'Gagal mengambil kombinasi varian' },
       { status: 500 }
     )
   }
@@ -41,11 +41,11 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { name, durationValue, durationUnit, price, status } = body
+    const { price, status, stock, options } = body
 
-    if (!name || durationValue === undefined || price === undefined) {
+    if (price === undefined || !options || Object.keys(options).length === 0) {
       return NextResponse.json(
-        { success: false, message: 'Field wajib: name, durationValue, price' },
+        { success: false, message: 'Field wajib: price, options' },
         { status: 400 }
       )
     }
@@ -54,13 +54,12 @@ export async function POST(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'addProductVariant',
+        action: 'addVariantCombination',
         productId: params.id,
-        name,
-        durationValue: parseInt(durationValue),
-        durationUnit: durationUnit || 'Hari',
         price: parseInt(price),
-        status: status || 'active'
+        status: status || 'active',
+        stock: stock !== undefined ? parseInt(stock) : 0,
+        options
       }),
       signal: AbortSignal.timeout(30000)
     })
@@ -68,9 +67,9 @@ export async function POST(
     const result = await response.json()
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error adding variant:', error)
+    console.error('Error adding variant combination:', error)
     return NextResponse.json(
-      { success: false, message: 'Gagal menambahkan varian' },
+      { success: false, message: 'Gagal menambahkan kombinasi varian' },
       { status: 500 }
     )
   }

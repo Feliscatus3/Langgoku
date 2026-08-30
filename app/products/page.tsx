@@ -12,6 +12,17 @@ type SearchParams = {
   q?: string | string[]
 }
 
+type ProductVariant = {
+  id: string
+  productId: string
+  name: string
+  durationValue: number
+  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
+  price: number
+  status: 'active' | 'inactive'
+  sortOrder: number
+}
+
 type Product = {
   id: string
   name: string
@@ -20,6 +31,7 @@ type Product = {
   stock: number
   image?: string
   category?: string
+  variants?: ProductVariant[]
 }
 
 function normalizeParam(value: string | string[] | undefined): string {

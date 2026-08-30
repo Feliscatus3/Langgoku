@@ -14,15 +14,15 @@ export async function GET(
       )
     }
 
-    const url = `${APPS_SCRIPT_URL}?action=getProductVariants&productId=${encodeURIComponent(params.id)}`
+    const url = `${APPS_SCRIPT_URL}?action=getVariantAttributes&productId=${encodeURIComponent(params.id)}`
     const response = await fetch(url, { signal: AbortSignal.timeout(30000) })
     const result = await response.json()
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error fetching variants:', error)
+    console.error('Error fetching variant attributes:', error)
     return NextResponse.json(
-      { success: false, message: 'Gagal mengambil varian' },
+      { success: false, message: 'Gagal mengambil atribut varian' },
       { status: 500 }
     )
   }
@@ -41,11 +41,11 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { name, durationValue, durationUnit, price, status } = body
+    const { name, status } = body
 
-    if (!name || durationValue === undefined || price === undefined) {
+    if (!name) {
       return NextResponse.json(
-        { success: false, message: 'Field wajib: name, durationValue, price' },
+        { success: false, message: 'Field wajib: name' },
         { status: 400 }
       )
     }
@@ -54,12 +54,9 @@ export async function POST(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'addProductVariant',
+        action: 'addVariantAttribute',
         productId: params.id,
         name,
-        durationValue: parseInt(durationValue),
-        durationUnit: durationUnit || 'Hari',
-        price: parseInt(price),
         status: status || 'active'
       }),
       signal: AbortSignal.timeout(30000)
@@ -68,9 +65,9 @@ export async function POST(
     const result = await response.json()
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error adding variant:', error)
+    console.error('Error adding variant attribute:', error)
     return NextResponse.json(
-      { success: false, message: 'Gagal menambahkan varian' },
+      { success: false, message: 'Gagal menambahkan atribut varian' },
       { status: 500 }
     )
   }

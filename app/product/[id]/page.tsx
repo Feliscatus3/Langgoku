@@ -11,7 +11,8 @@ interface ProductVariant {
   id: string
   productId: string
   name: string
-  durationDays: number
+  durationValue: number
+  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
   price: number
   status: 'active' | 'inactive'
   sortOrder: number
@@ -75,7 +76,7 @@ export default function ProductDetail() {
 
     // Use selected variant price if available, otherwise use product base price
     const finalPrice = selectedVariant ? selectedVariant.price : (product?.price || 0)
-    const productDuration = selectedVariant ? `${selectedVariant.durationDays} Hari` : product?.duration
+    const productDuration = selectedVariant ? `${selectedVariant.durationValue} ${selectedVariant.durationUnit}` : product?.duration
 
     // Generate unique code
     const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -169,7 +170,7 @@ export default function ProductDetail() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 text-center">
                   <div className="text-3xl font-bold text-blue-600 mb-2">
-                    {selectedVariant ? `${selectedVariant.durationDays} Hari` : product.duration}
+                    {selectedVariant ? `${selectedVariant.durationValue} ${selectedVariant.durationUnit}` : product.duration}
                   </div>
                   <p className="text-gray-600 font-medium">Durasi Aktif</p>
                 </div>

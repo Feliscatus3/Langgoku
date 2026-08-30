@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch variants for each product
     const productsWithVariants = await Promise.all(
-      products.map(async (product) => {
+      products.map(async (product: any) => {
         const variants = await getProductVariants(product.id)
         // Filter only active variants
         const activeVariants = variants.filter((v: any) => v.status === 'active')
