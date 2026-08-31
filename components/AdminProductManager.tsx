@@ -5,26 +5,41 @@ import Image from 'next/image'
 import useSWR from 'swr'
 import { formatPrice } from '@/lib/googleSheets'
 
-interface ProductVariant {
+// New Shopee-like variant types
+interface VariantAttribute {
   id: string
   productId: string
   name: string
-  durationValue: number
-  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
+  sortOrder: number
+  status: 'active' | 'inactive'
+}
+
+interface AttributeOption {
+  id: string
+  attributeId: string
+  name: string
+  sortOrder: number
+  status: 'active' | 'inactive'
+}
+
+interface VariantCombination {
+  id: string
+  productId: string
   price: number
   status: 'active' | 'inactive'
   sortOrder: number
+  options: Record<string, string> // attributeId -> optionId
 }
 
 interface Product {
   id: string
   name: string
   price: number
-  duration: string
-  stock: number
   image?: string
   description?: string
-  variants?: ProductVariant[]
+  variantAttributes?: VariantAttribute[]
+  attributeOptions?: AttributeOption[]
+  variantCombinations?: VariantCombination[]
 }
 
 interface ToastProps {
@@ -126,21 +141,28 @@ export default function AdminProductManager() {
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     price: 0,
-    duration: '',
-    stock: 0,
     image: '',
     description: ''
   })
   // Variant management state
   const [showVariants, setShowVariants] = useState<string | null>(null)
-  const [variantFormData, setVariantFormData] = useState<Partial<ProductVariant>>({
+  const [selectedAttributeId, setSelectedAttributeId] = useState<string | null>(null)
+  const [editingAttributeId, setEditingAttributeId] = useState<string | null>(null)
+  const [attributeFormData, setAttributeFormData] = useState<Partial<VariantAttribute>>({
     name: '',
-    durationValue: 1,
-    durationUnit: 'Hari',
-    price: 0,
     status: 'active'
   })
-  const [editingVariantId, setEditingVariantId] = useState<string | null>(null)
+  const [editingOptionId, setEditingOptionId] = useState<string | null>(null)
+  const [optionFormData, setOptionFormData] = useState<Partial<AttributeOption>>({
+    name: '',
+    status: 'active'
+  })
+  const [editingCombinationId, setEditingCombinationId] = useState<string | null>(null)
+  const [combinationFormData, setCombinationFormData] = useState<Partial<VariantCombination>>({
+    price: 0,
+    status: 'active',
+    options: {} as Record<string, string>
+  })
   const [variantSubmitting, setVariantSubmitting] = useState(false)
   const [variantToast, setVariantToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -158,7 +180,7 @@ export default function AdminProductManager() {
 
   const products: Product[] = data?.data || []
 
-  // Fetch variants for the currently selected product
+  // SWR for variant data
   const { data: variantData, mutate: mutateVariants } = useSWR(
     showVariants ? `/api/products/${showVariants}/variants` : null,
     variantFetcher,
@@ -171,7 +193,15 @@ export default function AdminProductManager() {
     }
   )
 
-  const variants: ProductVariant[] = variantData?.data || []
+  // Parse variant data
+  const attributes: VariantAttribute[] = variantData?.attributes || []
+  const attributeOptions: AttributeOption[] = variantData?.options || []
+  const combinations: VariantCombination[] = variantData?.combinations || []
+
+  // Use SWR for real-time data fetching
+  // revalidateOnFocus: true - auto-refresh when user focuses on the page
+  // revalidateOnReconnect: true - auto-refresh when reconnecting
+  // refreshInterval: 3000 - refresh every 3 seconds
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
@@ -182,7 +212,7 @@ export default function AdminProductManager() {
   }
 
   const handleAddProduct = async () => {
-    if (!formData.name || !formData.price || !formData.duration || formData.stock == null) {
+    if (!formData.name || !formData.price) {
       showToast('Harap isi semua field yang diperlukan (*)', 'error')
       return
     }
@@ -322,152 +352,325 @@ export default function AdminProductManager() {
     setFormData({
       name: '',
       price: 0,
-      duration: '',
-      stock: 0,
       image: '',
       description: ''
     })
   }
 
-  // Variant management functions
+  // ===== NEW VARIANT SYSTEM FUNCTIONS =====
   const handleShowVariants = (productId: string) => {
     if (showVariants === productId) {
       setShowVariants(null)
-      setEditingVariantId(null)
-      setVariantFormData({ name: '', durationValue: 1, durationUnit: 'Hari', price: 0, status: 'active' })
+      setSelectedAttributeId(null)
     } else {
       setShowVariants(productId)
-      setEditingVariantId(null)
-      setVariantFormData({ name: '', durationValue: 1, durationUnit: 'Hari', price: 0, status: 'active' })
+      setSelectedAttributeId(null)
     }
   }
 
-  const handleAddVariant = async () => {
-    if (!showVariants) return
-    if (!variantFormData.name || !variantFormData.durationValue || !variantFormData.price) {
-      showVariantToast('Harap isi semua field varian (*)', 'error')
-      return
-    }
-
+  // Attribute functions
+  const handleAddAttribute = async () => {
+    if (!showVariants || !attributeFormData.name) return
     setVariantSubmitting(true)
     try {
-      const response = await fetch(`/api/products/${showVariants}/variants`, {
+      const response = await fetch(`/api/products/${showVariants}/attributes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: variantFormData.name,
-          durationValue: variantFormData.durationValue,
-          durationUnit: variantFormData.durationUnit,
-          price: variantFormData.price,
-          status: variantFormData.status
-        })
+        body: JSON.stringify({ name: attributeFormData.name, status: attributeFormData.status })
       })
       const result = await response.json()
-      
       if (result.success) {
-        showVariantToast('Varian berhasil ditambahkan', 'success')
+        showVariantToast('Atribut berhasil ditambahkan', 'success')
         mutateVariants()
-        resetVariantForm()
+        resetAttributeForm()
       } else {
-        showVariantToast('Gagal menambahkan varian: ' + result.message, 'error')
+        showVariantToast('Gagal menambahkan atribut: ' + result.message, 'error')
       }
     } catch (err) {
-      console.error('Error adding variant:', err)
-      showVariantToast('Terjadi kesalahan saat menambahkan varian', 'error')
+      console.error('Error adding attribute:', err)
+      showVariantToast('Terjadi kesalahan saat menambahkan atribut', 'error')
     } finally {
       setVariantSubmitting(false)
     }
   }
 
-  const handleUpdateVariant = async () => {
-    if (!showVariants || !editingVariantId) return
-
+  const handleUpdateAttribute = async () => {
+    if (!showVariants || !editingAttributeId) return
     setVariantSubmitting(true)
     try {
-      const response = await fetch(`/api/products/${showVariants}/variants/${editingVariantId}`, {
+      const response = await fetch(`/api/products/${showVariants}/attributes/${editingAttributeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: variantFormData.name,
-          durationValue: variantFormData.durationValue,
-          durationUnit: variantFormData.durationUnit,
-          price: variantFormData.price,
-          status: variantFormData.status
-        })
+        body: JSON.stringify({ name: attributeFormData.name, status: attributeFormData.status })
       })
       const result = await response.json()
-      
       if (result.success) {
-        showVariantToast('Varian berhasil diperbarui', 'success')
+        showVariantToast('Atribut berhasil diperbarui', 'success')
         mutateVariants()
-        resetVariantForm()
+        resetAttributeForm()
       } else {
-        showVariantToast('Gagal memperbarui varian: ' + result.message, 'error')
+        showVariantToast('Gagal memperbarui atribut: ' + result.message, 'error')
       }
     } catch (err) {
-      console.error('Error updating variant:', err)
-      showVariantToast('Terjadi kesalahan saat memperbarui varian', 'error')
+      console.error('Error updating attribute:', err)
+      showVariantToast('Terjadi kesalahan saat memperbarui atribut', 'error')
     } finally {
       setVariantSubmitting(false)
     }
   }
 
-  const handleDeleteVariant = async (variantId: string, variantName: string) => {
+  const handleDeleteAttribute = async (id: string, name: string) => {
     if (!showVariants) return
-
     setConfirmModal({
       show: true,
       type: 'delete',
-      title: 'Hapus Varian',
-      message: `Apakah Anda yakin ingin menghapus varian "${variantName}"?`,
+      title: 'Hapus Atribut',
+      message: `Apakah Anda yakin ingin menghapus atribut "${name}"?`,
       onConfirm: async () => {
         setConfirmModal(null)
-        await executeDeleteVariant(variantId)
+        await executeDeleteAttribute(id)
       }
     })
   }
 
-  const executeDeleteVariant = async (variantId: string) => {
+  const executeDeleteAttribute = async (id: string) => {
     if (!showVariants) return
     try {
-      const response = await fetch(`/api/products/${showVariants}/variants/${variantId}`, {
+      const response = await fetch(`/api/products/${showVariants}/attributes/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       })
       const result = await response.json()
-      
       if (result.success) {
-        showVariantToast('Varian berhasil dihapus', 'success')
+        showVariantToast('Atribut berhasil dihapus', 'success')
         mutateVariants()
       } else {
-        showVariantToast('Gagal menghapus varian: ' + result.message, 'error')
+        showVariantToast('Gagal menghapus atribut: ' + result.message, 'error')
       }
     } catch (err) {
-      console.error('Error deleting variant:', err)
-      showVariantToast('Terjadi kesalahan saat menghapus varian', 'error')
+      console.error('Error deleting attribute:', err)
+      showVariantToast('Terjadi kesalahan saat menghapus atribut', 'error')
     }
   }
 
-  const handleEditVariant = (variant: ProductVariant) => {
-    setEditingVariantId(variant.id)
-    setVariantFormData({
-      name: variant.name,
-      durationValue: variant.durationValue,
-      durationUnit: variant.durationUnit,
-      price: variant.price,
-      status: variant.status
+  const handleEditAttribute = (attr: VariantAttribute) => {
+    setEditingAttributeId(attr.id)
+    setAttributeFormData({ name: attr.name, status: attr.status })
+  }
+
+  const resetAttributeForm = () => {
+    setEditingAttributeId(null)
+    setAttributeFormData({ name: '', status: 'active' })
+  }
+
+  const handleShowAttributeOptions = (attributeId: string) => {
+    if (selectedAttributeId === attributeId) {
+      setSelectedAttributeId(null)
+    } else {
+      setSelectedAttributeId(attributeId)
+    }
+  }
+
+  // Option functions
+  const handleAddOption = async () => {
+    if (!selectedAttributeId || !optionFormData.name) return
+    setVariantSubmitting(true)
+    try {
+      const response = await fetch(`/api/attributes/${selectedAttributeId}/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: optionFormData.name, status: optionFormData.status })
+      })
+      const result = await response.json()
+      if (result.success) {
+        showVariantToast('Opsi berhasil ditambahkan', 'success')
+        mutateVariants()
+        resetOptionForm()
+      } else {
+        showVariantToast('Gagal menambahkan opsi: ' + result.message, 'error')
+      }
+    } catch (err) {
+      console.error('Error adding option:', err)
+      showVariantToast('Terjadi kesalahan saat menambahkan opsi', 'error')
+    } finally {
+      setVariantSubmitting(false)
+    }
+  }
+
+  const handleUpdateOption = async () => {
+    if (!editingOptionId) return
+    setVariantSubmitting(true)
+    try {
+      const response = await fetch(`/api/attributes/${selectedAttributeId}/options/${editingOptionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: optionFormData.name, status: optionFormData.status })
+      })
+      const result = await response.json()
+      if (result.success) {
+        showVariantToast('Opsi berhasil diperbarui', 'success')
+        mutateVariants()
+        resetOptionForm()
+      } else {
+        showVariantToast('Gagal memperbarui opsi: ' + result.message, 'error')
+      }
+    } catch (err) {
+      console.error('Error updating option:', err)
+      showVariantToast('Terjadi kesalahan saat memperbarui opsi', 'error')
+    } finally {
+      setVariantSubmitting(false)
+    }
+  }
+
+  const handleDeleteOption = async (id: string, name: string) => {
+    if (!selectedAttributeId) return
+    setConfirmModal({
+      show: true,
+      type: 'delete',
+      title: 'Hapus Opsi',
+      message: `Apakah Anda yakin ingin menghapus opsi "${name}"?`,
+      onConfirm: async () => {
+        setConfirmModal(null)
+        await executeDeleteOption(id)
+      }
     })
   }
 
-  const resetVariantForm = () => {
-    setEditingVariantId(null)
-    setVariantFormData({
-      name: '',
-      durationValue: 1,
-      durationUnit: 'Hari',
-      price: 0,
-      status: 'active'
+  const executeDeleteOption = async (id: string) => {
+    if (!selectedAttributeId) return
+    try {
+      const response = await fetch(`/api/attributes/${selectedAttributeId}/options/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const result = await response.json()
+      if (result.success) {
+        showVariantToast('Opsi berhasil dihapus', 'success')
+        mutateVariants()
+      } else {
+        showVariantToast('Gagal menghapus opsi: ' + result.message, 'error')
+      }
+    } catch (err) {
+      console.error('Error deleting option:', err)
+      showVariantToast('Terjadi kesalahan saat menghapus opsi', 'error')
+    }
+  }
+
+  const handleEditOption = (opt: AttributeOption) => {
+    setEditingOptionId(opt.id)
+    setOptionFormData({ name: opt.name, status: opt.status })
+  }
+
+  const resetOptionForm = () => {
+    setEditingOptionId(null)
+    setOptionFormData({ name: '', status: 'active' })
+  }
+
+  // Combination functions
+  const handleAddCombination = async () => {
+    if (!showVariants || !combinationFormData.price || Object.keys(combinationFormData.options || {}).length === 0) return
+    setVariantSubmitting(true)
+    try {
+      const response = await fetch(`/api/products/${showVariants}/combinations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          price: combinationFormData.price,
+          status: combinationFormData.status,
+          options: combinationFormData.options
+        })
+      })
+      const result = await response.json()
+      if (result.success) {
+        showVariantToast('Kombinasi berhasil ditambahkan', 'success')
+        mutateVariants()
+        resetCombinationForm()
+      } else {
+        showVariantToast('Gagal menambahkan kombinasi: ' + result.message, 'error')
+      }
+    } catch (err) {
+      console.error('Error adding combination:', err)
+      showVariantToast('Terjadi kesalahan saat menambahkan kombinasi', 'error')
+    } finally {
+      setVariantSubmitting(false)
+    }
+  }
+
+  const handleUpdateCombination = async () => {
+    if (!showVariants || !editingCombinationId) return
+    setVariantSubmitting(true)
+    try {
+      const response = await fetch(`/api/products/${showVariants}/combinations/${editingCombinationId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          price: combinationFormData.price,
+          status: combinationFormData.status,
+          options: combinationFormData.options
+        })
+      })
+      const result = await response.json()
+      if (result.success) {
+        showVariantToast('Kombinasi berhasil diperbarui', 'success')
+        mutateVariants()
+        resetCombinationForm()
+      } else {
+        showVariantToast('Gagal memperbarui kombinasi: ' + result.message, 'error')
+      }
+    } catch (err) {
+      console.error('Error updating combination:', err)
+      showVariantToast('Terjadi kesalahan saat memperbarui kombinasi', 'error')
+    } finally {
+      setVariantSubmitting(false)
+    }
+  }
+
+  const handleDeleteCombination = async (id: string, name: string) => {
+    if (!showVariants) return
+    setConfirmModal({
+      show: true,
+      type: 'delete',
+      title: 'Hapus Kombinasi',
+      message: `Apakah Anda yakin ingin menghapus kombinasi ini?`,
+      onConfirm: async () => {
+        setConfirmModal(null)
+        await executeDeleteCombination(id)
+      }
     })
+  }
+
+  const executeDeleteCombination = async (id: string) => {
+    if (!showVariants) return
+    try {
+      const response = await fetch(`/api/products/${showVariants}/combinations/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const result = await response.json()
+      if (result.success) {
+        showVariantToast('Kombinasi berhasil dihapus', 'success')
+        mutateVariants()
+      } else {
+        showVariantToast('Gagal menghapus kombinasi: ' + result.message, 'error')
+      }
+    } catch (err) {
+      console.error('Error deleting combination:', err)
+      showVariantToast('Terjadi kesalahan saat menghapus kombinasi', 'error')
+    }
+  }
+
+  const handleEditCombination = (combo: VariantCombination) => {
+    setEditingCombinationId(combo.id)
+    setCombinationFormData({
+      price: combo.price,
+      status: combo.status,
+      options: combo.options
+    })
+  }
+
+  const resetCombinationForm = () => {
+    setEditingCombinationId(null)
+    setCombinationFormData({ price: 0, status: 'active', options: {} })
   }
 
   if (isLoading) return (
@@ -565,33 +768,6 @@ export default function AdminProductManager() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Durasi Langganan *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: 1 Bulan"
-                  value={formData.duration || ''}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Stok *
-                </label>
-                <input
-                  type="number"
-                  placeholder="Jumlah stok"
-                  value={formData.stock || 0}
-                  onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                  className="input-field w-full"
-                />
-              </div>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 URL Gambar
@@ -604,6 +780,19 @@ export default function AdminProductManager() {
                 className="input-field w-full"
               />
               <p className="text-gray-500 text-xs mt-1">Gunakan foto yang ada di public/images/foto/</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Deskripsi Produk
+              </label>
+              <textarea
+                placeholder="Deskripsi detail produk..."
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
+                className="input-field w-full"
+              />
             </div>
 
             <div>
@@ -668,8 +857,6 @@ export default function AdminProductManager() {
                 <h3 className="font-bold text-base md:text-lg text-gray-950 mb-2 truncate">{product.name}</h3>
                 <div className="space-y-1 md:space-y-2 mb-3 md:mb-4 text-xs md:text-sm text-gray-600">
                   <p>Harga: <span className="font-semibold text-gray-950">{formatPrice(product.price)}</span></p>
-                  <p>Durasi: {product.duration}</p>
-                  <p>Stok: {product.stock}</p>
                 </div>
                 {product.description && (
                   <p className="text-xs text-gray-600 mb-3 md:mb-4 line-clamp-2">{product.description}</p>
@@ -706,7 +893,7 @@ export default function AdminProductManager() {
           {showVariants && (
             <div className="card p-4 md:p-8 mb-8 shadow-lg border border-gray-200 mt-8" style={{ animation: 'slideDown 0.3s ease' }}>
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl md:text-2xl font-bold text-gray-950">Manajemen Varian</h3>
+                <h3 className="text-xl md:text-2xl font-bold text-gray-950">Manajemen Variasi Produk</h3>
                 <button
                   onClick={() => handleShowVariants(showVariants)}
                   className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
@@ -724,147 +911,309 @@ export default function AdminProductManager() {
                 />
               )}
 
-              {/* Add/Edit Variant Form */}
-              <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-                <h4 className="text-lg font-semibold text-gray-950 mb-4">
-                  {editingVariantId ? 'Edit Varian' : 'Tambah Varian Baru'}
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nama Varian *
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: 1 Jam, 1 Hari, 1 Bulan"
-                      value={variantFormData.name || ''}
-                      onChange={(e) => setVariantFormData({ ...variantFormData, name: e.target.value })}
-                      className="input-field w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Durasi (Nilai) *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="Contoh: 1, 3, 7"
-                      value={variantFormData.durationValue || 1}
-                      onChange={(e) => setVariantFormData({ ...variantFormData, durationValue: parseInt(e.target.value) || 1 })}
-                      className="input-field w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Satuan *
-                    </label>
-                    <select
-                      value={variantFormData.durationUnit || 'Hari'}
-                      onChange={(e) => setVariantFormData({ ...variantFormData, durationUnit: e.target.value as 'Jam' | 'Hari' | 'Bulan' | 'Lifetime' })}
-                      className="input-field w-full"
-                    >
-                      <option value="Jam">Jam</option>
-                      <option value="Hari">Hari</option>
-                      <option value="Bulan">Bulan</option>
-                      <option value="Lifetime">Lifetime</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Harga (IDR) *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Contoh: 1000"
-                      value={variantFormData.price || 0}
-                      onChange={(e) => setVariantFormData({ ...variantFormData, price: parseInt(e.target.value) || 0 })}
-                      className="input-field w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status
-                    </label>
-                    <select
-                      value={variantFormData.status || 'active'}
-                      onChange={(e) => setVariantFormData({ ...variantFormData, status: e.target.value as 'active' | 'inactive' })}
-                      className="input-field w-full"
-                    >
-                      <option value="active">Aktif</option>
-                      <option value="inactive">Nonaktif</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={editingVariantId ? handleUpdateVariant : handleAddVariant}
-                    disabled={variantSubmitting}
-                    className="btn-primary flex-1"
-                  >
-                    {variantSubmitting ? 'Menyimpan...' : (editingVariantId ? 'Update Varian' : 'Tambah Varian')}
-                  </button>
-                  {editingVariantId && (
-                    <button
-                      onClick={resetVariantForm}
-                      disabled={variantSubmitting}
-                      className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Batal
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Variants List */}
-              {variants.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-gray-600 mb-4">Belum ada varian untuk produk ini</p>
-                  <p className="text-sm text-gray-500">Klik "Tambah Varian Baru" di atas untuk menambahkan pilihan masa berlaku</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <h4 className="text-lg font-semibold text-gray-950 mb-3">Daftar Varian</h4>
-                  {variants.map((variant) => {
-                  return (
-                    <div key={variant.id} className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-semibold text-gray-950">{variant.name}</span>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            variant.status === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {variant.status === 'active' ? 'Aktif' : 'Nonaktif'}
-                          </span>
-                          <span className="text-sm text-gray-500">Urutan: {variant.sortOrder}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <span>Durasi: <span className="font-medium text-gray-950">{variant.durationValue} {variant.durationUnit}</span></span>
-                          <span>Harga: <span className="font-semibold text-blue-600">{formatPrice(variant.price)}</span></span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 sm:flex-nowrap">
+              {/* ===== ATRIBUT MANAGEMENT ===== */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-gray-950 mb-4">Atribut Variasi</h4>
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <h5 className="font-medium text-gray-950 mb-3">
+                    {editingAttributeId ? 'Edit Atribut' : 'Tambah Atribut Baru'}
+                  </h5>
+                  <div className="flex gap-3 mb-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nama Atribut *</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Type, Durasi, Tipe Akun"
+                        value={attributeFormData.name || ''}
+                        onChange={(e) => setAttributeFormData({ ...attributeFormData, name: e.target.value })}
+                        className="input-field w-full"
+                      />
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <button
+                        onClick={editingAttributeId ? handleUpdateAttribute : handleAddAttribute}
+                        disabled={variantSubmitting || !attributeFormData.name}
+                        className="btn-primary px-4 py-2"
+                      >
+                        {variantSubmitting ? 'Menyimpan...' : (editingAttributeId ? 'Update Atribut' : 'Tambah Atribut')}
+                      </button>
+                      {editingAttributeId && (
                         <button
-                          onClick={() => handleEditVariant(variant)}
-                          className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium transition-colors whitespace-nowrap"
+                          onClick={resetAttributeForm}
+                          disabled={variantSubmitting}
+                          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          Batal
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Attributes List */}
+                <div className="space-y-2">
+                  {attributes.length === 0 ? (
+                    <p className="text-gray-500 text-sm">Belum ada atribut. Tambahkan atribut di atas.</p>
+                  ) : (
+                    attributes.map((attr) => (
+                      <div key={attr.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                        <span className="font-medium text-gray-950">{attr.name}</span>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          attr.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {attr.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                        <div className="flex-1"></div>
+                        <button
+                          onClick={() => handleEditAttribute(attr)}
+                          className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium transition-colors"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteVariant(variant.id, variant.name)}
-                          className="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors whitespace-nowrap"
+                          onClick={() => handleDeleteAttribute(attr.id, attr.name)}
+                          className="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors"
                         >
                           Hapus
                         </button>
+                        <button
+                          onClick={() => setSelectedAttributeId(attr.id)}
+                          className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 text-xs font-medium transition-colors"
+                        >
+                          Kelola Opsi
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* ===== OPSI MANAGEMENT ===== */}
+              {selectedAttributeId && (
+                <div className="mb-8 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-semibold text-gray-950">Opsi untuk Atribut: {attributes.find(a => a.id === selectedAttributeId)?.name}</h4>
+                    <button
+                      onClick={() => setSelectedAttributeId(null)}
+                      className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      ✕ Tutup
+                    </button>
+                  </div>
+
+                  <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
+                    <h5 className="font-medium text-gray-950 mb-3">
+                      {editingOptionId ? 'Edit Opsi' : 'Tambah Opsi Baru'}
+                    </h5>
+                    <div className="flex gap-3 mb-4">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Nama Opsi *</label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Go, Plus, 1 Hari, 1 Bulan"
+                          value={optionFormData.name || ''}
+                          onChange={(e) => setOptionFormData({ ...optionFormData, name: e.target.value })}
+                          className="input-field w-full"
+                        />
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <button
+                          onClick={editingOptionId ? handleUpdateOption : handleAddOption}
+                          disabled={variantSubmitting || !optionFormData.name}
+                          className="btn-primary px-4 py-2"
+                        >
+                          {variantSubmitting ? 'Menyimpan...' : (editingOptionId ? 'Update Opsi' : 'Tambah Opsi')}
+                        </button>
+                        {editingOptionId && (
+                          <button
+                            onClick={resetOptionForm}
+                            disabled={variantSubmitting}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            Batal
+                          </button>
+                        )}
                       </div>
                     </div>
-                  )
-                })}
+                  </div>
+
+                  {/* Options List */}
+                  <div className="space-y-2">
+                    {attributeOptions.length === 0 ? (
+                      <p className="text-gray-500 text-sm">Belum ada opsi untuk atribut ini.</p>
+                    ) : (
+                      attributeOptions.map((opt) => (
+                        <div key={opt.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                          <span className="font-medium text-gray-950">{opt.name}</span>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            opt.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {opt.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                          <div className="flex-1"></div>
+                          <button
+                            onClick={() => handleEditOption(opt)}
+                            className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteOption(opt.id, opt.name)}
+                            className="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
+
+              {/* ===== KOMBINASI MANAGEMENT ===== */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-gray-950 mb-4">Kombinasi Variasi</h4>
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <h5 className="font-medium text-gray-950 mb-3">
+                    {editingCombinationId ? 'Edit Kombinasi' : 'Tambah Kombinasi Baru'}
+                  </h5>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Harga (IDR) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Contoh: 5000"
+                      value={combinationFormData.price || 0}
+                      onChange={(e) => setCombinationFormData({ ...combinationFormData, price: parseInt(e.target.value) || 0 })}
+                      className="input-field w-full max-w-xs"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
+                    <select
+                      value={combinationFormData.status || 'active'}
+                      onChange={(e) => setCombinationFormData({ ...combinationFormData, status: e.target.value as 'active' | 'inactive' })}
+                      className="input-field w-full max-w-xs"
+                    >
+                      <option value="active">Tersedia</option>
+                      <option value="inactive">Habis</option>
+                    </select>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Pilihan Atribut</label>
+                    <div className="space-y-2">
+                      {attributes.map((attr) => {
+                        const attrOptions = attributeOptions.filter(o => o.attributeId === attr.id && o.status === 'active')
+                        if (attrOptions.length === 0) return null
+                        const selectedOptionId = (combinationFormData.options || {})[attr.id] || ''
+                        return (
+                          <div key={attr.id} className="flex items-center gap-3">
+                            <label className="font-medium text-gray-700 w-32">{attr.name}:</label>
+                            <select
+                              value={selectedOptionId}
+                              onChange={(e) => setCombinationFormData({ 
+                                ...combinationFormData, 
+                                options: { ...(combinationFormData.options || {}), [attr.id]: e.target.value } 
+                              })}
+                              className="input-field w-full max-w-xs"
+                            >
+                              <option value="">-- Pilih {attr.name} --</option>
+                              {attrOptions.map(opt => (
+                                <option key={opt.id} value={opt.id}>{opt.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={editingCombinationId ? handleUpdateCombination : handleAddCombination}
+                      disabled={variantSubmitting || !combinationFormData.price || Object.keys(combinationFormData.options || {}).length !== attributes.length}
+                      className="btn-primary px-4 py-2"
+                    >
+                      {variantSubmitting ? 'Menyimpan...' : (editingCombinationId ? 'Update Kombinasi' : 'Tambah Kombinasi')}
+                    </button>
+                    {editingCombinationId && (
+                      <button
+                        onClick={resetCombinationForm}
+                        disabled={variantSubmitting}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Batal
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Combinations List */}
+                <div className="space-y-3">
+                  {combinations.length === 0 ? (
+                    <p className="text-gray-500 text-sm">Belum ada kombinasi variasi. Lengkapi atribut dan opsi terlebih dahulu, lalu tambahkan kombinasi di atas.</p>
+                  ) : (
+                    <>
+                      <h4 className="text-lg font-semibold text-gray-950 mb-3">Daftar Kombinasi</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="px-4 py-2 text-left font-semibold text-gray-700">Atribut</th>
+                              <th className="px-4 py-2 text-left font-semibold text-gray-700">Harga</th>
+                              <th className="px-4 py-2 text-left font-semibold text-gray-700">Status</th>
+                              <th className="px-4 py-2 text-left font-semibold text-gray-700">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {combinations.map((combo) => (
+                              <tr key={combo.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    {attributes.map(attr => {
+                                      const optId = combo.options[attr.id]
+                                      const opt = attributeOptions.find(o => o.id === optId)
+                                      return opt ? (
+                                        <div key={attr.id} className="flex gap-2 text-xs">
+                                          <span className="font-medium text-gray-500">{attr.name}:</span>
+                                          <span className="font-medium text-gray-900">{opt.name}</span>
+                                        </div>
+                                      ) : null
+                                    })}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-blue-600">{formatPrice(combo.price)}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2 py-1 text-xs rounded-full ${
+                                    combo.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {combo.status === 'active' ? 'Tersedia' : 'Habis'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleEditCombination(combo)}
+                                      className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium transition-colors"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteCombination(combo.id, 'kombinasi')}
+                                      className="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors"
+                                    >
+                                      Hapus
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
