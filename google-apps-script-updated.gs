@@ -214,9 +214,75 @@ function getProducts() {
   const headers = data[0];
   const products = [];
   
+  // Get all attributes, options, and combinations for all products
+  const attrSheet = getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+  const optSheet = getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+  const comboSheet = getSheetByName(SHEETS.VARIANT_COMBINATIONS);
+  
+  let allAttributes = [];
+  let allOptions = [];
+  let allCombinations = [];
+  
+  if (attrSheet) {
+    const attrData = attrSheet.getDataRange().getValues();
+    if (attrData.length > 1) {
+      const attrHeaders = attrData[0];
+      for (let i = 1; i < attrData.length; i++) {
+        if (attrData[i][0]) {
+          allAttributes.push(objectToData(attrHeaders, attrData[i]));
+        }
+      }
+    }
+  }
+  
+  if (optSheet) {
+    const optData = optSheet.getDataRange().getValues();
+    if (optData.length > 1) {
+      const optHeaders = optData[0];
+      for (let i = 1; i < optData.length; i++) {
+        if (optData[i][0]) {
+          allOptions.push(objectToData(optHeaders, optData[i]));
+        }
+      }
+    }
+  }
+  
+  if (comboSheet) {
+    const comboData = comboSheet.getDataRange().getValues();
+    if (comboData.length > 1) {
+      const comboHeaders = comboData[0];
+      for (let i = 1; i < comboData.length; i++) {
+        if (comboData[i][0]) {
+          allCombinations.push(objectToData(comboHeaders, comboData[i]));
+        }
+      }
+    }
+  }
+  
   for (let i = 1; i < data.length; i++) {
     if (data[i][0]) {
-      products.push(objectToData(headers, data[i]));
+      const product = objectToData(headers, data[i]);
+      
+      // Parse attributes, options, combinations from JSON strings
+      if (product.attributes) {
+        try { product.attributes = JSON.parse(product.attributes); } catch (e) { product.attributes = []; }
+      } else {
+        product.attributes = allAttributes.filter(a => a['Product ID'] === product.ID);
+      }
+      
+      if (product.options) {
+        try { product.options = JSON.parse(product.options); } catch (e) { product.options = []; }
+      } else {
+        product.options = allOptions.filter(o => product.attributes.some(a => a.ID === o['Attribute ID']));
+      }
+      
+      if (product.combinations) {
+        try { product.combinations = JSON.parse(product.combinations); } catch (e) { product.combinations = []; }
+      } else {
+        product.combinations = allCombinations.filter(c => c['Product ID'] === product.ID);
+      }
+      
+      products.push(product);
     }
   }
   
@@ -234,7 +300,65 @@ function getProduct(id) {
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
-      return sendResponse({ success: true, data: objectToData(headers, data[i]) });
+      const product = objectToData(headers, data[i]);
+      
+      // Get attributes for this product
+      const attrSheet = getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+      if (attrSheet) {
+        const attrData = attrSheet.getDataRange().getValues();
+        if (attrData.length > 1) {
+          const attrHeaders = attrData[0];
+          for (let j = 1; j < attrData.length; j++) {
+            if (attrData[j][1] === id) {
+              product.attributes = product.attributes || [];
+              product.attributes.push(objectToData(attrHeaders, attrData[j]));
+            }
+          }
+        }
+      }
+      
+      // Get options for this product's attributes
+      const optSheet = getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+      if (optSheet && product.attributes) {
+        const optData = optSheet.getDataRange().getValues();
+        if (optData.length > 1) {
+          const optHeaders = optData[0];
+          for (let j = 1; j < optData.length; j++) {
+            if (optData[j][1] && product.attributes.some(a => a.ID === optData[j][1])) {
+              product.options = product.options || [];
+              product.options.push(objectToData(optHeaders, optData[j]));
+            }
+          }
+        }
+      }
+      
+      // Get combinations for this product
+      const comboSheet = getSheetByName(SHEETS.VARIANT_COMBINATIONS);
+      if (comboSheet) {
+        const comboData = comboSheet.getDataRange().getValues();
+        if (comboData.length > 1) {
+          const comboHeaders = comboData[0];
+          for (let j = 1; j < comboData.length; j++) {
+            if (comboData[j][1] === id) {
+              product.combinations = product.combinations || [];
+              product.combinations.push(objectToData(comboHeaders, comboData[j]));
+            }
+          }
+        }
+      }
+      
+      // Parse JSON strings if they exist
+      if (product.attributes && typeof product.attributes === 'string') {
+        try { product.attributes = JSON.parse(product.attributes); } catch (e) { product.attributes = []; }
+      }
+      if (product.options && typeof product.options === 'string') {
+        try { product.options = JSON.parse(product.options); } catch (e) { product.options = []; }
+      }
+      if (product.combinations && typeof product.combinations === 'string') {
+        try { product.combinations = JSON.parse(product.combinations); } catch (e) { product.combinations = []; }
+      }
+      
+      return sendResponse({ success: true, data: product });
     }
   }
   
@@ -258,10 +382,13 @@ function addProduct(product) {
     product.name || '',
     parseNumber(product.price),
     product.duration || '',
-    parseNumber(product.stock),
+    parseNumber(product.stock || 0),
     product.description || '',
     new Date().toLocaleString('id-ID'),
-    product.image || ''
+    product.image || '',
+    product.attributes ? JSON.stringify(product.attributes) : '[]',
+    product.options ? JSON.stringify(product.options) : '[]',
+    product.combinations ? JSON.stringify(product.combinations) : '[]'
   ];
   
   sheet.appendRow(rowData);

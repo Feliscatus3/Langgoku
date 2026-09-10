@@ -138,7 +138,7 @@ export default function AdminProductManager() {
     message: string
     onConfirm: () => void
   } | null>(null)
-  const [formData, setFormData] = useState<Partial<Product>>({
+const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     price: 0,
     image: '',
@@ -212,8 +212,8 @@ export default function AdminProductManager() {
   }
 
   const handleAddProduct = async () => {
-    if (!formData.name || !formData.price) {
-      showToast('Harap isi semua field yang diperlukan (*)', 'error')
+    if (!formData.name) {
+      showToast('Harap isi nama produk', 'error')
       return
     }
 
@@ -756,11 +756,11 @@ export default function AdminProductManager() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Harga (IDR) *
+                  Harga Dasar (IDR)
                 </label>
                 <input
                   type="number"
-                  placeholder="Contoh: 99000"
+                  placeholder="Contoh: 99000 (opsional)"
                   value={formData.price || 0}
                   onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
                   className="input-field w-full"
@@ -780,19 +780,6 @@ export default function AdminProductManager() {
                 className="input-field w-full"
               />
               <p className="text-gray-500 text-xs mt-1">Gunakan foto yang ada di public/images/foto/</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Deskripsi Produk
-              </label>
-              <textarea
-                placeholder="Deskripsi detail produk..."
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={4}
-                className="input-field w-full"
-              />
             </div>
 
             <div>

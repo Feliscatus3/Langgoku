@@ -6,16 +6,17 @@ const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_P
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, price, duration, stock, image, description } = body
+    const { name, price, duration, stock, image, description, attributes, options, combinations } = body
 
-    console.log('[API] Create product request:', { name, price, duration, stock })
+    console.log('[API] Create product request:', { name, price })
 
-    // Validasi required fields
-    if (!name || price === undefined || !duration || stock === undefined) {
+    // Validasi required fields - only name and price are required for main product
+    // duration and stock are now managed by variant combinations
+    if (!name || price === undefined) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Field wajib: name, price, duration, stock',
+          message: 'Field wajib: name, price',
         },
         { status: 400 }
       )
@@ -46,10 +47,13 @@ export async function POST(request: NextRequest) {
         action: 'addProduct',
         name,
         price,
-        duration,
-        stock,
+        duration: duration || '',
+        stock: stock || 0,
         image,
         description,
+        attributes,
+        options,
+        combinations,
       }),
       signal: AbortSignal.timeout(30000)
     })

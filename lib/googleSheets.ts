@@ -11,7 +11,11 @@ const COLUMN_MAP: { [key: string]: string } = {
   'Deskripsi': 'description',
   'Tanggal Dibuat': 'createdAt',
   'Gambar URL': 'image',
-  // Product Variant columns
+  // New variant fields
+  'Atribut': 'attributes',
+  'Opsi': 'options',
+  'Kombinasi': 'combinations',
+  // Product Variant columns (old system)
   'Product ID': 'productId',
   'Nama Varian': 'name',
   'Durasi (Nilai)': 'durationValue',
@@ -78,6 +82,17 @@ function mapColumnNames(item: any): any {
       value = parseNumber(value)
     }
     
+    // Parse JSON fields for variant data
+    if (englishKey === 'attributes' || englishKey === 'options' || englishKey === 'combinations') {
+      if (typeof value === 'string') {
+        try {
+          value = JSON.parse(value)
+        } catch (e) {
+          value = englishKey === 'combinations' ? [] : (englishKey === 'attributes' ? [] : [])
+        }
+      }
+    }
+    
     mapped[englishKey] = value
   }
   return mapped
@@ -94,10 +109,13 @@ function parseNumber(value: any): number {
 export async function addProductToGoogleSheets(product: {
   name: string
   price: number
-  duration: string
-  stock: number
+  duration?: string
+  stock?: number
   image?: string
   description?: string
+  attributes?: any[]
+  options?: any[]
+  combinations?: any[]
 }) {
   if (!APPS_SCRIPT_URL) {
     throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
@@ -110,7 +128,15 @@ export async function addProductToGoogleSheets(product: {
     },
     body: JSON.stringify({
       action: 'addProduct',
-      ...product
+      name: product.name,
+      price: product.price,
+      duration: product.duration || '',
+      stock: product.stock || 0,
+      image: product.image,
+      description: product.description,
+      attributes: product.attributes ? JSON.stringify(product.attributes) : '[]',
+      options: product.options ? JSON.stringify(product.options) : '[]',
+      combinations: product.combinations ? JSON.stringify(product.combinations) : '[]',
     }),
     signal: AbortSignal.timeout(30000)
   })
