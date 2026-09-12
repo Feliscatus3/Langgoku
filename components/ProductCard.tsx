@@ -11,13 +11,28 @@ interface ProductCardProps {
     duration: string
     stock: number
     image?: string
-    variants?: Array<{
+    variantAttributes?: Array<{
       id: string
+      productId: string
       name: string
-      durationValue: number
-      durationUnit: string
+      sortOrder: number
+      status: 'active' | 'inactive'
+    }>
+    attributeOptions?: Array<{
+      id: string
+      attributeId: string
+      name: string
+      sortOrder: number
+      status: 'active' | 'inactive'
+    }>
+    variantCombinations?: Array<{
+      id: string
+      productId: string
       price: number
-      status: string
+      status: 'active' | 'inactive'
+      stock: number
+      sortOrder: number
+      options: Record<string, string>
     }>
   }
 }
@@ -25,6 +40,10 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const isAvailable = product.stock > 0
   const formattedPrice = formatPrice(product.price)
+
+  // Get active combinations count
+  const activeCombinations = product.variantCombinations?.filter(c => c.status === 'active') || []
+  const hasVariants = (product.variantAttributes?.length || 0) > 0
 
   function formatPrice(price: number): string {
     return new Intl.NumberFormat('id-ID', {
@@ -72,10 +91,10 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
 
           {/* Variant Indicator */}
-          {product.variants && product.variants.length > 0 && (
+          {hasVariants && (
             <div className="mb-3 flex items-center gap-2">
               <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                {product.variants.filter(v => v.status === 'active').length} pilihan durasi
+                {activeCombinations.length} kombinasi variasi
               </span>
             </div>
           )}
@@ -91,4 +110,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
     </Link>
   )
+}
+
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(price)
 }

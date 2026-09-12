@@ -31,7 +31,29 @@ type Product = {
   stock: number
   image?: string
   category?: string
-  variants?: ProductVariant[]
+  variantAttributes?: Array<{
+    id: string
+    productId: string
+    name: string
+    sortOrder: number
+    status: 'active' | 'inactive'
+  }>
+  attributeOptions?: Array<{
+    id: string
+    attributeId: string
+    name: string
+    sortOrder: number
+    status: 'active' | 'inactive'
+  }>
+  variantCombinations?: Array<{
+    id: string
+    productId: string
+    price: number
+    status: 'active' | 'inactive'
+    stock: number
+    sortOrder: number
+    options: Record<string, string>
+  }>
 }
 
 function normalizeParam(value: string | string[] | undefined): string {

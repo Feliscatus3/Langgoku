@@ -25,17 +25,6 @@ export interface VariantCombination {
   options: Record<string, string> // attributeId -> optionId
 }
 
-export interface ProductVariant {
-  id: string
-  productId: string
-  name: string
-  durationValue: number
-  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
-  price: number
-  status: 'active' | 'inactive'
-  sortOrder: number
-}
-
 export interface Product {
   id: string
   name: string
@@ -44,7 +33,6 @@ export interface Product {
   stock: number
   image?: string
   description?: string
-  variants?: ProductVariant[]
   variantAttributes?: VariantAttribute[]
   attributeOptions?: AttributeOption[]
   variantCombinations?: VariantCombination[]

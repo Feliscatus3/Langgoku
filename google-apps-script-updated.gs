@@ -10,7 +10,6 @@
 const SPREADSHEET_ID = '1P7STjDhVEfCS8y55uWpYNE1nx54o6WEChuBMhR5psOE';
 const SHEETS = {
   PRODUCTS: 'Produk',
-  PRODUCT_VARIANTS: 'Produk Varian',
   VARIANT_ATTRIBUTES: 'Varian Atribut',
   ATTRIBUTE_OPTIONS: 'Atribut Opsi',
   VARIANT_COMBINATIONS: 'Varian Kombinasi',
@@ -154,14 +153,6 @@ function doPost(e) {
         return deletePromoAd(params.id);
       case 'sendNotification':
         return sendNotification(params);
-      case 'getProductVariants':
-        return getProductVariants(params.productId);
-      case 'addProductVariant':
-        return addProductVariant(params);
-      case 'updateProductVariant':
-        return updateProductVariant(params);
-      case 'deleteProductVariant':
-        return deleteProductVariant(params.id);
       case 'getVariantAttributes':
         return getVariantAttributes(params.productId);
       case 'addVariantAttribute':
@@ -446,127 +437,6 @@ function deleteProduct(id) {
   }
   
   return sendResponse({ success: false, message: 'Produk tidak ditemukan' });
-}
-
-// ==============================
-// PRODUCT VARIANT FUNCTIONS
-// ==============================
-
-function getProductVariants(productId) {
-  if (!productId) return sendResponse({ success: false, message: 'Product ID diperlukan' });
-  
-  const sheet = getSheetByName(SHEETS.PRODUCT_VARIANTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk Varian tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
-  
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) {
-    return sendResponse({ success: true, data: [], count: 0 });
-  }
-  
-  const headers = data[0];
-  const variants = [];
-  
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][1] === productId) {
-      variants.push(objectToData(headers, data[i]));
-    }
-  }
-  
-  // Sort by sort_order
-  variants.sort((a, b) => parseNumber(a['Urutan'] || 0) - parseNumber(b['Urutan'] || 0));
-  
-  return sendResponse({ success: true, data: variants, count: variants.length });
-}
-
-function addProductVariant(variant) {
-  console.log('addProductVariant called with:', JSON.stringify(variant));
-  
-  if (!variant || !variant.productId) {
-    return sendResponse({ success: false, message: 'Product ID diperlukan' });
-  }
-  
-  const sheet = getSheetByName(SHEETS.PRODUCT_VARIANTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk Varian tidak ditemukan. Jalankan initializeSheets() terlebih dahulu.' });
-  
-  const newId = 'VAR_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  
-  // Get max sort_order for this product
-  const data = sheet.getDataRange().getValues();
-  let maxSortOrder = 0;
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][1] === variant.productId) {
-      const sortOrder = parseNumber(data[i][7] || 0);
-      if (sortOrder > maxSortOrder) maxSortOrder = sortOrder;
-    }
-  }
-  
-  const rowData = [
-    newId,
-    variant.productId || '',
-    variant.name || '',
-    parseNumber(variant.durationValue),
-    variant.durationUnit || 'Hari',
-    parseNumber(variant.price),
-    variant.status || 'active',
-    maxSortOrder + 1
-  ];
-  
-  sheet.appendRow(rowData);
-  
-  console.log('Product variant added with ID:', newId);
-  
-  return sendResponse({
-    success: true,
-    message: 'Varian berhasil ditambahkan',
-    data: { id: newId }
-  });
-}
-
-function updateProductVariant(variant) {
-  console.log('updateProductVariant called with:', JSON.stringify(variant));
-  
-  if (!variant || !variant.id) {
-    return sendResponse({ success: false, message: 'ID varian diperlukan' });
-  }
-  
-  const sheet = getSheetByName(SHEETS.PRODUCT_VARIANTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk Varian tidak ditemukan' });
-  
-  const data = sheet.getDataRange().getValues();
-  
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === variant.id) {
-      const row = i + 1;
-      if (variant.name !== undefined) sheet.getRange(row, 3).setValue(variant.name || '');
-      if (variant.durationValue !== undefined) sheet.getRange(row, 4).setValue(parseNumber(variant.durationValue));
-      if (variant.durationUnit !== undefined) sheet.getRange(row, 5).setValue(variant.durationUnit || 'Hari');
-      if (variant.price !== undefined) sheet.getRange(row, 6).setValue(parseNumber(variant.price));
-      if (variant.status !== undefined) sheet.getRange(row, 7).setValue(variant.status || 'active');
-      if (variant.sortOrder !== undefined) sheet.getRange(row, 8).setValue(parseNumber(variant.sortOrder));
-      
-      return sendResponse({ success: true, message: 'Varian berhasil diperbarui' });
-    }
-  }
-  
-  return sendResponse({ success: false, message: 'Varian tidak ditemukan' });
-}
-
-function deleteProductVariant(id) {
-  if (!id) return sendResponse({ success: false, message: 'ID varian diperlukan' });
-  
-  const sheet = getSheetByName(SHEETS.PRODUCT_VARIANTS);
-  if (!sheet) return sendResponse({ success: false, message: 'Sheet Produk Varian tidak ditemukan' });
-  
-  const data = sheet.getDataRange().getValues();
-  
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === id) {
-      sheet.deleteRow(i + 1);
-      return sendResponse({ success: true, message: 'Varian berhasil dihapus' });
-    }
-  }
-  
-  return sendResponse({ success: false, message: 'Varian tidak ditemukan' });
 }
 
 // ==============================
@@ -1615,13 +1485,6 @@ function initializeSheets() {
     ]);
   }
   
-  if (!ss.getSheetByName(SHEETS.PRODUCT_VARIANTS)) {
-    const variantsSheet = ss.insertSheet(SHEETS.PRODUCT_VARIANTS);
-    variantsSheet.appendRow([
-      'ID', 'Product ID', 'Nama Varian', 'Durasi (Nilai)', 'Durasi (Satuan)', 'Harga Varian', 'Status', 'Urutan'
-    ]);
-  }
-  
   if (!ss.getSheetByName(SHEETS.VARIANT_ATTRIBUTES)) {
     const attrSheet = ss.insertSheet(SHEETS.VARIANT_ATTRIBUTES);
     attrSheet.appendRow([
@@ -1643,19 +1506,21 @@ function initializeSheets() {
     ]);
   }
   
-  return 'Sheets initialized: Produk, Produk Varian, Pembeli, Logs, Pengaturan, Kode Promo, Iklan Promo';
+  return 'Sheets initialized: Produk, Pembeli, Logs, Pengaturan, Kode Promo, Iklan Promo, Varian Atribut, Atribut Opsi, Varian Kombinasi';
 }
 
 function testConnection() {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const productsSheet = ss.getSheetByName(SHEETS.PRODUCTS);
-    const variantsSheet = ss.getSheetByName(SHEETS.PRODUCT_VARIANTS);
     const buyersSheet = ss.getSheetByName(SHEETS.BUYERS);
     const logsSheet = ss.getSheetByName(SHEETS.LOGS);
     const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
     const promoSheet = ss.getSheetByName(SHEETS.PROMO_CODES);
     const promoAdsSheet = ss.getSheetByName(SHEETS.PROMO_ADS);
+    const attrSheet = ss.getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+    const optSheet = ss.getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+    const comboSheet = ss.getSheetByName(SHEETS.VARIANT_COMBINATIONS);
     
     return sendResponse({
       success: true,
@@ -1663,7 +1528,9 @@ function testConnection() {
       spreadsheetId: SPREADSHEET_ID,
       sheets: {
         Produk: productsSheet ? 'ready' : 'not found',
-        'Produk Varian': variantsSheet ? 'ready' : 'not found',
+        'Varian Atribut': attrSheet ? 'ready' : 'not found',
+        'Atribut Opsi': optSheet ? 'ready' : 'not found',
+        'Varian Kombinasi': comboSheet ? 'ready' : 'not found',
         Pembeli: buyersSheet ? 'ready' : 'not found',
         Logs: logsSheet ? 'ready' : 'not found',
         Pengaturan: settingsSheet ? 'ready' : 'not found',
@@ -1671,7 +1538,6 @@ function testConnection() {
         'Iklan Promo': promoAdsSheet ? 'ready' : 'not found'
       },
       productsCount: productsSheet ? productsSheet.getLastRow() - 1 : 0,
-      variantsCount: variantsSheet ? variantsSheet.getLastRow() - 1 : 0,
       buyersCount: buyersSheet ? buyersSheet.getLastRow() - 1 : 0,
       promoCodesCount: promoSheet ? promoSheet.getLastRow() - 1 : 0,
       promoAdsCount: promoAdsSheet ? promoAdsSheet.getLastRow() - 1 : 0

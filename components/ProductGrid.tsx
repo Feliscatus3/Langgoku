@@ -5,9 +5,9 @@ interface ProductVariant {
   productId: string
   name: string
   durationValue: number
-  durationUnit: string
+  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
   price: number
-  status: string
+  status: 'active' | 'inactive'
   sortOrder: number
 }
 
@@ -18,7 +18,29 @@ interface Product {
   duration: string
   stock: number
   image?: string
-  variants?: ProductVariant[]
+  variantAttributes?: Array<{
+    id: string
+    productId: string
+    name: string
+    sortOrder: number
+    status: 'active' | 'inactive'
+  }>
+  attributeOptions?: Array<{
+    id: string
+    attributeId: string
+    name: string
+    sortOrder: number
+    status: 'active' | 'inactive'
+  }>
+  variantCombinations?: Array<{
+    id: string
+    productId: string
+    price: number
+    status: 'active' | 'inactive'
+    stock: number
+    sortOrder: number
+    options: Record<string, string>
+  }>
 }
 
 interface ProductGridProps {
