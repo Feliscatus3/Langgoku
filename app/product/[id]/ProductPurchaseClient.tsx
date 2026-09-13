@@ -3,15 +3,30 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-interface ProductVariant {
+interface VariantAttribute {
   id: string
   productId: string
   name: string
-  durationValue: number
-  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
+  sortOrder: number
+  status: 'active' | 'inactive'
+}
+
+interface AttributeOption {
+  id: string
+  attributeId: string
+  name: string
+  sortOrder: number
+  status: 'active' | 'inactive'
+}
+
+interface VariantCombination {
+  id: string
+  productId: string
   price: number
   status: 'active' | 'inactive'
+  stock: number
   sortOrder: number
+  options: Record<string, string>
 }
 
 interface Product {
@@ -22,48 +37,28 @@ interface Product {
   stock: number
   image?: string
   description?: string
-  variants?: any[]
+  variantAttributes?: VariantAttribute[]
+  attributeOptions?: AttributeOption[]
+  variantCombinations?: VariantCombination[]
 }
 
 interface ProductPurchaseClientProps {
-  product: {
-    id: string
-    name: string
-    price: number
-    duration: string
-    stock: number
-    image?: string
-    description?: string
-    variants?: any[]
-  }
-  selectedVariant: any
+  product: Product
+  selectedCombination: VariantCombination | null
   formatPrice: (price: number) => string
 }
 
-export default function ProductPurchaseClient({ product, selectedVariant: selectedVariantProp, formatPrice }: {
-  product: {
-    id: string
-    name: string
-    price: number
-    duration: string
-    stock: number
-    image?: string
-    description?: string
-    variants?: any[]
-  }
-  selectedVariant: any
-  formatPrice: (price: number) => string
-}) {
+export default function ProductPurchaseClient({ product, selectedCombination: selectedCombinationProp, formatPrice }: ProductPurchaseClientProps) {
   const router = useRouter()
   const [buyerName, setBuyerName] = useState('')
   const [buyerPhone, setBuyerPhone] = useState('')
   const [showCheckout, setShowCheckout] = useState(false)
-  const [selectedVariant, setSelectedVariant] = useState<any>(null)
+  const [selectedCombination, setSelectedCombination] = useState<VariantCombination | null>(null)
 
-  // Sync selectedVariant from props
+  // Sync selectedCombination from props
   useEffect(() => {
-    setSelectedVariant(selectedVariant)
-  }, [selectedVariant])
+    setSelectedCombination(selectedCombinationProp)
+  }, [selectedCombinationProp])
 
   const handleCheckout = () => {
     if (!buyerName.trim() || !buyerPhone.trim()) {
@@ -71,24 +66,46 @@ export default function ProductPurchaseClient({ product, selectedVariant: select
       return
     }
 
-    const finalPrice = selectedVariant ? selectedVariant.price : (product?.price || 0)
-    const productDuration = selectedVariant ? `${selectedVariant.durationValue} ${selectedVariant.durationUnit}` : product?.duration
+    if (!selectedCombination) {
+      alert('Silakan pilih varian terlebih dahulu')
+      return
+    }
 
+    if (selectedCombination.status !== 'active') {
+      alert('Varian yang dipilih sudah habis')
+      return
+    }
+
+    const finalPrice = selectedCombination.price
     const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase()
     const uniqueCodeNum = parseInt(uniqueCode.charCodeAt(0).toString())
     const priceWithCode = finalPrice + uniqueCodeNum
 
+    // Build variant name from selected combination
+    let variantName = ''
+    if (selectedCombination && product.variantAttributes && product.attributeOptions) {
+      const optionNames = Object.entries(selectedCombination.options || {}).map(([attrId, optId]) => {
+        const attr = product.variantAttributes?.find(a => a.id === attrId)
+        const opt = product.attributeOptions?.find(o => o.id === optId)
+        if (attr && opt) {
+          return `${attr.name}: ${opt.name}`
+        }
+        return ''
+      }).filter(Boolean)
+      variantName = optionNames.join(', ')
+    }
+
     const checkoutData = {
       productId: product?.id,
       productName: product?.name,
-      productDuration: selectedVariant ? `${selectedVariant.durationValue} ${selectedVariant.durationUnit}` : product?.duration,
+      productDuration: product?.duration,
       originalPrice: finalPrice,
       uniqueCode,
       finalPrice: priceWithCode,
       buyerName: buyerName.trim(),
       buyerPhone: buyerPhone.trim(),
-      variantId: selectedVariant?.id,
-      variantName: selectedVariant?.name,
+      combinationId: selectedCombination?.id,
+      variantName: variantName,
     }
 
     sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData))
@@ -96,21 +113,21 @@ export default function ProductPurchaseClient({ product, selectedVariant: select
   }
 
   if (!showCheckout) {
-    const finalPrice = selectedVariant ? selectedVariant.price : (product?.price || 0)
-    const productDuration = selectedVariant ? `${selectedVariant.durationValue} ${selectedVariant.durationUnit}` : product?.duration
+    const finalPrice = selectedCombination ? selectedCombination.price : (product?.price || 0)
+    const isAvailable = selectedCombination?.status === 'active' && product.stock > 0
 
     return (
       <div className="space-y-4">
         <button
           onClick={() => setShowCheckout(true)}
-          disabled={product.stock <= 0}
+          disabled={!isAvailable}
           className={`w-full py-4 px-8 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl ${
-            product.stock > 0
+            isAvailable
               ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {product.stock > 0 ? '🛒 Beli Sekarang' : 'Stok Habis'}
+          {isAvailable ? '🛒 Beli Sekarang' : 'Stok Habis'}
         </button>
 
         <div className="grid grid-cols-3 gap-4 text-center">
@@ -130,7 +147,7 @@ export default function ProductPurchaseClient({ product, selectedVariant: select
   }
 
   if (showCheckout) {
-    const finalPrice = selectedVariant ? selectedVariant.price : (product?.price || 0)
+    const finalPrice = selectedCombination ? selectedCombination.price : (product?.price || 0)
     const priceWithCode = finalPrice + parseInt(Math.random().toString(36).substring(2, 8).toUpperCase().charCodeAt(0).toString())
 
     return (

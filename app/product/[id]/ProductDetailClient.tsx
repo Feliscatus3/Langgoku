@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -30,7 +30,7 @@ interface VariantCombination {
   status: 'active' | 'inactive'
   stock: number
   sortOrder: number
-  options: Record<string, string> // attributeId -> optionId
+  options: Record<string, string>
 }
 
 interface Product {
@@ -41,29 +41,9 @@ interface Product {
   stock: number
   image?: string
   description?: string
-  variantAttributes?: Array<{
-    id: string
-    productId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  attributeOptions?: Array<{
-    id: string
-    attributeId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  variantCombinations?: Array<{
-    id: string
-    productId: string
-    price: number
-    status: 'active' | 'inactive'
-    stock: number
-    sortOrder: number
-    options: Record<string, string> // attributeId -> optionId
-  }>
+  variantAttributes?: VariantAttribute[]
+  attributeOptions?: AttributeOption[]
+  variantCombinations?: VariantCombination[]
 }
 
 interface ProductDetailClientProps {
@@ -75,75 +55,22 @@ interface ProductDetailClientProps {
     stock: number
     image?: string
     description?: string
-    variantAttributes?: Array<{
-      id: string
-      productId: string
-      name: string
-      sortOrder: number
-      status: 'active' | 'inactive'
-    }>
-    attributeOptions?: Array<{
-      id: string
-      attributeId: string
-      name: string
-      sortOrder: number
-      status: 'active' | 'inactive'
-    }>
-    variantCombinations?: Array<{
-      id: string
-      productId: string
-      price: number
-      status: 'active' | 'inactive'
-      stock: number
-      sortOrder: number
-      options: Record<string, string> // attributeId -> optionId
-    }>
+    variantAttributes?: VariantAttribute[]
+    attributeOptions?: AttributeOption[]
+    variantCombinations?: VariantCombination[]
   }
   formatPrice: (price: number) => string
 }
 
-export default function ProductDetailClient({ initialProduct, formatPrice }: {
-  initialProduct: {
-    id: string
-    name: string
-    price: number
-    duration: string
-    stock: number
-    image?: string
-    description?: string
-    variantAttributes?: Array<{
-      id: string
-      productId: string
-      name: string
-      sortOrder: number
-      status: 'active' | 'inactive'
-    }>
-    attributeOptions?: Array<{
-      id: string
-      attributeId: string
-      name: string
-      sortOrder: number
-      status: 'active' | 'inactive'
-    }>
-    variantCombinations?: Array<{
-      id: string
-      productId: string
-      price: number
-      status: 'active' | 'inactive'
-      stock: number
-      sortOrder: number
-      options: Record<string, string>
-    }>
-  }
-  formatPrice: (price: number) => string
-) {
+export default function ProductDetailClient({ initialProduct, formatPrice }: ProductDetailClientProps) {
   const params = useParams()
   const router = useRouter()
-  const [product, setProduct] = useState<any>(initialProduct)
+  const [product, setProduct] = useState<Product>(initialProduct)
   const [buyerName, setBuyerName] = useState('')
   const [buyerPhone, setBuyerPhone] = useState('')
   const [showCheckout, setShowCheckout] = useState(false)
-  const [selectedCombination, setSelectedCombination] = useState<any | null>(null)
+  const [selectedCombination, setSelectedCombination] = useState<VariantCombination | null>(null)
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
 
   // Auto-select first active combination if available
   useEffect(() => {
@@ -151,9 +78,67 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
       const activeCombos = product.variantCombinations.filter(c => c.status === 'active')
       if (activeCombos.length > 0) {
         setSelectedCombination(activeCombos[0])
+        setSelectedOptions(activeCombos[0].options || {})
       }
     }
   }, [product])
+
+  // Get available combinations based on current selections
+  const availableCombinations = useMemo(() => {
+    if (!product.variantCombinations || !product.variantAttributes) return []
+    
+    return product.variantCombinations.filter((combo: VariantCombination) => {
+      if (combo.status !== 'active') return false
+      
+      // Check if this combination matches all selected options
+      for (const [attrId, selectedOptId] of Object.entries(selectedOptions)) {
+        if (combo.options[attrId] !== selectedOptId) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [product.variantCombinations, selectedOptions])
+
+  // Check if an option is available (has at least one active combination)
+  const isOptionAvailable = (attrId: string, optId: string): boolean => {
+    if (!product.variantCombinations) return true
+    
+    // Check if there's any active combination that matches this option
+    // along with current selections
+    for (const combo of product.variantCombinations) {
+      if (combo.status !== 'active') continue
+      
+      let matches = true
+      // Check current selections
+      for (const [selAttrId, selOptId] of Object.entries(selectedOptions)) {
+        if (selAttrId !== attrId && combo.options[selAttrId] !== selOptId) {
+          matches = false
+          break
+        }
+      }
+      // Check this option
+      if (matches && combo.options[attrId] === optId) {
+        return true
+      }
+    }
+    return false
+  }
+
+  // Handle option selection
+  const handleOptionSelect = (attrId: string, optId: string) => {
+    const newSelections = { ...selectedOptions, [attrId]: optId }
+    setSelectedOptions(newSelections)
+    
+    // Find matching combination
+    if (product.variantCombinations) {
+      const matchingCombo = product.variantCombinations.find(
+        (combo) => combo.status === 'active' && 
+        Object.entries(newSelections).every(([k, v]) => combo.options[k] === v)
+      )
+      setSelectedCombination(matchingCombo || null)
+    }
+  }
 
   const handleCheckout = () => {
     if (!buyerName.trim() || !buyerPhone.trim()) {
@@ -161,9 +146,12 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
       return
     }
 
-    const finalPrice = selectedCombination ? selectedCombination.price : (product?.price || 0)
-    const productDuration = product?.duration || ''
+    if (!selectedCombination) {
+      alert('Silakan pilih varian terlebih dahulu')
+      return
+    }
 
+    const finalPrice = selectedCombination.price
     const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase()
     const uniqueCodeNum = parseInt(uniqueCode.charCodeAt(0).toString())
     const priceWithCode = finalPrice + uniqueCodeNum
@@ -182,13 +170,6 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
       variantName = optionNames.join(', ')
     }
 
-    const finalPrice = selectedCombination ? selectedCombination.price : (product?.price || 0)
-    const productDuration = product?.duration || ''
-
-    const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase()
-    const uniqueCodeNum = parseInt(uniqueCode.charCodeAt(0).toString())
-    const priceWithCode = finalPrice + uniqueCodeNum
-
     const checkoutData = {
       productId: product?.id,
       productName: product?.name,
@@ -198,7 +179,7 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
       finalPrice: priceWithCode,
       buyerName: buyerName.trim(),
       buyerPhone: buyerPhone.trim(),
-      variantId: selectedCombination?.id,
+      combinationId: selectedCombination?.id,
       variantName: variantName,
     }
 
@@ -237,13 +218,6 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
           .filter(Boolean)
           .join(', ')
       })() : product.duration
-
-  const selectedCombinationPrice = selectedCombination ? selectedCombination.price : product.price
-  const productDuration = selectedCombination ? product.variantAttributes?.map(a => {
-    const optId = selectedCombination.options?.[a.id]
-    const opt = product.attributeOptions?.find(o => o.id === selectedCombination.options?.[a.id])
-    return opt ? `${a.name}: ${opt.name}` : ''
-  }).filter(Boolean).join(', ') : product.duration
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -308,38 +282,48 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
               </p>
             </div>
 
-            {/* Variant Selector */}
-            {product.variantCombinations && product.variantCombinations.length > 0 && (
+            {/* Variant Selector - Shopee Style */}
+            {product.variantAttributes && product.variantAttributes.length > 0 && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Pilih Varian
-                </label>
-                <select
-                  value={selectedCombination?.id || ''}
-                  onChange={(e) => {
-                    const comboId = e.target.value
-                    const combo = product.variantCombinations?.find(c => c.id === comboId)
-                    setSelectedCombination(combo || null)
-                  }}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-medium bg-white"
-                >
-                  <option value="">Pilih varian</option>
-                  {product.variantCombinations.map((combo: any) => (
-                    <option key={combo.id} value={combo.id} disabled={combo.status !== 'active'}>
-                      {(() => {
-                        const names = Object.entries(combo.options || {}).map(([attrId, optId]) => {
-                          const attr = product.variantAttributes?.find(a => a.id === attrId)
-                          // We need to find the option name - this is a simplified version
-                          return opt?.name || 'Unknown'
-                        }).filter(Boolean)
-                        return optionNames.join(', ')
-                      })()}
-                      — {formatPrice(combo.price)}
-                      {combo.status !== 'active' ? ' (Habis)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-2">Harga akan berubah otomatis sesuai pilihan Anda</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Pilih Varian</h3>
+                <div className="space-y-6">
+                  {product.variantAttributes.map((attr) => {
+                    const options = product.attributeOptions?.filter(o => o.attributeId === attr.id && o.status === 'active') || []
+                    return (
+                      <div key={attr.id}>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          {attr.name}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {options.map((opt) => {
+                            const available = isOptionAvailable(attr.id, opt.id)
+                            const isSelected = selectedOptions[attr.id] === opt.id
+                            return (
+                              <button
+                                key={opt.id}
+                                onClick={() => available && handleOptionSelect(attr.id, opt.id)}
+                                disabled={!available}
+                                className={`px-4 py-2 rounded-xl border-2 font-medium transition-all duration-200 text-sm ${
+                                  !available
+                                    ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                                    : isSelected
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm shadow-blue-100'
+                                    : 'border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                                }`}
+                              >
+                                {opt.name}
+                                {!available && ' 🚫'}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {options.filter(o => isOptionAvailable(attr.id, o.id)).length} opsi tersedia
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
@@ -352,7 +336,7 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
                 <div>
                   <p className="text-sm font-semibold text-amber-800">Harga Spesial</p>
                   <p className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600">
-                    {formatPrice(selectedCombination ? selectedCombination.price : product.price)}
+                    {formatPrice(selectedCombinationPrice)}
                   </p>
                 </div>
               </div>
@@ -362,12 +346,12 @@ export default function ProductDetailClient({ initialProduct, formatPrice }: {
             <div className="flex items-center gap-4">
               <span
                 className={`px-6 py-3 rounded-full font-bold text-sm shadow-lg ${
-                  product.stock > 0
+                  selectedCombination?.status === 'active' && product.stock > 0
                     ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
                     : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
                 }`}
               >
-                {product.stock > 0 ? '✅ Tersedia' : '❌ Stok Habis'}
+                {selectedCombination?.status === 'active' && product.stock > 0 ? '✅ Tersedia' : '❌ Stok Habis'}
               </span>
               <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold text-sm">
                 ⚡ Instant Delivery

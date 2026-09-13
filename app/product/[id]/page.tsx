@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ProductDetailClient from './ProductDetailClient'
-import { getGoogleSheetsData, getVariantCombinations, getVariantAttributes, getAttributeOptions } from '@/lib/googleSheets'
+import { getGoogleSheetsData, getVariantAttributes, getAttributeOptions, getVariantCombinations } from '@/lib/googleSheets'
 import { formatPrice } from '@/lib/googleSheets'
 
 interface VariantAttribute {
@@ -27,7 +27,7 @@ interface VariantCombination {
   status: 'active' | 'inactive'
   stock: number
   sortOrder: number
-  options: Record<string, string> // attributeId -> optionId
+  options: Record<string, string>
 }
 
 interface Product {
@@ -38,29 +38,9 @@ interface Product {
   stock: number
   image?: string
   description?: string
-  variantAttributes?: Array<{
-    id: string
-    productId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  attributeOptions?: Array<{
-    id: string
-    attributeId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  variantCombinations?: Array<{
-    id: string
-    productId: string
-    price: number
-    status: 'active' | 'inactive'
-    stock: number
-    sortOrder: number
-    options: Record<string, string> // attributeId -> optionId
-  }>
+  variantAttributes?: VariantAttribute[]
+  attributeOptions?: AttributeOption[]
+  variantCombinations?: VariantCombination[]
 }
 
 export default async function ProductDetail({ params }: { params: { id: string } }) {
@@ -72,75 +52,35 @@ export default async function ProductDetail({ params }: { params: { id: string }
       notFound()
     }
 
-    // Fetch variant attributes, options, and combinations for this product
-    const [attributes, options, combinations] = await Promise.all([
-      getVariantAttributes(product.id),
-      getAttributeOptions(product.id), // This will need productId - we'll need to adjust
-      getVariantCombinations(product.id)
-    ])
+    // Fetch variant attributes for this product
+    const attributes = await getVariantAttributes(product.id)
+    const activeAttributes: VariantAttribute[] = attributes.filter((a: any) => a.status === 'active')
 
-    // Filter active variants
-    const activeAttributes = attributes.filter((a: any) => a.status === 'active')
-    const activeOptions = options.filter((o: any) => o.status === 'active')
+    // Fetch options for each attribute
+    let allOptions: AttributeOption[] = []
+    for (const attr of activeAttributes) {
+      const options = await getAttributeOptions(attr.id)
+      const activeOptions = options.filter((o: any) => o.status === 'active')
+      allOptions.push(...activeOptions)
+    }
+
+    // Fetch variant combinations for this product
+    const combinations = await getVariantCombinations(product.id)
+
+    // Filter active combinations
     const activeCombinations = combinations.filter((c: any) => c.status === 'active')
 
-    // Parse options JSON if needed
-    const parsedCombinations = combinations.map((combo: any) => {
-      if (combo.options && typeof combo.options === 'string') {
-        try {
-          return { ...combo, options: JSON.parse(combo.options) }
-        } catch {
-          return { ...combo, options: {} }
-        }
-      }
-      return combo
-    })
-
-    const activeCombinations = parsedCombinations.filter((c: any) => c.status === 'active')
-
-    // Build attribute options map for client
-    const attributesWithOptions = activeAttributes.map(attr => ({
-      ...attr,
-      options: activeOptions.filter(opt => opt.attributeId === attr.id)
-    })
-
-    // Build combinations with proper option names
-    const combinationsWithNames = activeCombinations.map(combo => ({
-      ...combo,
-      options: Object.entries(combo.options || {}).map(([attrId, optId]) => {
-        const attr = activeAttributes.find(a => a.id === attrId)
-        const opt = activeOptions.find(o => o.id === optId)
-        return {
-          attributeName: attr?.name,
-          optionName: opt?.name,
-          optionId: optId
-        }
-      }).filter(Boolean)
-    })
-
+    // Build product with variant data
     const productWithVariants = {
       ...product,
       variantAttributes: activeAttributes,
-      attributeOptions: activeOptions,
+      attributeOptions: allOptions,
       variantCombinations: activeCombinations,
-      variants: undefined // Remove old variants field
     }
 
     return (
-      <ProductDetailClient 
-        initialProduct={{
-          ...productWithVariants,
-          variants: activeCombinations.map(c => ({
-            id: c.id,
-            productId: c.productId,
-            name: c.options.map(o => `${o.attributeName}: ${o.optionName}`).join(', '),
-            durationValue: 0,
-            durationUnit: 'Hari',
-            price: c.price,
-            status: c.status,
-            sortOrder: c.sortOrder
-          }))
-        }
+      <ProductDetailClient
+        initialProduct={productWithVariants}
         formatPrice={formatPrice}
       />
     )

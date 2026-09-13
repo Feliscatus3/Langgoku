@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGoogleSheetsData, getProductVariants } from '@/lib/googleSheets'
+import { getGoogleSheetsData, getVariantAttributes, getAttributeOptions, getVariantCombinations } from '@/lib/googleSheets'
 
 export async function GET(
   request: NextRequest,
@@ -19,15 +19,29 @@ export async function GET(
       )
     }
 
-    // Fetch variants for this product
-    const variants = await getProductVariants(product.id)
-    const activeVariants = variants.filter((v: any) => v.status === 'active')
+    // Fetch variant attributes for this product
+    const attributes = await getVariantAttributes(product.id)
+    const activeAttributes = attributes.filter((a: any) => a.status === 'active')
+
+    // Fetch options for each attribute
+    let allOptions: any[] = []
+    for (const attr of activeAttributes) {
+      const options = await getAttributeOptions(attr.id)
+      const activeOptions = options.filter((o: any) => o.status === 'active')
+      allOptions.push(...activeOptions)
+    }
+
+    // Fetch variant combinations for this product
+    const combinations = await getVariantCombinations(product.id)
+    const activeCombinations = combinations.filter((c: any) => c.status === 'active')
 
     return NextResponse.json({
       success: true,
       data: {
         ...product,
-        variants: activeVariants
+        variantAttributes: activeAttributes,
+        attributeOptions: allOptions,
+        variantCombinations: activeCombinations,
       },
     }, {
       headers: {

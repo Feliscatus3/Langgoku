@@ -1,26 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGoogleSheetsData, getProductVariants } from '@/lib/googleSheets'
+import { getGoogleSheetsData, getVariantAttributes, getAttributeOptions, getVariantCombinations } from '@/lib/googleSheets'
 
-// Cache for product variants to avoid repeated fetches
-let variantsCache: Map<string, any[]> = new Map()
+// Cache for variant data to avoid repeated fetches
+let variantDataCache: Map<string, any> = new Map()
 let cacheTimestamp = 0
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
-async function getCachedVariants(productId: string) {
+async function getCachedVariantData(productId: string) {
   const now = Date.now()
   if (now - cacheTimestamp > CACHE_TTL) {
-    variantsCache.clear()
+    variantDataCache.clear()
     cacheTimestamp = now
   }
   
-  if (variantsCache.has(productId)) {
-    return variantsCache.get(productId)!
+  if (variantDataCache.has(productId)) {
+    return variantDataCache.get(productId)!
   }
   
-  const variants = await getProductVariants(productId)
-  const activeVariants = variants.filter((v: any) => v.status === 'active')
-  variantsCache.set(productId, activeVariants)
-  return activeVariants
+  // Fetch variant attributes for this product
+  const attributes = await getVariantAttributes(productId)
+  const activeAttributes = attributes.filter((a: any) => a.status === 'active')
+
+  // Fetch options for each attribute
+  let allOptions: any[] = []
+  for (const attr of activeAttributes) {
+    const options = await getAttributeOptions(attr.id)
+    const activeOptions = options.filter((o: any) => o.status === 'active')
+    allOptions.push(...activeOptions)
+  }
+
+  // Fetch variant combinations for this product
+  const combinations = await getVariantCombinations(productId)
+  const activeCombinations = combinations.filter((c: any) => c.status === 'active')
+
+  const variantData = {
+    variantAttributes: activeAttributes,
+    attributeOptions: allOptions,
+    variantCombinations: activeCombinations
+  }
+  
+  variantDataCache.set(productId, variantData)
+  return variantData
 }
 
 export async function GET(request: NextRequest) {
@@ -43,13 +63,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch variants for all products in parallel
+    // Fetch variant data for all products in parallel
     const productsWithVariants = await Promise.all(
       products.map(async (product: any) => {
-        const activeVariants = await getCachedVariants(product.id)
+        const variantData = await getCachedVariantData(product.id)
         return {
           ...product,
-          variants: activeVariants
+          ...variantData
         }
       })
     )

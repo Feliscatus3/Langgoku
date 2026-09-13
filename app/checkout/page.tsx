@@ -14,7 +14,7 @@ interface CheckoutData {
   finalPrice: number
   buyerName: string
   buyerPhone: string
-  variantId?: string
+  combinationId?: string
   variantName?: string
 }
 
@@ -80,9 +80,9 @@ export default function CheckoutPage() {
         console.log('Admin phone from settings:', data.data.adminPhone)
       }
 
-      // Validate variant price from backend if variantId exists
-      if (checkoutData?.variantId) {
-        await validateVariantPrice(checkoutData.variantId)
+      // Validate variant price from backend if combinationId exists
+      if (checkoutData?.combinationId) {
+        await validateCombinationPrice(checkoutData.combinationId)
       }
     } catch (err) {
       console.error('Error loading settings:', err)
@@ -92,9 +92,9 @@ export default function CheckoutPage() {
     }
   }
 
-  const validateVariantPrice = async (variantId: string) => {
+  const validateCombinationPrice = async (combinationId: string) => {
     try {
-      const response = await fetch(`/api/products/${checkoutData?.productId}/variants/${variantId}`)
+      const response = await fetch(`/api/products/${checkoutData?.productId}/combinations/${combinationId}`)
       const result = await response.json()
       
       if (result.success && result.data) {
@@ -111,7 +111,7 @@ export default function CheckoutPage() {
         }
       }
     } catch (err) {
-      console.error('Error validating variant price:', err)
+      console.error('Error validating combination price:', err)
     }
   }
 

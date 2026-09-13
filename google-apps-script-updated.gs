@@ -78,7 +78,7 @@ function doGet(e) {
         return sendResponse({
           success: false,
           message: 'Action tidak dikenali',
-          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'getPromoCodes', 'validatePromoCode', 'getPromoAds', 'testConnection', 'getProductVariants', 'addProductVariant', 'updateProductVariant', 'deleteProductVariant']
+          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'getPromoCodes', 'validatePromoCode', 'getPromoAds', 'testConnection', 'getVariantAttributes', 'addVariantAttribute', 'updateVariantAttribute', 'deleteVariantAttribute', 'getAttributeOptions', 'addAttributeOption', 'updateAttributeOption', 'deleteAttributeOption', 'getVariantCombinations', 'addVariantCombination', 'updateVariantCombination', 'deleteVariantCombination']
         });
     }
   } catch (error) {
@@ -857,7 +857,7 @@ function addBuyer(buyer) {
     buyer.paymentMethod || 'QRIS',
     buyer.adminPhone || '',
     new Date().toLocaleString('id-ID'),
-    buyer.variantId || '',
+    buyer.combinationId || '',
     buyer.variantName || ''
   ];
   
@@ -1401,6 +1401,9 @@ function getStats() {
   const settingsSheet = getSheetByName(SHEETS.SETTINGS);
   const promoSheet = getSheetByName(SHEETS.PROMO_CODES);
   const promoAdsSheet = getSheetByName(SHEETS.PROMO_ADS);
+  const attrSheet = getSheetByName(SHEETS.VARIANT_ATTRIBUTES);
+  const optSheet = getSheetByName(SHEETS.ATTRIBUTE_OPTIONS);
+  const comboSheet = getSheetByName(SHEETS.VARIANT_COMBINATIONS);
   
   return sendResponse({
     success: true,
@@ -1409,6 +1412,9 @@ function getStats() {
       totalBuyers: buyersSheet ? Math.max(0, buyersSheet.getLastRow() - 1) : 0,
       totalPromoCodes: promoSheet ? Math.max(0, promoSheet.getLastRow() - 1) : 0,
       totalPromoAds: promoAdsSheet ? Math.max(0, promoAdsSheet.getLastRow() - 1) : 0,
+      totalAttributes: attrSheet ? Math.max(0, attrSheet.getLastRow() - 1) : 0,
+      totalOptions: optSheet ? Math.max(0, optSheet.getLastRow() - 1) : 0,
+      totalCombinations: comboSheet ? Math.max(0, comboSheet.getLastRow() - 1) : 0,
       settingsExist: settingsSheet ? true : false,
       lastUpdated: new Date().toLocaleString('id-ID')
     }
@@ -1441,7 +1447,7 @@ function initializeSheets() {
   
   if (!ss.getSheetByName(SHEETS.PRODUCTS)) {
     const productsSheet = ss.insertSheet(SHEETS.PRODUCTS);
-    productsSheet.appendRow(['ID', 'Nama Produk', 'Harga', 'Durasi', 'Stok', 'Deskripsi', 'Tanggal Dibuat', 'Gambar URL']);
+    productsSheet.appendRow(['ID', 'Nama Produk', 'Harga', 'Durasi', 'Stok', 'Deskripsi', 'Tanggal Dibuat', 'Gambar URL', 'Atribut', 'Opsi', 'Kombinasi']);
   }
   
   if (!ss.getSheetByName(SHEETS.BUYERS)) {
@@ -1451,7 +1457,7 @@ function initializeSheets() {
       'Tanggal Mulai', 'Tanggal Selesai', 'Status', 'Sisa Hari', 
       'Notified', 'Notified At', 'Google Sheet ID', 
       'Metode Pembayaran', 'No Admin WhatsApp', 'Tanggal Input',
-      'Varian ID', 'Nama Varian'
+      'Kombinasi ID', 'Nama Varian'
     ]);
   }
   

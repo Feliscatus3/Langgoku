@@ -1,14 +1,29 @@
 import ProductCard from './ProductCard'
 
-interface ProductVariant {
+interface VariantAttribute {
   id: string
   productId: string
   name: string
-  durationValue: number
-  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
+  sortOrder: number
+  status: 'active' | 'inactive'
+}
+
+interface AttributeOption {
+  id: string
+  attributeId: string
+  name: string
+  sortOrder: number
+  status: 'active' | 'inactive'
+}
+
+interface VariantCombination {
+  id: string
+  productId: string
   price: number
   status: 'active' | 'inactive'
+  stock: number
   sortOrder: number
+  options: Record<string, string>
 }
 
 interface Product {
@@ -18,29 +33,9 @@ interface Product {
   duration: string
   stock: number
   image?: string
-  variantAttributes?: Array<{
-    id: string
-    productId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  attributeOptions?: Array<{
-    id: string
-    attributeId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  variantCombinations?: Array<{
-    id: string
-    productId: string
-    price: number
-    status: 'active' | 'inactive'
-    stock: number
-    sortOrder: number
-    options: Record<string, string>
-  }>
+  variantAttributes?: VariantAttribute[]
+  attributeOptions?: AttributeOption[]
+  variantCombinations?: VariantCombination[]
 }
 
 interface ProductGridProps {

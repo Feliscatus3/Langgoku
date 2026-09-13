@@ -12,18 +12,33 @@ type SearchParams = {
   q?: string | string[]
 }
 
-type ProductVariant = {
+interface VariantAttribute {
   id: string
   productId: string
   name: string
-  durationValue: number
-  durationUnit: 'Jam' | 'Hari' | 'Bulan' | 'Lifetime'
-  price: number
-  status: 'active' | 'inactive'
   sortOrder: number
+  status: 'active' | 'inactive'
 }
 
-type Product = {
+interface AttributeOption {
+  id: string
+  attributeId: string
+  name: string
+  sortOrder: number
+  status: 'active' | 'inactive'
+}
+
+interface VariantCombination {
+  id: string
+  productId: string
+  price: number
+  status: 'active' | 'inactive'
+  stock: number
+  sortOrder: number
+  options: Record<string, string>
+}
+
+interface Product {
   id: string
   name: string
   price: number
@@ -31,29 +46,9 @@ type Product = {
   stock: number
   image?: string
   category?: string
-  variantAttributes?: Array<{
-    id: string
-    productId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  attributeOptions?: Array<{
-    id: string
-    attributeId: string
-    name: string
-    sortOrder: number
-    status: 'active' | 'inactive'
-  }>
-  variantCombinations?: Array<{
-    id: string
-    productId: string
-    price: number
-    status: 'active' | 'inactive'
-    stock: number
-    sortOrder: number
-    options: Record<string, string>
-  }>
+  variantAttributes?: VariantAttribute[]
+  attributeOptions?: AttributeOption[]
+  variantCombinations?: VariantCombination[]
 }
 
 function normalizeParam(value: string | string[] | undefined): string {
@@ -238,4 +233,3 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Se
     </div>
   )
 }
-
