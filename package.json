@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "admin:password": "node scripts/set-admin-password.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm build"
   },
   "dependencies": {

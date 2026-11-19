@@ -32,6 +32,20 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
         return
       }
 
+      // Confirm the httpOnly session cookie was actually stored. This catches
+      // browsers blocking cookies and HTTP/LAN access where Secure cookies are
+      // rejected, instead of silently showing the dashboard.
+      const sessionResponse = await fetch('/api/admin/login', { cache: 'no-store' })
+      const session = await sessionResponse.json()
+
+      if (!session.authenticated) {
+        setError(
+          'Login berhasil, tetapi cookie sesi tidak tersimpan. Buka lewat http://localhost:3000 (bukan IP LAN) dan izinkan cookie di browser.'
+        )
+        onLogin(false)
+        return
+      }
+
       onLogin(true)
     } catch (err) {
       console.error('Login error:', err)

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     clearLoginFailures(clientKey)
 
     const response = NextResponse.json({ success: true, message: 'Login berhasil' })
-    setAdminCookie(response)
+    setAdminCookie(response, request)
     return response
   } catch (error) {
     console.error('[AdminLogin] Error:', error)
@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const response = NextResponse.json({ success: true, message: 'Logout berhasil' })
-  clearAdminCookie(response)
+  clearAdminCookie(response, request)
   return response
 }

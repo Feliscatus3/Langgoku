@@ -78,7 +78,24 @@ export function isAdminRequest(request: NextRequest): boolean {
   return verifyAdminSessionToken(request.cookies.get(ADMIN_COOKIE_NAME)?.value)
 }
 
-export function setAdminCookie(response: NextResponse): void {
+function isSecureRequest(request?: NextRequest): boolean {
+  if (!request) return process.env.NODE_ENV === 'production'
+
+  const forwardedProto = request.headers
+    .get('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim()
+    .toLowerCase()
+
+  if (forwardedProto) return forwardedProto === 'https'
+  if (request.nextUrl.protocol === 'https:') return true
+
+  // `next start` locally runs over HTTP even though NODE_ENV is production.
+  // Only force Secure when the public base URL is explicitly HTTPS.
+  return (process.env.NEXT_PUBLIC_BASE_URL || '').startsWith('https://')
+}
+
+export function setAdminCookie(response: NextResponse, request?: NextRequest): void {
   const token = createAdminSessionToken()
   if (!token) {
     throw new Error('ADMIN_PASSWORD atau ADMIN_SESSION_SECRET belum dikonfigurasi')
@@ -88,19 +105,19 @@ export function setAdminCookie(response: NextResponse): void {
     name: ADMIN_COOKIE_NAME,
     value: token,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureRequest(request),
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_TTL_MS / 1000,
   })
 }
 
-export function clearAdminCookie(response: NextResponse): void {
+export function clearAdminCookie(response: NextResponse, request?: NextRequest): void {
   response.cookies.set({
     name: ADMIN_COOKIE_NAME,
     value: '',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureRequest(request),
     sameSite: 'lax',
     path: '/',
     maxAge: 0,
