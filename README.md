@@ -25,7 +25,7 @@ Platform e-commerce modern untuk menjual akun premium digital (Netflix, Canva, C
 - Ringkasan pesanan yang jelas
 
 ✅ **Admin Panel**
-- Login terenkripsi (Username: adminku, Password: Langgoku7894$)
+- Login terenkripsi (Username: adminku, Password: GANTI_PASSWORD_ANDA)
 - Manajemen Produk (CRUD from Google Sheets)
 - Manajemen Pembeli (Input manual dengan drag tracking)
 - Tracking masa aktif akun (Aktif/Hampir Habis ≤3 hari/Expired)
@@ -146,7 +146,7 @@ GOOGLE_APPS_SCRIPT_URL=YOUR_GAS_WEB_APP_URL
 
 # Admin Credentials
 ADMIN_USERNAME=adminku
-ADMIN_PASSWORD=Langgoku7894$
+ADMIN_PASSWORD=GANTI_PASSWORD_ANDA
 ```
 
 ### 4. Setup QRIS Image
@@ -182,7 +182,7 @@ Buka [http://localhost:3000](http://localhost:3000)
 - Button konfirmasi via WhatsApp
 
 ### Admin Panel (`/admin`)
-- **Login**: Username: `adminku` | Password: `Langgoku7894$`
+- **Login**: Username: `adminku` | Password: `GANTI_PASSWORD_ANDA`
 - **Manajemen Produk**: Edit stok, harga, durasi dari Google Sheets
 - **Manajemen Pembeli**: Input manual pembeli + tracking masa aktif
 
@@ -233,7 +233,7 @@ Setiap kali ada request ke `/api/products`, data otomatis diambil dari Google Sh
 
 ### Login
 - Username: `adminku`
-- Password: `Langgoku7894$`
+- Password: `GANTI_PASSWORD_ANDA`
 - Session: 24 hours
 - Storage: localStorage + httpOnly cookie
 
@@ -302,7 +302,7 @@ Untuk automation penuh, bisa gunakan Google Apps Script untuk handle:
 - Auto-record pembeli ke sheet
 - Email notifications
 
-File: `google-apps-script.js` (tersedia di docs/)
+File: `google-apps-script-updated.gs` (tersedia di docs/)
 
 ## 🎨 Styling
 
@@ -334,7 +334,7 @@ File: `google-apps-script.js` (tersedia di docs/)
 
 ### Admin login tidak bisa
 - Username: `adminku`
-- Password: `Langgoku7894$`
+- Password: `GANTI_PASSWORD_ANDA`
 - Clear localStorage jika ada issue
 
 ### QRIS image tidak muncul

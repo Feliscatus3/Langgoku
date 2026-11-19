@@ -158,7 +158,7 @@ Halo! Berikut adalah panduan lengkap untuk menggunakan website Langgoku yang sud
 1. Di project Langgoku Anda, buka atau buat file `.env.local`
 2. Tambahkan:
    ```
-   NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/d/{SCRIPT_ID}/usurp
+   GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/d/{SCRIPT_ID}/exec
    ```
    Ganti `{SCRIPT_ID}` dengan ID dari URL deployment
 

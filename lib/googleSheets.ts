@@ -1,101 +1,492 @@
-// Support both local and Vercel environment variables
-const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
+import 'server-only'
 
-// Column name mapping from Indonesian (Google Sheets) to English (App)
-const COLUMN_MAP: { [key: string]: string } = {
-  'ID': 'id',
+import { appsScriptGet, appsScriptPost, isAppsScriptConfigured } from './appsScriptClient'
+import { parseNumber } from './format'
+import type {
+  AttributeOption,
+  Product,
+  VariantAttribute,
+  VariantCombination,
+} from '@/types/product'
+
+// Re-export client-safe helpers for backwards compatibility with server code.
+export { formatPrice } from './format'
+export { parseNumber as parsePrice } from './format'
+export { generateUniqueCode } from './checkout'
+export {
+  calculateExpiryDate,
+  calculateRemainingDays,
+  getSubscriptionStatus,
+} from './format'
+
+const JSON_FIELDS = new Set(['attributes', 'options', 'combinations'])
+
+// Column name mapping from Indonesian (Google Sheets) to English (App).
+// Keep this list in sync with google-apps-script-updated.gs headers.
+const COLUMN_MAP: Record<string, string> = {
+  ID: 'id',
   'Nama Produk': 'name',
-  'Harga': 'price',
-  'Durasi': 'duration',
-  'Stok': 'stock',
-  'Deskripsi': 'description',
+  'Nama Atribut': 'name',
+  'Nama Opsi': 'name',
+  Nama: 'name',
+  Harga: 'price',
+  Durasi: 'duration',
+  Stok: 'stock',
+  Deskripsi: 'description',
   'Tanggal Dibuat': 'createdAt',
   'Gambar URL': 'image',
-  // New variant fields
-  'Atribut': 'attributes',
-  'Opsi': 'options',
-  'Kombinasi': 'combinations',
-  // Buyer columns
-  'Nama': 'name',
+  Atribut: 'attributes',
+  Opsi: 'options',
+  'Opsi (JSON)': 'options',
+  Kombinasi: 'combinations',
+  'Product ID': 'productId',
+  'Attribute ID': 'attributeId',
+  Urutan: 'sortOrder',
+  Status: 'status',
   'No WhatsApp': 'phone',
-  'Produk': 'product',
+  Produk: 'product',
   'Tanggal Mulai': 'startDate',
   'Tanggal Selesai': 'endDate',
   'Sisa Hari': 'remainingDays',
   'Metode Pembayaran': 'paymentMethod',
   'No Admin WhatsApp': 'adminPhone',
-  'Tanggal Input': 'createdAt'
+  'Tanggal Input': 'createdAt',
+  'Notified At': 'notificationSentAt',
+  Notified: 'notified',
+  'Kombinasi ID': 'combinationId',
+  Varian: 'variantName',
 }
 
-export async function getGoogleSheetsData() {
+const NUMERIC_FIELDS = new Set(['price', 'stock', 'sortOrder', 'remainingDays'])
+
+function normalizeStatus(value: unknown): 'active' | 'inactive' | unknown {
+  if (typeof value === 'boolean') return value ? 'active' : 'inactive'
+  if (typeof value === 'number') return value === 1 ? 'active' : 'inactive'
+
+  const text = String(value ?? '').trim().toLowerCase()
+  if (['active', 'aktif', 'true', '1', 'yes', 'ya'].includes(text)) return 'active'
+  if (['inactive', 'nonaktif', 'non-aktif', 'tidak aktif', 'false', '0', 'no', 'tidak'].includes(text)) {
+    return 'inactive'
+  }
+  return value
+}
+
+function parseJsonField(key: string, value: unknown): unknown {
+  if (!JSON_FIELDS.has(key) || typeof value !== 'string') return value
+
   try {
-    if (!APPS_SCRIPT_URL) {
-      console.error('[GoogleSheets] URL not configured.')
-      return []
+    return JSON.parse(value)
+  } catch {
+    return key === 'options' ? {} : []
+  }
+}
+
+/** Maps a raw Google Sheets row into the app's English key names. */
+export function mapColumnNames(item: Record<string, unknown>): Record<string, unknown> {
+  const mapped: Record<string, unknown> = {}
+
+  for (const [key, rawValue] of Object.entries(item || {})) {
+    const englishKey = COLUMN_MAP[key] || key
+    let value: unknown = rawValue
+
+    if (NUMERIC_FIELDS.has(englishKey)) {
+      value = parseNumber(value)
+    } else if (englishKey === 'status') {
+      value = normalizeStatus(value)
+    } else {
+      value = parseJsonField(englishKey, value)
     }
 
-    const url = `${APPS_SCRIPT_URL}?action=getProducts`
-    const response = await fetch(url, { 
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(30000)
-    })
-    
-    if (!response.ok) {
-      console.error('[GoogleSheets] HTTP Error:', response.status)
-      return []
-    }
+    mapped[englishKey] = value
+  }
 
-    const data = await response.json()
-    
+  return mapped
+}
+
+function mapVariantAttribute(item: Record<string, unknown>): VariantAttribute {
+  const mapped = mapColumnNames(item)
+  return {
+    id: String(mapped.id || ''),
+    productId: String(mapped.productId || ''),
+    name: String(mapped.name || ''),
+    sortOrder: parseNumber(mapped.sortOrder),
+    status: mapped.status === 'inactive' ? 'inactive' : 'active',
+  }
+}
+
+function mapAttributeOption(item: Record<string, unknown>): AttributeOption {
+  const mapped = mapColumnNames(item)
+  return {
+    id: String(mapped.id || ''),
+    attributeId: String(mapped.attributeId || ''),
+    name: String(mapped.name || ''),
+    sortOrder: parseNumber(mapped.sortOrder),
+    status: mapped.status === 'inactive' ? 'inactive' : 'active',
+  }
+}
+
+function mapVariantCombination(item: Record<string, unknown>): VariantCombination {
+  const mapped = mapColumnNames(item)
+  const options =
+    mapped.options && typeof mapped.options === 'object' && !Array.isArray(mapped.options)
+      ? (mapped.options as Record<string, string>)
+      : {}
+
+  return {
+    id: String(mapped.id || ''),
+    productId: String(mapped.productId || ''),
+    price: parseNumber(mapped.price),
+    status: mapped.status === 'inactive' ? 'inactive' : 'active',
+    stock: parseNumber(mapped.stock),
+    sortOrder: parseNumber(mapped.sortOrder),
+    options,
+  }
+}
+
+function mapProduct(item: Record<string, unknown>): Product {
+  const mapped = mapColumnNames(item)
+
+  const variantAttributes = Array.isArray(mapped.attributes)
+    ? mapped.attributes
+        .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+        .map(mapVariantAttribute)
+    : []
+
+  const attributeOptions = Array.isArray(mapped.options)
+    ? mapped.options
+        .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+        .map(mapAttributeOption)
+    : []
+
+  const variantCombinations = Array.isArray(mapped.combinations)
+    ? mapped.combinations
+        .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+        .map(mapVariantCombination)
+    : []
+
+  return {
+    id: String(mapped.id || ''),
+    name: String(mapped.name || ''),
+    price: parseNumber(mapped.price),
+    duration: String(mapped.duration || ''),
+    stock: parseNumber(mapped.stock),
+    image: mapped.image ? String(mapped.image) : undefined,
+    description: mapped.description ? String(mapped.description) : undefined,
+    createdAt: mapped.createdAt ? String(mapped.createdAt) : undefined,
+    variantAttributes,
+    attributeOptions,
+    variantCombinations,
+  }
+}
+
+function sortByOrder<T extends { sortOrder: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+export interface ProductVariantData {
+  variantAttributes: VariantAttribute[]
+  attributeOptions: AttributeOption[]
+  variantCombinations: VariantCombination[]
+}
+
+const EMPTY_VARIANT_DATA: ProductVariantData = {
+  variantAttributes: [],
+  attributeOptions: [],
+  variantCombinations: [],
+}
+
+export async function getGoogleSheetsData(options: { noCache?: boolean } = {}): Promise<Product[]> {
+  if (!isAppsScriptConfigured()) {
+    console.error('[GoogleSheets] GOOGLE_APPS_SCRIPT_URL belum dikonfigurasi')
+    return []
+  }
+
+  try {
+    const data = await appsScriptGet<Record<string, unknown>[]>(
+      'getProducts',
+      {},
+      { revalidate: options.noCache ? 0 : 60 }
+    )
+
     if (!data.success) {
-      console.warn('[GoogleSheets] API Error:', data.message)
+      console.warn('[GoogleSheets] Gagal mengambil produk:', data.message)
       return []
     }
 
-    // Map column names from Indonesian to English
-    const mappedData = (data.data || []).map((item: any) => mapColumnNames(item))
-    
-    console.log('[GoogleSheets] Products fetched:', mappedData.length)
-    return mappedData
+    return (data.data || [])
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+      .map(mapProduct)
+      .filter((product) => product.id.length > 0)
   } catch (error) {
-    console.error('[GoogleSheets] Fetch error:', error)
+    console.error('[GoogleSheets] Fetch products error:', error)
     return []
   }
 }
 
-function mapColumnNames(item: any): any {
-  const mapped: any = {}
-  for (const key in item) {
-    const englishKey = COLUMN_MAP[key] || key
-    let value = item[key]
-    
-    // Parse numeric fields
-    if (englishKey === 'price' || englishKey === 'stock') {
-      value = parseNumber(value)
-    }
-    
-    // Parse JSON fields for variant data
-    if (englishKey === 'attributes' || englishKey === 'options' || englishKey === 'combinations') {
-      if (typeof value === 'string') {
-        try {
-          value = JSON.parse(value)
-        } catch (e) {
-          value = englishKey === 'combinations' ? [] : []
-        }
-      }
-    }
-    
-    mapped[englishKey] = value
+export async function getVariantAttributes(productId: string): Promise<VariantAttribute[]> {
+  if (!isAppsScriptConfigured() || !productId) return []
+
+  try {
+    const data = await appsScriptGet<Record<string, unknown>[]>(
+      'getVariantAttributes',
+      { productId },
+      { revalidate: 60 }
+    )
+    if (!data.success) return []
+    return sortByOrder(
+      (data.data || [])
+        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+        .map(mapVariantAttribute)
+        .filter((item) => item.id)
+    )
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch variant attributes error:', error)
+    return []
   }
-  return mapped
 }
 
-function parseNumber(value: any): number {
-  if (typeof value === 'number') return value
-  if (!value) return 0
-  const cleaned = String(value).replace(/[^\d.-]/g, '')
-  const parsed = parseFloat(cleaned)
-  return isNaN(parsed) ? 0 : parsed
+export async function getAttributeOptions(attributeId: string): Promise<AttributeOption[]> {
+  if (!isAppsScriptConfigured() || !attributeId) return []
+
+  try {
+    const data = await appsScriptGet<Record<string, unknown>[]>(
+      'getAttributeOptions',
+      { attributeId },
+      { revalidate: 60 }
+    )
+    if (!data.success) return []
+    return sortByOrder(
+      (data.data || [])
+        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+        .map(mapAttributeOption)
+        .filter((item) => item.id)
+    )
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch attribute options error:', error)
+    return []
+  }
+}
+
+export async function getVariantCombinations(productId: string): Promise<VariantCombination[]> {
+  if (!isAppsScriptConfigured() || !productId) return []
+
+  try {
+    const data = await appsScriptGet<Record<string, unknown>[]>(
+      'getVariantCombinations',
+      { productId },
+      { revalidate: 60 }
+    )
+    if (!data.success) return []
+    return sortByOrder(
+      (data.data || [])
+        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+        .map(mapVariantCombination)
+        .filter((item) => item.id)
+    )
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch variant combinations error:', error)
+    return []
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bulk variant loading
+// ---------------------------------------------------------------------------
+// One Apps Script call for every product is far cheaper than 3+ calls per
+// product. If the deployed script predates `getAllVariantData`, we fall back to
+// the per-product endpoints automatically.
+
+let bulkVariantSupport: boolean | null = null
+let bulkVariantCache: { at: number; data: ProductVariantData } | null = null
+const BULK_CACHE_TTL = 60_000
+
+function invalidateVariantCache(): void {
+  bulkVariantCache = null
+}
+
+async function getAllVariantData(force = false): Promise<ProductVariantData | null> {
+  if (!isAppsScriptConfigured()) return null
+  if (bulkVariantSupport === false && !force) return null
+
+  const now = Date.now()
+  if (!force && bulkVariantCache && now - bulkVariantCache.at < BULK_CACHE_TTL) {
+    return bulkVariantCache.data
+  }
+
+  try {
+    const response = await appsScriptGet<{
+      attributes?: Record<string, unknown>[]
+      options?: Record<string, unknown>[]
+      combinations?: Record<string, unknown>[]
+    }>('getAllVariantData', {}, { revalidate: force ? 0 : 60 })
+
+    if (!response.success || !response.data) {
+      if (String(response.message || '').toLowerCase().includes('tidak dikenali')) {
+        bulkVariantSupport = false
+      }
+      return null
+    }
+
+    bulkVariantSupport = true
+    const attributes = (response.data.attributes || []).map(mapVariantAttribute).filter((item) => item.id)
+    const options = (response.data.options || []).map(mapAttributeOption).filter((item) => item.id)
+    const combinations = (response.data.combinations || [])
+      .map(mapVariantCombination)
+      .filter((item) => item.id)
+
+    const data: ProductVariantData = {
+      variantAttributes: attributes,
+      attributeOptions: options,
+      variantCombinations: combinations,
+    }
+
+    bulkVariantCache = { at: now, data }
+    return data
+  } catch (error) {
+    console.error('[GoogleSheets] Fetch all variant data error:', error)
+    return null
+  }
+}
+
+function groupVariantData(data: ProductVariantData): Map<string, ProductVariantData> {
+  const map = new Map<string, ProductVariantData>()
+
+  const ensure = (productId: string): ProductVariantData => {
+    const existing = map.get(productId)
+    if (existing) return existing
+    const created: ProductVariantData = {
+      variantAttributes: [],
+      attributeOptions: [],
+      variantCombinations: [],
+    }
+    map.set(productId, created)
+    return created
+  }
+
+  // Attributes first so options can be attached to their owning product.
+  const attributeToProduct = new Map<string, string>()
+  for (const attribute of data.variantAttributes) {
+    if (!attribute.productId) continue
+    ensure(attribute.productId).variantAttributes.push(attribute)
+    attributeToProduct.set(attribute.id, attribute.productId)
+  }
+
+  for (const option of data.attributeOptions) {
+    const productId = attributeToProduct.get(option.attributeId)
+    if (productId) ensure(productId).attributeOptions.push(option)
+  }
+
+  for (const combination of data.variantCombinations) {
+    if (!combination.productId) continue
+    ensure(combination.productId).variantCombinations.push(combination)
+  }
+
+  for (const value of map.values()) {
+    value.variantAttributes = sortByOrder(value.variantAttributes)
+    value.attributeOptions = sortByOrder(value.attributeOptions)
+    value.variantCombinations = sortByOrder(value.variantCombinations)
+  }
+
+  return map
+}
+
+async function getVariantDataForProduct(productId: string): Promise<ProductVariantData> {
+  const attributes = await getVariantAttributes(productId)
+  if (attributes.length === 0) return { ...EMPTY_VARIANT_DATA }
+
+  const optionsByAttribute = await Promise.all(
+    attributes.map((attribute) => getAttributeOptions(attribute.id))
+  )
+  const combinations = await getVariantCombinations(productId)
+
+  return {
+    variantAttributes: attributes,
+    attributeOptions: optionsByAttribute.flat(),
+    variantCombinations: combinations,
+  }
+}
+
+function filterActive(data: ProductVariantData, includeInactive: boolean): ProductVariantData {
+  if (includeInactive) return data
+
+  const activeAttributes = data.variantAttributes.filter((item) => item.status === 'active')
+  const activeAttributeIds = new Set(activeAttributes.map((item) => item.id))
+
+  return {
+    variantAttributes: sortByOrder(activeAttributes),
+    attributeOptions: sortByOrder(
+      data.attributeOptions.filter(
+        (item) => item.status === 'active' && activeAttributeIds.has(item.attributeId)
+      )
+    ),
+    variantCombinations: sortByOrder(
+      data.variantCombinations.filter((item) => item.status === 'active')
+    ),
+  }
+}
+
+export async function getProductsWithVariants(
+  options: { includeInactive?: boolean; noCache?: boolean } = {}
+): Promise<Product[]> {
+  const includeInactive = options.includeInactive === true
+  const noCache = options.noCache === true
+  const products = await getGoogleSheetsData({ noCache })
+  if (products.length === 0) return []
+
+  const bulk = await getAllVariantData(noCache)
+  if (bulk) {
+    const grouped = groupVariantData(bulk)
+    return products.map((product) => ({
+      ...product,
+      ...filterActive(grouped.get(product.id) || EMPTY_VARIANT_DATA, includeInactive),
+    }))
+  }
+
+  // Legacy Apps Script fallback (one set of calls per product).
+  return Promise.all(
+    products.map(async (product) => {
+      const data = await getVariantDataForProduct(product.id)
+      return { ...product, ...filterActive(data, includeInactive) }
+    })
+  )
+}
+
+export async function getProductWithVariants(
+  productId: string,
+  options: { includeInactive?: boolean; noCache?: boolean } = {}
+): Promise<Product | null> {
+  const includeInactive = options.includeInactive === true
+  const noCache = options.noCache === true
+  const products = await getGoogleSheetsData({ noCache })
+  const product = products.find((item) => item.id === productId)
+  if (!product) return null
+
+  const bulk = await getAllVariantData(noCache)
+  if (bulk) {
+    const grouped = groupVariantData(bulk)
+    return {
+      ...product,
+      ...filterActive(grouped.get(product.id) || EMPTY_VARIANT_DATA, includeInactive),
+    }
+  }
+
+  const data = await getVariantDataForProduct(product.id)
+  return { ...product, ...filterActive(data, includeInactive) }
+}
+
+// ---------------------------------------------------------------------------
+// Product writes
+// ---------------------------------------------------------------------------
+
+async function postProductAction(
+  payload: Record<string, unknown>,
+  fallbackMessage: string
+): Promise<void> {
+  const result = await appsScriptPost(payload)
+  if (!result.success) {
+    throw new Error(result.message || fallbackMessage)
+  }
+  invalidateVariantCache()
 }
 
 export async function addProductToGoogleSheets(product: {
@@ -105,292 +496,98 @@ export async function addProductToGoogleSheets(product: {
   stock?: number
   image?: string
   description?: string
-  attributes?: any[]
-  options?: any[]
-  combinations?: any[]
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  attributes?: unknown[]
+  options?: unknown[]
+  combinations?: unknown[]
+}): Promise<void> {
+  await postProductAction(
+    {
       action: 'addProduct',
       name: product.name,
       price: product.price,
       duration: product.duration || '',
-      stock: product.stock || 0,
-      image: product.image,
-      description: product.description,
-      attributes: product.attributes ? JSON.stringify(product.attributes) : '[]',
-      options: product.options ? JSON.stringify(product.options) : '[]',
-      combinations: product.combinations ? JSON.stringify(product.combinations) : '[]',
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to add product')
-  }
-
-  return data
+      stock: product.stock ?? 0,
+      image: product.image || '',
+      description: product.description || '',
+      attributes: product.attributes || [],
+      options: product.options || [],
+      combinations: product.combinations || [],
+    },
+    'Gagal menambahkan produk'
+  )
 }
 
 export async function updateProductInGoogleSheets(product: {
   id: string
   name: string
   price: number
-  duration: string
-  stock: number
+  duration?: string
+  stock?: number
   image?: string
   description?: string
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+}): Promise<void> {
+  await postProductAction(
+    {
       action: 'updateProduct',
-      ...product
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to update product')
-  }
-
-  return data
-}
-
-export async function deleteProductFromGoogleSheets(id: string) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      duration: product.duration || '',
+      stock: product.stock ?? 0,
+      image: product.image || '',
+      description: product.description || '',
     },
-    body: JSON.stringify({
-      action: 'deleteProduct',
-      id
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to delete product')
-  }
-
-  return data
+    'Gagal memperbarui produk'
+  )
 }
 
-// ==============================
-// NEW VARIANT SYSTEM FUNCTIONS (Shopee-like)
-// ==============================
-
-// Variant Attribute functions
-export async function getVariantAttributes(productId: string) {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      console.error('[GoogleSheets] URL not configured.')
-      return []
-    }
-
-    const url = `${APPS_SCRIPT_URL}?action=getVariantAttributes&productId=${encodeURIComponent(productId)}`
-    const response = await fetch(url, { 
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(30000)
-    })
-    
-    if (!response.ok) {
-      console.error('[GoogleSheets] HTTP Error:', response.status)
-      return []
-    }
-
-    const data = await response.json()
-    
-    if (!data.success) {
-      console.warn('[GoogleSheets] API Error:', data.message)
-      return []
-    }
-
-    const mappedData = (data.data || []).map((item: any) => mapColumnNames(item))
-    console.log('[GoogleSheets] Variant attributes fetched:', mappedData.length)
-    return mappedData
-  } catch (error) {
-    console.error('[GoogleSheets] Fetch variant attributes error:', error)
-    return []
-  }
+export async function deleteProductFromGoogleSheets(id: string): Promise<void> {
+  await postProductAction({ action: 'deleteProduct', id }, 'Gagal menghapus produk')
 }
 
-export async function addVariantAttributeToGoogleSheets(attr: {
+// ---------------------------------------------------------------------------
+// Variant writes
+// ---------------------------------------------------------------------------
+
+export async function addVariantAttributeToGoogleSheets(attribute: {
   productId: string
   name: string
   status?: 'active' | 'inactive'
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'addVariantAttribute',
-      ...attr
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to add variant attribute')
-  }
-
-  return data
+}): Promise<void> {
+  await postProductAction(
+    { action: 'addVariantAttribute', ...attribute },
+    'Gagal menambahkan atribut varian'
+  )
 }
 
-export async function updateVariantAttributeInGoogleSheets(attr: {
+export async function updateVariantAttributeInGoogleSheets(attribute: {
   id: string
   name?: string
   sortOrder?: number
   status?: 'active' | 'inactive'
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'updateVariantAttribute',
-      ...attr
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to update variant attribute')
-  }
-
-  return data
+}): Promise<void> {
+  await postProductAction(
+    { action: 'updateVariantAttribute', ...attribute },
+    'Gagal memperbarui atribut varian'
+  )
 }
 
-export async function deleteVariantAttributeFromGoogleSheets(id: string) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'deleteVariantAttribute',
-      id
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to delete variant attribute')
-  }
-
-  return data
-}
-
-// Attribute Option functions
-export async function getAttributeOptions(attributeId: string) {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      console.error('[GoogleSheets] URL not configured.')
-      return []
-    }
-
-    const url = `${APPS_SCRIPT_URL}?action=getAttributeOptions&attributeId=${encodeURIComponent(attributeId)}`
-    const response = await fetch(url, { 
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(30000)
-    })
-    
-    if (!response.ok) {
-      console.error('[GoogleSheets] HTTP Error:', response.status)
-      return []
-    }
-
-    const data = await response.json()
-    
-    if (!data.success) {
-      console.warn('[GoogleSheets] API Error:', data.message)
-      return []
-    }
-
-    const mappedData = (data.data || []).map((item: any) => mapColumnNames(item))
-    console.log('[GoogleSheets] Attribute options fetched:', mappedData.length)
-    return mappedData
-  } catch (error) {
-    console.error('[GoogleSheets] Fetch attribute options error:', error)
-    return []
-  }
+export async function deleteVariantAttributeFromGoogleSheets(id: string): Promise<void> {
+  await postProductAction(
+    { action: 'deleteVariantAttribute', id },
+    'Gagal menghapus atribut varian'
+  )
 }
 
 export async function addAttributeOptionToGoogleSheets(option: {
   attributeId: string
   name: string
   status?: 'active' | 'inactive'
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'addAttributeOption',
-      ...option
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to add attribute option')
-  }
-
-  return data
+}): Promise<void> {
+  await postProductAction(
+    { action: 'addAttributeOption', ...option },
+    'Gagal menambahkan opsi atribut'
+  )
 }
 
 export async function updateAttributeOptionInGoogleSheets(option: {
@@ -398,226 +595,50 @@ export async function updateAttributeOptionInGoogleSheets(option: {
   name?: string
   sortOrder?: number
   status?: 'active' | 'inactive'
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'updateAttributeOption',
-      ...option
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to update attribute option')
-  }
-
-  return data
+}): Promise<void> {
+  await postProductAction(
+    { action: 'updateAttributeOption', ...option },
+    'Gagal memperbarui opsi atribut'
+  )
 }
 
-export async function deleteAttributeOptionFromGoogleSheets(id: string) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'deleteAttributeOption',
-      id
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to delete attribute option')
-  }
-
-  return data
+export async function deleteAttributeOptionFromGoogleSheets(id: string): Promise<void> {
+  await postProductAction(
+    { action: 'deleteAttributeOption', id },
+    'Gagal menghapus opsi atribut'
+  )
 }
 
-// Variant Combination functions
-export async function getVariantCombinations(productId: string) {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      console.error('[GoogleSheets] URL not configured.')
-      return []
-    }
-
-    const url = `${APPS_SCRIPT_URL}?action=getVariantCombinations&productId=${encodeURIComponent(productId)}`
-    const response = await fetch(url, { 
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(30000)
-    })
-    
-    if (!response.ok) {
-      console.error('[GoogleSheets] HTTP Error:', response.status)
-      return []
-    }
-
-    const data = await response.json()
-    
-    if (!data.success) {
-      console.warn('[GoogleSheets] API Error:', data.message)
-      return []
-    }
-
-    const mappedData = (data.data || []).map((item: any) => {
-      const mapped = mapColumnNames(item)
-      // Parse the options JSON
-      if (mapped.options) {
-        try {
-          mapped.options = JSON.parse(mapped.options)
-        } catch (e) {
-          mapped.options = {}
-        }
-      }
-      return mapped
-    })
-    console.log('[GoogleSheets] Variant combinations fetched:', mappedData.length)
-    return mappedData
-  } catch (error) {
-    console.error('[GoogleSheets] Fetch variant combinations error:', error)
-    return []
-  }
-}
-
-export async function addVariantCombinationToGoogleSheets(combo: {
+export async function addVariantCombinationToGoogleSheets(combination: {
   productId: string
   price: number
   status?: 'active' | 'inactive'
   stock?: number
   options: Record<string, string>
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'addVariantCombination',
-      ...combo
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to add variant combination')
-  }
-
-  return data
+}): Promise<void> {
+  await postProductAction(
+    { action: 'addVariantCombination', ...combination },
+    'Gagal menambahkan kombinasi varian'
+  )
 }
 
-export async function updateVariantCombinationInGoogleSheets(combo: {
+export async function updateVariantCombinationInGoogleSheets(combination: {
   id: string
   price?: number
   status?: 'active' | 'inactive'
   stock?: number
   sortOrder?: number
   options?: Record<string, string>
-}) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'updateVariantCombination',
-      ...combo
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to update variant combination')
-  }
-
-  return data
+}): Promise<void> {
+  await postProductAction(
+    { action: 'updateVariantCombination', ...combination },
+    'Gagal memperbarui kombinasi varian'
+  )
 }
 
-export async function deleteVariantCombinationFromGoogleSheets(id: string) {
-  if (!APPS_SCRIPT_URL) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL not configured')
-  }
-
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'deleteVariantCombination',
-      id
-    }),
-    signal: AbortSignal.timeout(30000)
-  })
-
-  const data = await response.json()
-  
-  if (!data.success) {
-    throw new Error(data.message || 'Failed to delete variant combination')
-  }
-
-  return data
-}
-
-export function parsePrice(priceStr: any): number {
-  return parseNumber(priceStr)
-}
-
-export function formatPrice(price: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(price)
-}
-
-export function generateUniqueCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
-}
-
-export function calculateExpiryDate(duration: string): Date {
-  const date = new Date()
-  const months = parseInt(duration.match(/\d+/)?.[0] || '1')
-  date.setMonth(date.getMonth() + months)
-  return date
-}
-
-export function calculateRemainingDays(expiryDate: Date): number {
-  const today = new Date()
-  const diffTime = expiryDate.getTime() - today.getTime()
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-}
-
-export function getSubscriptionStatus(remainingDays: number): 'active' | 'expiring' | 'expired' {
-  if (remainingDays <= 0) return 'expired'
-  if (remainingDays <= 3) return 'expiring'
-  return 'active'
+export async function deleteVariantCombinationFromGoogleSheets(id: string): Promise<void> {
+  await postProductAction(
+    { action: 'deleteVariantCombination', id },
+    'Gagal menghapus kombinasi varian'
+  )
 }

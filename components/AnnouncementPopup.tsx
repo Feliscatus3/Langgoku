@@ -1,20 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { PromoAd } from '@/types/product'
 
 interface Settings {
   announcementText: string
   announcementEnabled: boolean
 }
 
-interface PromoAd {
-  ID: string
-  'URL Gambar': string
-  Judul: string
-  Deskripsi: string
-  'URL Link': string
-  Aktif: boolean
-}
+const PROMO_DISMISS_MINUTES = 10
 
 export default function AnnouncementPopup() {
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -24,64 +18,47 @@ export default function AnnouncementPopup() {
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      // Check session - if this is a new session, always show popup
+      // A new browser session always shows the popup once.
       const isNewSession = !sessionStorage.getItem('promo_session_active')
       if (isNewSession) {
         sessionStorage.setItem('promo_session_active', 'true')
       }
 
-      // Load settings
-      const settingsRes = await fetch('/api/settings')
+      const [settingsRes, promoRes] = await Promise.all([
+        fetch('/api/settings', { cache: 'no-store' }),
+        fetch('/api/promo-ads', { cache: 'no-store' }),
+      ])
       const settingsData = await settingsRes.json()
-      
-      // Load promo ads
-      const promoRes = await fetch('/api/promo-ads')
       const promoData = await promoRes.json()
-      
+
       if (settingsData.success && settingsData.data) {
         setSettings(settingsData.data)
-        // Show announcement if enabled
         if (settingsData.data.announcementEnabled && settingsData.data.announcementText) {
-          // Check if already dismissed
           const dismissed = localStorage.getItem('announcement_dismissed')
-          const today = new Date().toDateString()
-          if (dismissed !== today) {
+          if (dismissed !== new Date().toDateString()) {
             setShowAnnouncement(true)
           }
         }
       }
-      
-      // Show promo ads if any active
-      if (promoData.success && promoData.data) {
-        const activeAds = (promoData.data as PromoAd[]).filter(ad => ad.Aktif !== false)
+
+      if (promoData.success && Array.isArray(promoData.data)) {
+        const activeAds = (promoData.data as PromoAd[]).filter(
+          (ad) => ad.Aktif !== false && Boolean(ad['URL Gambar'])
+        )
+
         if (activeAds.length > 0) {
           setPromoAds(activeAds)
-          
-          // Check if dismissed within 10 minutes
-          const promoDismissed = localStorage.getItem('promo_ad_dismissed')
-          if (promoDismissed) {
-            const dismissTime = new Date(promoDismissed)
-            const now = new Date()
-            const tenMinutesLater = new Date(dismissTime.getTime() + 10 * 60 * 1000)
-            
-            // If within 10 minutes and not a new session, don't show
-            if (dismissTime < now && !isNewSession) {
-              return
-            }
-            // If within 10 minutes but is new session, show anyway
-            if (dismissTime < now && isNewSession) {
-              setShowPromoAd(true)
-              return
-            }
+          setCurrentPromoIndex(0)
+
+          const dismissedUntil = localStorage.getItem('promo_ad_dismissed')
+          const until = dismissedUntil ? new Date(dismissedUntil).getTime() : 0
+          const stillDismissed = Number.isFinite(until) && Date.now() < until
+
+          if (isNewSession || !stillDismissed) {
+            setShowPromoAd(true)
           }
-          // No previous dismissal or 10 minutes passed, show popup
-          setShowPromoAd(true)
         }
       }
     } catch (err) {
@@ -89,7 +66,11 @@ export default function AnnouncementPopup() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const closeAnnouncement = () => {
     setShowAnnouncement(false)
@@ -99,10 +80,9 @@ export default function AnnouncementPopup() {
 
   const closePromoAd = () => {
     setShowPromoAd(false)
-    // Remember for 10 minutes
-    const tenMinutesLater = new Date()
-    tenMinutesLater.setMinutes(tenMinutesLater.getMinutes() + 10)
-    localStorage.setItem('promo_ad_dismissed', tenMinutesLater.toISOString())
+    const dismissedUntil = new Date()
+    dismissedUntil.setMinutes(dismissedUntil.getMinutes() + PROMO_DISMISS_MINUTES)
+    localStorage.setItem('promo_ad_dismissed', dismissedUntil.toISOString())
   }
 
   const nextPromo = () => {
@@ -115,7 +95,7 @@ export default function AnnouncementPopup() {
 
   const handlePromoClick = () => {
     const currentAd = promoAds[currentPromoIndex]
-    if (currentAd['URL Link']) {
+    if (currentAd?.['URL Link']) {
       window.open(currentAd['URL Link'], '_blank')
     }
   }
@@ -211,7 +191,10 @@ export default function AnnouncementPopup() {
               {/* Image with aspect ratio suitable for both mobile and desktop */}
               <div className="aspect-[4/3] bg-gray-100 relative">
                 {promoAds[currentPromoIndex]['URL Gambar'] ? (
-                  <img 
+                  // Promo ad URLs are supplied by the store admin and can be any
+                  // public host, so the plain <img> element is intentional here.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
                     src={promoAds[currentPromoIndex]['URL Gambar']}
                     alt={promoAds[currentPromoIndex].Judul || 'Promo'}
                     className="w-full h-full object-cover"

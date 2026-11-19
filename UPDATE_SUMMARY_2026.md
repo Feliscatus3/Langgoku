@@ -258,10 +258,10 @@ Berikut adalah daftar lengkap semua perubahan dan peningkatan yang telah dibuat 
 ### Test API
 ```bash
 # Get all products
-curl "https://script.google.com/macros/d/{SCRIPT_ID}/usurp?action=getProducts"
+curl "https://script.google.com/macros/d/{SCRIPT_ID}/exec?action=getProducts"
 
 # Add new buyer
-curl -X POST "https://script.google.com/macros/d/{SCRIPT_ID}/usurp?action=addBuyer" \
+curl -X POST "https://script.google.com/macros/d/{SCRIPT_ID}/exec?action=addBuyer" \
   -H "Content-Type: application/json" \
   -d '{"name":"John","phone":"+628126543210","product":"Netflix",...}'
 ```

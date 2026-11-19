@@ -57,7 +57,7 @@ Open [http://localhost:3000](http://localhost:3000) ✨
 - ✅ Homepage shows products
 - ✅ Search works
 - ✅ Click product detail
-- ✅ Admin `/admin` login (adminku / Langgoku7894$)
+- ✅ Admin `/admin` login (adminku / GANTI_PASSWORD_ANDA)
 
 ## 📦 What You Get
 

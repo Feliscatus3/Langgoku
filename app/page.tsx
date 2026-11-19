@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import ProductGrid from '@/components/ProductGrid'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -8,41 +8,39 @@ import EmptyState from '@/components/EmptyState'
 import TestimoniesSlider from '@/components/TestimoniesSlider'
 import AnnouncementSection from '@/components/AnnouncementSection'
 import Link from 'next/link'
+import type { Product } from '@/types/product'
 
 export default function Home() {
-  const [products, setProducts] = useState<any[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      
-      const response = await fetch('/api/products')
+
+      const response = await fetch('/api/products', { cache: 'no-store' })
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch products')
+      if (!response.ok || !data.success || !Array.isArray(data.data) || data.data.length === 0) {
+        setError(data.message || 'Produk belum tersedia')
+        setProducts([])
+        return
       }
 
-      if (!data.data || data.data.length === 0) {
-        setError('Produk belum tersedia')
-        setProducts([])
-      } else {
-        setProducts(data.data)
-      }
+      setProducts(data.data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan')
       setProducts([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchProducts()
+  }, [fetchProducts])
 
   return (
     <div className="bg-white">
@@ -81,21 +79,21 @@ export default function Home() {
 
           {/* Gemini - Middle Right */}
           <div className="absolute top-[35%] right-[5%] sm:right-[8%] md:right-[10%] animate-float" style={{animationDelay: '0.8s'}}>
-            <div className="w-9 h-9 sm:w-11 sm:h-11 md:w-13 md:h-13 lg:w-14 lg:h-14 aspect-square rounded-full p-1.5 sm:p-2">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-14 lg:h-14 aspect-square rounded-full p-1.5 sm:p-2">
               <Image src="/images/gemini.png" alt="Gemini" fill className="object-contain opacity-90" />
             </div>
           </div>
 
           {/* Alightmotion - Center Left, slightly up */}
           <div className="absolute top-[45%] left-[15%] sm:left-[18%] md:left-[20%] animate-bounce" style={{animationDelay: '0.3s'}}>
-            <div className="w-11 h-11 sm:w-13 sm:h-13 md:w-16 md:h-16 lg:w-18 lg:h-18 aspect-square rounded-full p-1.5 sm:p-2 md:p-2.5">
+            <div className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 aspect-square rounded-full p-1.5 sm:p-2 md:p-2.5">
               <Image src="/images/alightmotion.png" alt="Alightmotion" fill className="object-contain opacity-90" />
             </div>
           </div>
 
           {/* Zoom - Center Right, slightly down */}
           <div className="absolute top-[50%] right-[15%] sm:right-[18%] md:right-[20%] animate-float" style={{animationDelay: '1.5s'}}>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-15 md:h-15 lg:w-16 lg:h-16 aspect-square rounded-full p-1.5 sm:p-2 md:p-2">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-16 lg:h-16 aspect-square rounded-full p-1.5 sm:p-2 md:p-2">
               <Image src="/images/zoom.png" alt="Zoom" fill className="object-contain opacity-90" />
             </div>
           </div>
@@ -109,7 +107,7 @@ export default function Home() {
 
           {/* Netflix - Bottom Right Area */}
           <div className="absolute bottom-[28%] right-[6%] sm:right-[8%] md:right-[10%] animate-float" style={{animationDelay: '2s'}}>
-            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 aspect-square rounded-full p-2 sm:p-2.5 md:p-3">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 aspect-square rounded-full p-2 sm:p-2.5 md:p-3">
               <Image src="/images/netflix.png" alt="Netflix" fill className="object-contain opacity-90" />
             </div>
           </div>

@@ -45,7 +45,7 @@ NEXT_PUBLIC_GOOGLE_SHEET_ID=XXXXXX
 NEXT_PUBLIC_GOOGLE_API_KEY=XXXXXX
 GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/d/xxxxx/usercontent
 ADMIN_USERNAME=adminku
-ADMIN_PASSWORD=Langgoku7894$
+ADMIN_PASSWORD=GANTI_PASSWORD_ANDA
 ```
 
 ## 📊 Step 2: Setup Google Sheets
@@ -121,7 +121,7 @@ Go to [http://localhost:3000/admin](http://localhost:3000/admin)
 
 Login dengan:
 - Username: `adminku`
-- Password: `Langgoku7894$`
+- Password: `GANTI_PASSWORD_ANDA`
 
 ## 📱 Step 5: Add QRIS Image
 
@@ -188,7 +188,7 @@ Untuk automation penuh seperti auto-record pembeli:
 
 1. Go to [script.google.com](https://script.google.com)
 2. Click "New Project"
-3. Copy code dari `google-apps-script.js` ke editor
+3. Copy code dari `google-apps-script-updated.gs` ke editor
 4. Save
 
 ### B. Deploy sebagai Web App
@@ -245,7 +245,7 @@ GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/d/xxxxx/usercontent
 
 # Admin Credentials
 ADMIN_USERNAME=adminku
-ADMIN_PASSWORD=Langgoku7894$
+ADMIN_PASSWORD=GANTI_PASSWORD_ANDA
 ```
 
 ## 🐛 Common Issues & Solutions
@@ -274,7 +274,7 @@ ADMIN_PASSWORD=Langgoku7894$
 **Problem**: Username/password salah terus
 
 **Solutions**:
-- ✅ Double-check credentials: `adminku` / `Langgoku7894$`
+- ✅ Double-check credentials: `adminku` / `GANTI_PASSWORD_ANDA`
 - ✅ Clear localStorage: `localStorage.clear()` di console
 - ✅ Try incognito/private mode
 

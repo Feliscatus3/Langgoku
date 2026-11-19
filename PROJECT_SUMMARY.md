@@ -24,7 +24,7 @@ Selamat! Anda sekarang memiliki **website e-commerce digital premium yang lengka
 - ✅ Price calculation dengan kode unik
 
 ### 👨‍💼 Admin Panel
-- ✅ Login terproteksi (adminku / Langgoku7894$)
+- ✅ Login terproteksi (adminku / GANTI_PASSWORD_ANDA)
 - ✅ Manajemen Produk (CRUD)
 - ✅ Manajemen Pembeli
 - ✅ Tracking masa aktif (Aktif/Hampir Habis/Expired)
@@ -114,7 +114,7 @@ langgoku-ecommerce/
 │   └── PROJECT_SUMMARY.md        # This file
 │
 ├── Backend
-│   ├── google-apps-script.js     # GAS automation
+│   ├── google-apps-script-updated.gs     # GAS automation
 │   └── .env.local.example        # Environment template
 │
 └── .env.local                    # Your local config (NOT in git)
@@ -172,7 +172,7 @@ Visit [http://localhost:3000](http://localhost:3000) ✨
 
 ### For Development
 5. **API.md** - API reference lengkap
-6. **google-apps-script.js** - Backend automation
+6. **google-apps-script-updated.gs** - Backend automation
 
 ### For Deployment
 7. **DEPLOYMENT.md** - Deploy ke Vercel

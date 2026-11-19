@@ -110,7 +110,7 @@ POST /api/admin/login
 ```json
 {
   "username": "adminku",
-  "password": "Langgoku7894$"
+  "password": "GANTI_PASSWORD_ANDA"
 }
 ```
 
@@ -211,7 +211,7 @@ fetch('/api/admin/login', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     username: 'adminku',
-    password: 'Langgoku7894$'
+    password: 'GANTI_PASSWORD_ANDA'
   })
 })
   .then(res => res.json())
@@ -230,7 +230,7 @@ curl "http://localhost:3000/api/products/netflix-1m"
 # Admin login
 curl -X POST "http://localhost:3000/api/admin/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"adminku","password":"Langgoku7894$"}'
+  -d '{"username":"adminku","password":"GANTI_PASSWORD_ANDA"}'
 ```
 
 ### Axios
@@ -245,7 +245,7 @@ axios.get('/api/products')
 // Login
 axios.post('/api/admin/login', {
   username: 'adminku',
-  password: 'Langgoku7894$'
+  password: 'GANTI_PASSWORD_ANDA'
 })
   .then(res => console.log(res.data))
 ```
@@ -461,7 +461,7 @@ curl http://localhost:3000/api/products/netflix-1m | jq
 # Admin login
 curl -X POST http://localhost:3000/api/admin/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"adminku","password":"Langgoku7894$"}' | jq
+  -d '{"username":"adminku","password":"GANTI_PASSWORD_ANDA"}' | jq
 ```
 
 ---

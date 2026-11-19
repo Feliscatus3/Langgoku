@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Settings {
@@ -16,34 +16,33 @@ export default function MaintenancePage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
-      const response = await fetch('/api/settings')
+      const response = await fetch('/api/settings', { cache: 'no-store' })
       const data = await response.json()
-      
+
       if (data.success && data.data) {
         setSettings(data.data)
-        
+
         // If not in maintenance mode, redirect to home
         if (!data.data.maintenanceMode) {
-          router.push('/')
+          router.replace('/')
           return
         }
       } else {
-        // If no settings, allow access
-        router.push('/')
+        router.replace('/')
       }
     } catch (err) {
       console.error('Error loading settings:', err)
-      router.push('/')
+      router.replace('/')
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
 
   if (loading) {
     return (

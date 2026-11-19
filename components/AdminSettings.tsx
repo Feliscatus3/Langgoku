@@ -1,101 +1,78 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { StoreSettings } from '@/types/product'
 
-interface Settings {
-  googleSheetId: string
-  adminPhone: string
-  storeEmail: string
-  storeName: string
-  storeDescription: string
-  notificationEnabled: boolean
-  maintenanceMode: boolean
-  announcementText: string
-  announcementEnabled: boolean
+const DEFAULT_SETTINGS: StoreSettings = {
+  googleSheetId: '',
+  adminPhone: '',
+  storeEmail: '',
+  storeName: 'Langgoku',
+  storeDescription: '',
+  notificationEnabled: true,
+  maintenanceMode: false,
+  announcementText: '',
+  announcementEnabled: false,
 }
 
 export default function AdminSettings() {
-  const [settings, setSettings] = useState<Settings>({
-    googleSheetId: '',
-    adminPhone: '',
-    storeEmail: '',
-    storeName: 'Langgoku',
-    storeDescription: '',
-    notificationEnabled: true,
-    maintenanceMode: false,
-    announcementText: '',
-    announcementEnabled: false,
-  })
-
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS)
   const [isSaving, setIsSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadSettingsFromAPI()
-  }, [])
-
-  const loadSettingsFromAPI = async () => {
+  const loadSettingsFromAPI = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
-      const response = await fetch('/api/settings', {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      })
+      const response = await fetch('/api/settings', { cache: 'no-store' })
       const data = await response.json()
-      
+
       if (data.success && data.data) {
-        const mergedSettings = { ...settings, ...data.data }
-        setSettings(mergedSettings)
-        localStorage.setItem('langgoku_settings', JSON.stringify(mergedSettings))
-      } else {
-        const saved = localStorage.getItem('langgoku_settings')
-        if (saved) {
-          setSettings(JSON.parse(saved))
-        }
+        setSettings({ ...DEFAULT_SETTINGS, ...data.data })
       }
     } catch (err) {
-      console.log('Loading from localStorage fallback')
-      const saved = localStorage.getItem('langgoku_settings')
-      if (saved) {
-        setSettings(JSON.parse(saved))
-      }
+      console.error('Error loading settings:', err)
+      setError('Gagal memuat pengaturan dari server')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const handleChange = (field: keyof Settings, value: any) => {
-    setSettings({
-      ...settings,
-      [field]: value,
-    })
+  useEffect(() => {
+    void loadSettingsFromAPI()
+  }, [loadSettingsFromAPI])
+
+  const handleChange = <K extends keyof StoreSettings>(field: K, value: StoreSettings[K]) => {
+    setSettings((previous) => ({ ...previous, [field]: value }))
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     setError(null)
     try {
-      if (!settings.adminPhone || !settings.storeEmail) {
+      const adminPhone = String(settings.adminPhone || '').trim()
+      const storeEmail = String(settings.storeEmail || '').trim()
+
+      if (!adminPhone || !storeEmail) {
         setError('Harap isi nomor WhatsApp dan email toko')
-        setIsSaving(false)
+        return
+      }
+      if (adminPhone.replace(/\D/g, '').length < 8) {
+        setError('Nomor WhatsApp admin tidak valid')
         return
       }
 
       const response = await fetch('/api/settings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       })
 
       const result = await response.json()
 
       if (result.success) {
-        localStorage.setItem('langgoku_settings', JSON.stringify(settings))
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
       } else {
@@ -103,9 +80,7 @@ export default function AdminSettings() {
       }
     } catch (err) {
       console.error('Error saving settings:', err)
-      localStorage.setItem('langgoku_settings', JSON.stringify(settings))
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      setError('Gagal menyimpan pengaturan. Periksa koneksi lalu coba lagi.')
     } finally {
       setIsSaving(false)
     }

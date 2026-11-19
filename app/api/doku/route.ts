@@ -1,169 +1,137 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  createSnapSignature,
+  dokuTimestamp,
+  formatPhoneForDoku,
+  getDokuBaseUrl,
+  getDokuClientId,
+  isDokuConfigured,
+} from '@/lib/doku'
 
-// DOKU Configuration from environment
-const CLIENT_ID = process.env.DOKU_CLIENT_ID || 'BRN-0264-1774613436846'
-const SECRET_KEY = process.env.DOKU_SECRET_KEY || 'SK-caPgjJtZb9xay5wJgSrP'
-const IS_PRODUCTION = process.env.DOKU_IS_PRODUCTION === 'true'
+export const dynamic = 'force-dynamic'
 
-// Channel mapping for DOKU payment methods
+const VA_TARGET = (process.env.DOKU_VA_TARGET || '/virtual-account/bank-transfer/va').trim()
+
 const CHANNEL_MAP: Record<string, string> = {
-  'VIRTUAL_ACCOUNT_BCA': 'VIRTUAL_ACCOUNT_BANK_CIMB',
-  'VIRTUAL_ACCOUNT_BRI': 'VIRTUAL_ACCOUNT_BANK_CIMB',
-  'VIRTUAL_ACCOUNT_MANDIRI': 'VIRTUAL_ACCOUNT_BANK_CIMB',
-  'VIRTUAL_ACCOUNT_BNI': 'VIRTUAL_ACCOUNT_BANK_CIMB',
-  'QRIS': 'QRIS',
-  'E_WALLET_DANA': 'EMONEY_DANA_SNAP',
-  'E_WALLET_OVO': 'EMONEY_OVO_SNAP',
-  'E_WALLET_SHOPEEPAY': 'EMONEY_SHOPEE_PAY_SNAP',
+  VIRTUAL_ACCOUNT_BCA: 'VIRTUAL_ACCOUNT_BCA',
+  VIRTUAL_ACCOUNT_BRI: 'VIRTUAL_ACCOUNT_BRI',
+  VIRTUAL_ACCOUNT_MANDIRI: 'VIRTUAL_ACCOUNT_BANK_MANDIRI',
+  VIRTUAL_ACCOUNT_BNI: 'VIRTUAL_ACCOUNT_BNI',
+  VIRTUAL_ACCOUNT_PERMATA: 'VIRTUAL_ACCOUNT_BANK_PERMATA',
+  VIRTUAL_ACCOUNT_CIMB: 'VIRTUAL_ACCOUNT_BANK_CIMB',
+  VIRTUAL_ACCOUNT_DANAMON: 'VIRTUAL_ACCOUNT_BANK_DANAMON',
+  VIRTUAL_ACCOUNT_BSI: 'VIRTUAL_ACCOUNT_BANK_SYARIAH_INDONESIA',
 }
 
-// Generate HMAC signature for DOKU
-function generateSignature(payload: string): string {
-  const crypto = require('crypto')
-  return crypto
-    .createHmac('sha256', SECRET_KEY)
-    .update(payload)
-    .digest('base64')
-}
-
-// Create Virtual Account via DOKU
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const {
-      orderId,
-      amount,
-      buyerName,
-      buyerPhone,
-      productName,
-      paymentMethod,
-    } = body
-
-    if (!orderId || !amount || !buyerName || !buyerPhone) {
+    if (!isDokuConfigured()) {
       return NextResponse.json(
-        { success: false, message: 'Missing required fields' },
+        {
+          success: false,
+          message: 'Virtual Account DOKU belum dikonfigurasi. Hubungi admin via WhatsApp.',
+        },
+        { status: 503 }
+      )
+    }
+
+    const body = await request.json().catch(() => null)
+    const orderId = typeof body?.orderId === 'string' ? body.orderId.trim() : ''
+    const amount = Math.round(Number(body?.amount))
+    const buyerName = typeof body?.buyerName === 'string' ? body.buyerName.trim() : ''
+    const buyerPhone = typeof body?.buyerPhone === 'string' ? body.buyerPhone.trim() : ''
+    const paymentMethod = typeof body?.paymentMethod === 'string' ? body.paymentMethod : ''
+
+    if (!orderId || !buyerName || !buyerPhone || !Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json(
+        { success: false, message: 'Missing or invalid required fields' },
         { status: 400 }
       )
     }
 
-    // Format phone number
-    const formattedPhone = buyerPhone.replace(/\D/g, '')
-    const phone = formattedPhone.startsWith('62') ? formattedPhone : '62' + formattedPhone.substring(1)
+    const phone = formatPhoneForDoku(buyerPhone)
+    const partnerServiceId = process.env.DOKU_PARTNER_SERVICE_ID || 'LANGGOKU'
 
-    console.log('[DOKU] Creating VA:', { orderId, amount, paymentMethod, buyerName, phone })
-
-    // Prepare DOKU API request
     const dokuRequestBody = {
-      partnerServiceId: process.env.DOKU_PARTNER_SERVICE_ID || 'LANGGOKU_TEST',
+      partnerServiceId,
       customerNo: phone,
-      virtualAccountNo: (process.env.DOKU_PARTNER_SERVICE_ID || 'LANGGOKU_TEST') + phone,
+      virtualAccountNo: `${partnerServiceId}${phone}`,
       virtualAccountName: buyerName,
       trxId: orderId,
       totalAmount: {
-        value: amount.toString(),
-        currency: 'IDR'
+        value: amount.toFixed(2),
+        currency: 'IDR',
       },
       additionalInfo: {
-        channel: CHANNEL_MAP[paymentMethod] || 'VIRTUAL_ACCOUNT_BANK_CIMB'
+        channel: CHANNEL_MAP[paymentMethod] || 'VIRTUAL_ACCOUNT_BCA',
       },
-      virtualAccountTrxType: 'C'
+      virtualAccountTrxType: 'C',
     }
 
     const dokuBodyString = JSON.stringify(dokuRequestBody)
-    const timestamp = new Date().toISOString()
-    const signature = generateSignature(dokuBodyString + timestamp)
+    const timestamp = dokuTimestamp()
+    const signature = createSnapSignature(timestamp, VA_TARGET, dokuBodyString)
 
-    // DOKU API endpoint
-    const dokuBaseUrl = IS_PRODUCTION 
-      ? 'https://api.doku.com' 
-      : 'https://api-sandbox.doku.com'
+    const response = await fetch(`${getDokuBaseUrl()}${VA_TARGET}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Client-Id': getDokuClientId(),
+        'X-Date': timestamp,
+        'Request-Timestamp': timestamp,
+        Signature: signature,
+      },
+      body: dokuBodyString,
+      signal: AbortSignal.timeout(30_000),
+      cache: 'no-store',
+    })
 
-    try {
-      // Try to call DOKU API directly
-      const dokuResponse = await fetch(`${dokuBaseUrl}/checkout/v1/payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Client-Id': CLIENT_ID,
-          'Request-Id': `REQ_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          'Request-Timestamp': timestamp,
-          'Signature': signature,
-        },
-        body: dokuBodyString,
-      })
+    const result = (await response.json().catch(() => null)) as
+      | {
+          virtualAccountData?: { virtualAccountNo?: string; virtualAccountName?: string }
+          virtualAccountNo?: string
+          message?: string
+        }
+      | null
 
-      const dokuResult = await dokuResponse.json()
-      console.log('[DOKU] API Response:', dokuResult)
+    const virtualAccountNumber =
+      result?.virtualAccountData?.virtualAccountNo || result?.virtualAccountNo
 
-      // If successful, return the payment URL
-      if (dokuResult.payment?.url) {
-        return NextResponse.json({
-          success: true,
-          message: 'Virtual Account created',
-          data: {
-            orderId,
-            paymentUrl: dokuResult.payment.url,
-            amount: amount,
-            paymentMethod: paymentMethod,
-            buyerName: buyerName,
-          }
-        })
-      }
-    } catch (apiError) {
-      console.log('[DOKU] API call failed, using mock:', apiError)
+    if (!response.ok || !virtualAccountNumber) {
+      console.error('[DOKU] VA creation failed:', response.status, result)
+      return NextResponse.json(
+        { success: false, message: result?.message || 'Gagal membuat Virtual Account DOKU' },
+        { status: 502 }
+      )
     }
-
-    // Fallback: Generate mock VA number for demo
-    // In production with proper keys, this would use real DOKU API
-    const mockVANumber = generateMockVANumber(paymentMethod)
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
     return NextResponse.json({
       success: true,
-      message: 'Virtual Account (Demo Mode)',
+      message: 'Virtual Account berhasil dibuat',
       data: {
         orderId,
-        virtualAccountNumber: mockVANumber,
-        amount: amount,
-        paymentMethod: paymentMethod,
-        buyerName: buyerName,
-        phone: phone,
-        expiresAt: expiresAt,
-        note: 'Demo mode - Configure DOKU keys for production'
-      }
+        virtualAccountNumber,
+        amount,
+        paymentMethod,
+        buyerName,
+        phone,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      },
     })
-
   } catch (error) {
     console.error('[DOKU] Error:', error)
     return NextResponse.json(
-      { success: false, message: 'Payment error: ' + (error instanceof Error ? error.message : 'Unknown') },
+      {
+        success: false,
+        message: 'Payment error: ' + (error instanceof Error ? error.message : 'Unknown'),
+      },
       { status: 500 }
     )
   }
 }
 
-// Generate mock VA number for demo
-function generateMockVANumber(paymentMethod: string): string {
-  const bankCodes: Record<string, string> = {
-    'VIRTUAL_ACCOUNT_BCA': '88810',
-    'VIRTUAL_ACCOUNT_BRI': '88811',
-    'VIRTUAL_ACCOUNT_MANDIRI': '88812',
-    'VIRTUAL_ACCOUNT_BNI': '88813',
-    'E_WALLET_DANA': '89001',
-    'E_WALLET_OVO': '89002',
-    'QRIS': 'QRIS',
-  }
-  
-  const code = bankCodes[paymentMethod] || '88810'
-  const random = Math.floor(Math.random() * 1000000000).toString().padStart(10, '0')
-  return code + random
-}
-
-// Check payment status
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const orderId = searchParams.get('orderId')
-
+  const orderId = request.nextUrl.searchParams.get('orderId')
   if (!orderId) {
     return NextResponse.json(
       { success: false, message: 'orderId is required' },
@@ -171,14 +139,12 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // In production, check status with DOKU API
-  // For demo, return pending
   return NextResponse.json({
     success: true,
     data: {
       orderId,
       status: 'PENDING',
-      message: 'Payment status check'
-    }
+      message: 'Payment status check',
+    },
   })
 }

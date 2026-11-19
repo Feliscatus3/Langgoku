@@ -79,9 +79,17 @@ const SPREADSHEET_ID = '1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7Q8R9S0';
    - Who has access: Anyone
 6. Klik "Deploy"
 7. Salin URL Deployment yang ditampilkan
-   - Format: https://script.google.com/macros/d/{SCRIPT_ID}/usurp
+   - Format: https://script.google.com/macros/d/{SCRIPT_ID}/exec
 8. Simpan URL ini untuk step berikutnya
 ```
+
+> **Setiap kali `google-apps-script-updated.gs` diubah, lakukan "Manage deployments" →
+> Edit → New version supaya action baru (mis. `getAllVariantData`) aktif.**
+>
+> **Keamanan (disarankan):** buat Script Property `API_SECRET` di
+> File → Project settings → Script properties, lalu isi
+> `GOOGLE_APPS_SCRIPT_SECRET` dengan nilai yang sama di `.env.local`.
+> Jika property ini kosong, script tetap kompatibel seperti sebelumnya.
 
 ## Konfigurasi di Database
 
@@ -91,13 +99,13 @@ Di project Anda (Langgoku), tambahkan environment variable:
 
 ```bash
 # .env.local
-NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/d/{SCRIPT_ID}/usurp
+GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/d/{SCRIPT_ID}/exec
 ```
 
 ### Update lib/googleSheets.ts
 
 ```typescript
-const API_URL = process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL;
+const API_URL = process.env.GOOGLE_APPS_SCRIPT_URL;
 
 export async function getProducts() {
   const response = await fetch(`${API_URL}?action=getProducts`);
@@ -125,7 +133,7 @@ export async function addBuyer(buyer: any) {
 
 ```
 Buka URL ini di browser:
-https://script.google.com/macros/d/{SCRIPT_ID}/usurp?action=getProducts
+https://script.google.com/macros/d/{SCRIPT_ID}/exec?action=getProducts
 
 Response yang diharapkan:
 {
@@ -139,10 +147,10 @@ Response yang diharapkan:
 
 ```bash
 # Get Products
-curl "https://script.google.com/macros/d/{SCRIPT_ID}/usurp?action=getProducts"
+curl "https://script.google.com/macros/d/{SCRIPT_ID}/exec?action=getProducts"
 
 # Add Product
-curl -X POST "https://script.google.com/macros/d/{SCRIPT_ID}/usurp?action=addProduct" \
+curl -X POST "https://script.google.com/macros/d/{SCRIPT_ID}/exec?action=addProduct" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Netflix Premium",

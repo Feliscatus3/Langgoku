@@ -1,10 +1,21 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import '../styles/globals.css'
 import Navbar from '@/components/Navbar'
 import MaintenanceCheck from '@/components/MaintenanceCheck'
 import AnnouncementPopup from '@/components/AnnouncementPopup'
 
+function getMetadataBase(): URL {
+  const configured = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+  try {
+    return new URL(configured)
+  } catch {
+    return new URL('http://localhost:3000')
+  }
+}
+
 export const metadata: Metadata = {
+  metadataBase: getMetadataBase(),
   title: 'Langgoku - Premium Digital Accounts Store',
   description: 'Belanja akun premium digital (Netflix, Canva, CapCut, dan lainnya) dengan harga terjangkau',
   keywords: 'netflix, canva, capcut, premium account, digital account, ecommerce',
@@ -39,9 +50,9 @@ export default function RootLayout({
                 <div className="text-center">
                   <h4 className="text-lg font-medium mb-4 text-white">Layanan</h4>
                   <ul className="text-gray-400 space-y-2 text-sm">
-                    <li><a href="/" className="hover:text-white transition-colors">Belanja Produk</a></li>
-                    <li><a href="/about" className="hover:text-white transition-colors">Tentang Kami</a></li>
-                    <li><a href="/admin" className="hover:text-white transition-colors">Admin Panel</a></li>
+                    <li><Link href="/" className="hover:text-white transition-colors">Belanja Produk</Link></li>
+                    <li><Link href="/about" className="hover:text-white transition-colors">Tentang Kami</Link></li>
+                    <li><Link href="/admin" className="hover:text-white transition-colors">Admin Panel</Link></li>
                   </ul>
                 </div>
                 <div className="text-center md:text-right">
@@ -54,7 +65,7 @@ export default function RootLayout({
                 </div>
               </div>
               <div className="border-t border-gray-800 pt-8">
-                <p className="text-center text-gray-500 text-xs md:text-sm">&copy; 2026 Langgoku. Semua hak dilindungi.</p>
+                <p className="text-center text-gray-500 text-xs md:text-sm">&copy; {new Date().getFullYear()} Langgoku. Semua hak dilindungi.</p>
               </div>
             </div>
           </footer>

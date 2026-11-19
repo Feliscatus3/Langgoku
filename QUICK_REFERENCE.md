@@ -93,12 +93,12 @@ Jika mau gunakan Google Apps Script API:
 
 ```javascript
 // Get all buyers
-const response = await fetch(process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL + '?action=getBuyers');
+const response = await fetch(process.env.GOOGLE_APPS_SCRIPT_URL + '?action=getBuyers');
 const data = await response.json();
 console.log(data.data);
 
 // Add new buyer
-const response = await fetch(process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL + '?action=addBuyer', {
+const response = await fetch(process.env.GOOGLE_APPS_SCRIPT_URL + '?action=addBuyer', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({

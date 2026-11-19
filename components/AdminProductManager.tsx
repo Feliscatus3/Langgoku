@@ -1,46 +1,15 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import useSWR from 'swr'
-import { formatPrice } from '@/lib/googleSheets'
-
-// New Shopee-like variant types
-interface VariantAttribute {
-  id: string
-  productId: string
-  name: string
-  sortOrder: number
-  status: 'active' | 'inactive'
-}
-
-interface AttributeOption {
-  id: string
-  attributeId: string
-  name: string
-  sortOrder: number
-  status: 'active' | 'inactive'
-}
-
-interface VariantCombination {
-  id: string
-  productId: string
-  price: number
-  status: 'active' | 'inactive'
-  sortOrder: number
-  options: Record<string, string> // attributeId -> optionId
-}
-
-interface Product {
-  id: string
-  name: string
-  price: number
-  image?: string
-  description?: string
-  variantAttributes?: VariantAttribute[]
-  attributeOptions?: AttributeOption[]
-  variantCombinations?: VariantCombination[]
-}
+import { formatPrice } from '@/lib/format'
+import type {
+  AttributeOption,
+  Product,
+  VariantAttribute,
+  VariantCombination,
+} from '@/types/product'
 
 interface ToastProps {
   message: string
@@ -58,24 +27,11 @@ interface ConfirmModalProps {
   onCancel: () => void
 }
 
-// SWR fetcher with no cache
-const fetcher = (url: string) => fetch(url, {
-  cache: 'no-store',
-  headers: {
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
-  }
-}).then(res => res.json())
-
-const variantFetcher = (url: string) => fetch(url, {
-  cache: 'no-store',
-  headers: {
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
-  }
-}).then(res => res.json())
+// Cache-busting fetcher so the admin panel always shows fresh sheet data.
+const fetcher = (url: string) =>
+  fetch(`${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`, {
+    cache: 'no-store',
+  }).then((response) => response.json())
 
 function Toast({ message, type, onClose }: ToastProps) {
   return (
@@ -138,11 +94,13 @@ export default function AdminProductManager() {
     message: string
     onConfirm: () => void
   } | null>(null)
-const [formData, setFormData] = useState<Partial<Product>>({
+  const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     price: 0,
+    duration: '',
+    stock: 0,
     image: '',
-    description: ''
+    description: '',
   })
   // Variant management state
   const [showVariants, setShowVariants] = useState<string | null>(null)
@@ -166,42 +124,36 @@ const [formData, setFormData] = useState<Partial<Product>>({
   const [variantSubmitting, setVariantSubmitting] = useState(false)
   const [variantToast, setVariantToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  // Use SWR for real-time data fetching
-  // revalidateOnFocus: true - auto-refresh when user focuses on the page
-  // revalidateOnReconnect: true - auto-refresh when reconnecting
-  // refreshInterval: 3000 - refresh every 3 seconds
-  const { data, error, isLoading, mutate } = useSWR('/api/products', fetcher, {
+  // Use SWR for near real-time data fetching. A 60s interval keeps the sheet
+  // API load reasonable while still refreshing after admin changes.
+  const { data, error, isLoading, mutate } = useSWR('/api/products?all=1', fetcher, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
-    refreshInterval: 3000, // Refresh every 3 seconds for near real-time
+    refreshInterval: 60_000,
     refreshWhenHidden: false,
     refreshWhenOffline: false,
   })
 
   const products: Product[] = data?.data || []
 
-  // SWR for variant data
+  // Variant data for the expanded product. `?all=1` includes inactive rows so
+  // the admin can re-enable them.
   const { data: variantData, mutate: mutateVariants } = useSWR(
-    showVariants ? `/api/products/${showVariants}/variants` : null,
-    variantFetcher,
+    showVariants ? `/api/products/${showVariants}?all=1` : null,
+    fetcher,
     {
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
-      refreshInterval: 3000,
+      refreshInterval: 60_000,
       refreshWhenHidden: false,
       refreshWhenOffline: false,
     }
   )
 
-  // Parse variant data
-  const attributes: VariantAttribute[] = variantData?.attributes || []
-  const attributeOptions: AttributeOption[] = variantData?.options || []
-  const combinations: VariantCombination[] = variantData?.combinations || []
-
-  // Use SWR for real-time data fetching
-  // revalidateOnFocus: true - auto-refresh when user focuses on the page
-  // revalidateOnReconnect: true - auto-refresh when reconnecting
-  // refreshInterval: 3000 - refresh every 3 seconds
+  const attributes: VariantAttribute[] = variantData?.data?.variantAttributes || []
+  const attributeOptions: AttributeOption[] = variantData?.data?.attributeOptions || []
+  const combinations: VariantCombination[] = variantData?.data?.variantCombinations || []
+  const activeAttributes = attributes.filter((attribute) => attribute.status === 'active')
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
@@ -212,8 +164,12 @@ const [formData, setFormData] = useState<Partial<Product>>({
   }
 
   const handleAddProduct = async () => {
-    if (!formData.name) {
+    if (!formData.name?.trim()) {
       showToast('Harap isi nama produk', 'error')
+      return
+    }
+    if (formData.price === undefined || Number(formData.price) < 0) {
+      showToast('Harga produk tidak valid', 'error')
       return
     }
 
@@ -275,11 +231,10 @@ const [formData, setFormData] = useState<Partial<Product>>({
   const executeUpdateProduct = async () => {
     setSubmitting(true)
     try {
-      const response = await fetch(`/api/products/${editingId}/update-delete`, {
+      const response = await fetch(`/api/products/${editingId}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
         },
         body: JSON.stringify(formData),
       })
@@ -315,11 +270,10 @@ const [formData, setFormData] = useState<Partial<Product>>({
 
   const executeDeleteProduct = async (id: string) => {
     try {
-      const response = await fetch(`/api/products/${id}/update-delete`, {
+      const response = await fetch(`/api/products/${id}`, {
         method: 'DELETE',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
         },
       })
       const result = await response.json()
@@ -352,8 +306,10 @@ const [formData, setFormData] = useState<Partial<Product>>({
     setFormData({
       name: '',
       price: 0,
+      duration: '',
+      stock: 0,
       image: '',
-      description: ''
+      description: '',
     })
   }
 
@@ -625,7 +581,7 @@ const [formData, setFormData] = useState<Partial<Product>>({
     }
   }
 
-  const handleDeleteCombination = async (id: string, name: string) => {
+  const handleDeleteCombination = async (id: string) => {
     if (!showVariants) return
     setConfirmModal({
       show: true,
@@ -760,9 +716,38 @@ const [formData, setFormData] = useState<Partial<Product>>({
                 </label>
                 <input
                   type="number"
+                  min="0"
                   placeholder="Contoh: 99000 (opsional)"
                   value={formData.price || 0}
                   onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                  className="input-field w-full"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Durasi (opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 1 Bulan"
+                  value={formData.duration || ''}
+                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Stok (opsional)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Contoh: 10"
+                  value={formData.stock || 0}
+                  onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
                   className="input-field w-full"
                 />
               </div>
@@ -1089,7 +1074,7 @@ const [formData, setFormData] = useState<Partial<Product>>({
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Pilihan Atribut</label>
                     <div className="space-y-2">
-                      {attributes.map((attr) => {
+                      {activeAttributes.map((attr) => {
                         const attrOptions = attributeOptions.filter(o => o.attributeId === attr.id && o.status === 'active')
                         if (attrOptions.length === 0) return null
                         const selectedOptionId = (combinationFormData.options || {})[attr.id] || ''
@@ -1117,7 +1102,7 @@ const [formData, setFormData] = useState<Partial<Product>>({
                   <div className="flex gap-3">
                     <button
                       onClick={editingCombinationId ? handleUpdateCombination : handleAddCombination}
-                      disabled={variantSubmitting || !combinationFormData.price || Object.keys(combinationFormData.options || {}).length !== attributes.length}
+                      disabled={variantSubmitting || !combinationFormData.price || Object.keys(combinationFormData.options || {}).length !== activeAttributes.length}
                       className="btn-primary px-4 py-2"
                     >
                       {variantSubmitting ? 'Menyimpan...' : (editingCombinationId ? 'Update Kombinasi' : 'Tambah Kombinasi')}
@@ -1185,7 +1170,7 @@ const [formData, setFormData] = useState<Partial<Product>>({
                                       Edit
                                     </button>
                                     <button
-                                      onClick={() => handleDeleteCombination(combo.id, 'kombinasi')}
+                                      onClick={() => handleDeleteCombination(combo.id)}
                                       className="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors"
                                     >
                                       Hapus

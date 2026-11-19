@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBuyersFromSheet, addBuyerToSheet } from '@/lib/googleAppsScript'
+import { addBuyerToSheet, getBuyersFromSheet } from '@/lib/googleAppsScript'
+import { isAdminRequest } from '@/lib/auth'
+
+export const dynamic = 'force-dynamic'
+
+function unauthorized() {
+  return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+}
 
 export async function GET(request: NextRequest) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const result = await getBuyersFromSheet()
 
@@ -16,12 +25,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Data pembeli berhasil diambil',
-      data: result.data || [],
-      count: result.count || 0,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Data pembeli berhasil diambil',
+        data: result.data || [],
+        count: result.count || 0,
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
   } catch (error) {
     console.error('Error fetching buyers:', error)
     return NextResponse.json(
@@ -36,11 +48,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { name, phone, product, duration, startDate, endDate, variantId, variantName } = body
+  if (!isAdminRequest(request)) return unauthorized()
 
-    // Validasi required fields
+  try {
+    const body = await request.json().catch(() => null)
+    const name = typeof body?.name === 'string' ? body.name.trim() : ''
+    const phone = typeof body?.phone === 'string' ? body.phone.trim() : ''
+    const product = typeof body?.product === 'string' ? body.product.trim() : ''
+    const duration = typeof body?.duration === 'string' ? body.duration.trim() : ''
+    const startDate = typeof body?.startDate === 'string' ? body.startDate.trim() : ''
+
     if (!name || !phone || !product || !duration || !startDate) {
       return NextResponse.json(
         {
@@ -51,16 +68,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Simpan ke Google Sheets via Apps Script
     const result = await addBuyerToSheet({
       name,
       phone,
       product,
       duration,
       startDate,
-      endDate: endDate || '',
-      variantId,
-      variantName,
+      endDate: typeof body?.endDate === 'string' ? body.endDate : '',
+      variantId: typeof body?.variantId === 'string' ? body.variantId : undefined,
+      variantName: typeof body?.variantName === 'string' ? body.variantName : undefined,
     })
 
     if (!result.success) {
@@ -77,13 +93,13 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Data pembeli berhasil ditambahkan',
       data: {
-        id: result.data?.id || `buyer-${Date.now()}`,
+        id: (result.data as { id?: string } | undefined)?.id || `buyer-${Date.now()}`,
         name,
         phone,
         product,
         duration,
         startDate,
-        endDate,
+        endDate: typeof body?.endDate === 'string' ? body.endDate : '',
       },
     })
   } catch (error) {

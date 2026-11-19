@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import AdminProductManager from './AdminProductManager'
 import AdminBuyerManager from './AdminBuyerManager'
 import AdminSettings from './AdminSettings'
 import AdminPromoCodes from './AdminPromoCodes'
 import AdminPromoAds from './AdminPromoAds'
+import { formatDate as formatDisplayDate, toDate } from '@/lib/format'
+import type { StoreSettings } from '@/types/product'
 
 interface AdminDashboardProps {
   onLogout: () => void
@@ -19,7 +21,7 @@ interface Stats {
   expiringSoon: number
 }
 
-interface Buyer {
+interface ExpiringBuyer {
   ID: string
   Nama: string
   No_WhatsApp: string
@@ -27,11 +29,6 @@ interface Buyer {
   Durasi: string
   'Tanggal Selesai': string
   Status: string
-}
-
-interface Settings {
-  storeName: string
-  storeEmail: string
 }
 
 type TabType = 'dashboard' | 'products' | 'buyers' | 'promo' | 'ads' | 'settings'
@@ -45,98 +42,73 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     totalBuyers: 0,
     totalPromoCodes: 0,
     activeSubscriptions: 0,
-    expiringSoon: 0
+    expiringSoon: 0,
   })
-  const [expiringBuyers, setExpiringBuyers] = useState<Buyer[]>([])
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const [expiringBuyers, setExpiringBuyers] = useState<ExpiringBuyer[]>([])
+  const [settings, setSettings] = useState<StoreSettings | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-      if (window.innerWidth < 768) {
-        setSidebarOpen(false)
-      }
-    }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    loadDashboardData()
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
-      // Load products
-      const productsRes = await fetch('/api/products')
+      const [productsRes, buyersRes, promoRes, settingsRes] = await Promise.all([
+        fetch('/api/products', { cache: 'no-store' }),
+        fetch('/api/buyers', { cache: 'no-store' }),
+        fetch('/api/promo-codes', { cache: 'no-store' }),
+        fetch('/api/settings', { cache: 'no-store' }),
+      ])
+
       const productsData = await productsRes.json()
-      
-      // Load buyers
-      const buyersRes = await fetch('/api/buyers')
       const buyersData = await buyersRes.json()
-      
-      // Load promo codes
-      const promoRes = await fetch('/api/promo-codes')
       const promoData = await promoRes.json()
-      
-      // Load settings
-      const settingsRes = await fetch('/api/settings')
       const settingsData = await settingsRes.json()
-      
-      // Process buyers data - handle both data formats
-      const buyers = buyersData.data || []
-      
-      // Calculate active subscriptions (Status = 'active')
-      const activeSubscriptions = buyers.filter((b: any) => {
-        const status = b.Status || b.status || ''
+
+      const buyers: Record<string, unknown>[] = Array.isArray(buyersData.data)
+        ? buyersData.data
+        : []
+
+      const activeSubscriptions = buyers.filter((buyer) => {
+        const status = String(buyer.Status || buyer.status || '')
         return status.toLowerCase() === 'active'
       }).length
-      
-      // Calculate expiring soon (within 30 days)
+
       const thirtyDaysFromNow = new Date()
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
-      
-      const expiringList: Buyer[] = []
-      let expiringCount = 0
-      
-      buyers.forEach((b: any) => {
-        const endDateStr = b['Tanggal Selesai'] || b['Tanggal Selesai'] || b.endDate || ''
-        if (endDateStr) {
-          try {
-            const endDate = new Date(endDateStr)
-            // Check if not expired yet but will expire within 30 days
-            if (endDate > new Date() && endDate <= thirtyDaysFromNow) {
-              expiringCount++
-              expiringList.push({
-                ID: b.ID || b.id || '',
-                Nama: b.Nama || b.name || '',
-                No_WhatsApp: b.No_WhatsApp || b['No WhatsApp'] || b.phone || '',
-                Produk: b.Produk || b.product || '',
-                Durasi: b.Durasi || b.duration || '',
-                'Tanggal Selesai': endDateStr,
-                Status: b.Status || b.status || ''
-              })
-            }
-          } catch (e) {
-            // Skip invalid dates
-          }
+
+      const expiringList: ExpiringBuyer[] = []
+      for (const buyer of buyers) {
+        const endDateValue = buyer['Tanggal Selesai'] || buyer.endDate || ''
+        const parsedEndDate = toDate(endDateValue as string)
+        if (
+          parsedEndDate &&
+          parsedEndDate > new Date() &&
+          parsedEndDate <= thirtyDaysFromNow
+        ) {
+          expiringList.push({
+            ID: String(buyer.ID || buyer.id || ''),
+            Nama: String(buyer.Nama || buyer.name || ''),
+            No_WhatsApp: String(buyer.No_WhatsApp || buyer['No WhatsApp'] || buyer.phone || ''),
+            Produk: String(buyer.Produk || buyer.product || ''),
+            Durasi: String(buyer.Durasi || buyer.duration || ''),
+            'Tanggal Selesai': String(endDateValue || ''),
+            Status: String(buyer.Status || buyer.status || ''),
+          })
         }
-      })
-      
-      // Get total product count
-      const totalProducts = Array.isArray(productsData.data) ? productsData.data.length : (productsData.count || 0)
-      
+      }
+
       setStats({
-        totalProducts,
+        totalProducts: Array.isArray(productsData.data)
+          ? productsData.data.length
+          : Number(productsData.count) || 0,
         totalBuyers: buyers.length,
-        totalPromoCodes: Array.isArray(promoData.data) ? promoData.data.length : (promoData.count || 0),
+        totalPromoCodes: Array.isArray(promoData.data)
+          ? promoData.data.length
+          : Number(promoData.count) || 0,
         activeSubscriptions,
-        expiringSoon: expiringCount
+        expiringSoon: expiringList.length,
       })
-      
-      // Set expiring buyers (max 5 for display)
+
       setExpiringBuyers(expiringList.slice(0, 5))
-      
+
       if (settingsData.success && settingsData.data) {
         setSettings(settingsData.data)
       }
@@ -145,7 +117,21 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false)
+      }
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    void loadDashboardData()
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [loadDashboardData])
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
@@ -163,25 +149,13 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     return 'Selamat Malam'
   }
 
-  const formatDate = () => {
+  const formatToday = () => {
     return new Date().toLocaleDateString('id-ID', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
     })
-  }
-
-  const formatDateShort = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      })
-    } catch {
-      return dateStr
-    }
   }
 
   if (loading) {
@@ -288,7 +262,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white mb-8">
                   <h2 className="text-3xl font-bold mb-2 text-white">{getGreeting()} 👋</h2>
                   <p className="text-blue-100 text-lg">Selamat datang di panel admin {settings?.storeName || 'Langgoku'}</p>
-                  <p className="text-blue-200 text-sm mt-2">{formatDate()}</p>
+                  <p className="text-blue-200 text-sm mt-2">{formatToday()}</p>
                 </div>
 
                 {/* Stats Grid */}
@@ -389,7 +363,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                               <td className="px-4 py-3 text-gray-600">{buyer.Produk}</td>
                               <td className="px-4 py-3 text-gray-600">{buyer.No_WhatsApp}</td>
                               <td className="px-4 py-3 text-amber-600 font-medium">
-                                {formatDateShort(buyer['Tanggal Selesai'])}
+                                {formatDisplayDate(buyer['Tanggal Selesai'])}
                               </td>
                             </tr>
                           ))}

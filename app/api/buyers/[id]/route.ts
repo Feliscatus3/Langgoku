@@ -1,34 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBuyerFromSheet, updateBuyerInSheet, deleteBuyerFromSheet } from '@/lib/googleAppsScript'
+import {
+  deleteBuyerFromSheet,
+  getBuyerFromSheet,
+  updateBuyerInSheet,
+} from '@/lib/googleAppsScript'
+import { isAdminRequest } from '@/lib/auth'
+
+export const dynamic = 'force-dynamic'
+
+function unauthorized() {
+  return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const result = await getBuyerFromSheet(params.id)
 
     if (!result.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: result.message || 'Pembeli tidak ditemukan',
-        },
+        { success: false, message: result.message || 'Pembeli tidak ditemukan' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      data: result.data,
-    })
+    return NextResponse.json(
+      { success: true, data: result.data },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
   } catch (error) {
     console.error('Error fetching buyer:', error)
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Gagal mengambil data pembeli',
-      },
+      { success: false, message: 'Gagal mengambil data pembeli' },
       { status: 500 }
     )
   }
@@ -38,12 +45,16 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const id = params.id
-    const body = await request.json()
-    const { name, phone, product, duration, startDate, endDate } = body
+  if (!isAdminRequest(request)) return unauthorized()
 
-    // Validasi required fields
+  try {
+    const body = await request.json().catch(() => null)
+    const name = typeof body?.name === 'string' ? body.name.trim() : ''
+    const phone = typeof body?.phone === 'string' ? body.phone.trim() : ''
+    const product = typeof body?.product === 'string' ? body.product.trim() : ''
+    const duration = typeof body?.duration === 'string' ? body.duration.trim() : ''
+    const startDate = typeof body?.startDate === 'string' ? body.startDate.trim() : ''
+
     if (!name || !phone || !product || !duration || !startDate) {
       return NextResponse.json(
         {
@@ -54,15 +65,14 @@ export async function PUT(
       )
     }
 
-    // Update di Google Sheets via Apps Script
     const result = await updateBuyerInSheet({
-      id,
+      id: params.id,
       name,
       phone,
       product,
       duration,
       startDate,
-      endDate: endDate || '',
+      endDate: typeof body?.endDate === 'string' ? body.endDate : '',
     })
 
     if (!result.success) {
@@ -78,15 +88,7 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       message: 'Data pembeli berhasil diperbarui',
-      data: {
-        id,
-        name,
-        phone,
-        product,
-        duration,
-        startDate,
-        endDate,
-      },
+      data: { id: params.id, name, phone, product, duration, startDate },
     })
   } catch (error) {
     console.error('Error updating buyer:', error)
@@ -104,21 +106,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
-    const id = params.id
-
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'ID pembeli diperlukan',
-        },
-        { status: 400 }
-      )
-    }
-
-    // Hapus dari Google Sheets via Apps Script
-    const result = await deleteBuyerFromSheet(id)
+    const result = await deleteBuyerFromSheet(params.id)
 
     if (!result.success) {
       return NextResponse.json(
@@ -133,7 +124,7 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: 'Data pembeli berhasil dihapus',
-      data: { id },
+      data: { id: params.id },
     })
   } catch (error) {
     console.error('Error deleting buyer:', error)

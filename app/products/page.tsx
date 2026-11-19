@@ -1,54 +1,15 @@
 import Link from 'next/link'
 import ProductGrid from '@/components/ProductGrid'
 import EmptyState from '@/components/EmptyState'
-import { getGoogleSheetsData } from '@/lib/googleSheets'
+import { getProductsWithVariants } from '@/lib/googleSheets'
+import type { Product } from '@/types/product'
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 0
 
 type SearchParams = {
   category?: string | string[]
   sort?: string | string[]
   q?: string | string[]
-}
-
-interface VariantAttribute {
-  id: string
-  productId: string
-  name: string
-  sortOrder: number
-  status: 'active' | 'inactive'
-}
-
-interface AttributeOption {
-  id: string
-  attributeId: string
-  name: string
-  sortOrder: number
-  status: 'active' | 'inactive'
-}
-
-interface VariantCombination {
-  id: string
-  productId: string
-  price: number
-  status: 'active' | 'inactive'
-  stock: number
-  sortOrder: number
-  options: Record<string, string>
-}
-
-interface Product {
-  id: string
-  name: string
-  price: number
-  duration: string
-  stock: number
-  image?: string
-  category?: string
-  variantAttributes?: VariantAttribute[]
-  attributeOptions?: AttributeOption[]
-  variantCombinations?: VariantCombination[]
 }
 
 function normalizeParam(value: string | string[] | undefined): string {
@@ -84,7 +45,7 @@ function getProductCategory(product: Product): string {
 }
 
 export default async function ProductsPage({ searchParams }: { searchParams?: SearchParams }) {
-  const products = (await getGoogleSheetsData()) as Product[]
+  const products = await getProductsWithVariants()
 
   const selectedCategory = normalizeParam(searchParams?.category) || 'all'
   const selectedSort = normalizeParam(searchParams?.sort) || 'featured'
@@ -115,7 +76,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Se
       const k = query.toLowerCase()
       return (
         p.name.toLowerCase().includes(k) ||
-        p.duration.toLowerCase().includes(k) ||
+        (p.duration || '').toLowerCase().includes(k) ||
         getProductCategory(p).toLowerCase().includes(k)
       )
     })
@@ -125,7 +86,9 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Se
     if (selectedSort === 'price_desc') return b.price - a.price
 
     // featured: stok lebih tinggi dulu, lalu harga lebih tinggi, lalu nama
-    if (b.stock !== a.stock) return b.stock - a.stock
+    const stockA = a.stock ?? 0
+    const stockB = b.stock ?? 0
+    if (stockB !== stockA) return stockB - stockA
     if (b.price !== a.price) return b.price - a.price
     return a.name.localeCompare(b.name)
   })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 interface Settings {
   announcementText: string
@@ -11,15 +11,11 @@ export default function AnnouncementSection() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
-      const response = await fetch('/api/settings')
+      const response = await fetch('/api/settings', { cache: 'no-store' })
       const data = await response.json()
-      
+
       if (data.success && data.data) {
         setSettings(data.data)
       }
@@ -28,7 +24,11 @@ export default function AnnouncementSection() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
 
   if (loading) {
     return null

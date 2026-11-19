@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 /* ====== RESET & TYPOGRAPHY ====== */
 * {
@@ -23,7 +23,7 @@ html {
 }
 
 body {
-  background: #fafafa;
+  background: linear-gradient(135deg, #f8fafc 0%, #f8fafc 45%, #eff6ff 100%);
   color: #374151;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -31,12 +31,6 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-#__next {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
 }
 
 /* Professional Typography Hierarchy */
@@ -220,11 +214,6 @@ p {
   }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 20px rgba(14, 165, 233, 0.3); }
   50% { box-shadow: 0 0 30px rgba(14, 165, 233, 0.6); }
@@ -289,11 +278,6 @@ p {
 }
 
 /* ====== GLOBAL LAYOUT & SECTION RTS ====== */
-body {
-  background: linear-gradient(135deg, #f8fafc 0%, #f8fafc 45%, #eff6ff 100%);
-}
-
-/* dark mode removed */
 
 .section-wrapper {
   @apply py-16 md:py-24;

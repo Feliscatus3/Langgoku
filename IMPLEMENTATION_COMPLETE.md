@@ -91,7 +91,7 @@ Semua requirement telah diimplementasikan dengan sempurna dan siap production!
 
 #### ✅ Login System
 - [x] Username: adminku
-- [x] Password: Langgoku7894$
+- [x] Password: GANTI_PASSWORD_ANDA
 - [x] Secure credential validation
 - [x] Session authentication (24 hours)
 - [x] Login form UI
@@ -328,7 +328,7 @@ Semua requirement telah diimplementasikan dengan sempurna dan siap production!
 36. `PROJECT_SUMMARY.md` - Project overview
 
 ### Backend & Automation
-37. `google-apps-script.js` - Google Apps Script
+37. `google-apps-script-updated.gs` - Google Apps Script
 38. `setup.sh` - Installation script
 
 ### Assets

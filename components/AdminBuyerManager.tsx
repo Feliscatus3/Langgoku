@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { calculateRemainingDays, getSubscriptionStatus } from '@/lib/googleSheets'
+import { useCallback, useEffect, useState } from 'react'
+import { calculateRemainingDays, getSubscriptionStatus, toDate } from '@/lib/format'
 
 interface Buyer {
   id: string
@@ -15,33 +15,25 @@ interface Buyer {
   remainingDays: number
   notified?: boolean
   notificationSentAt?: string
-  // Mapping dari Google Sheets column names
-  'Nama'?: string
-  'No WhatsApp'?: string
-  'Produk'?: string
-  'Durasi'?: string
-  'Tanggal Mulai'?: string
-  'Tanggal Selesai'?: string
-  'Status'?: string
-  'Sisa Hari'?: number
-  'Notified'?: boolean
-  'Notified At'?: string
-  'ID'?: string
 }
 
-function normalizeBuyer(raw: any): Buyer {
-  // Handle both camelCase (local) and Google Sheets column names
-  const id = raw.id || raw.ID || ''
-  const name = raw.name || raw.Nama || ''
-  const phone = raw.phone || raw['No WhatsApp'] || ''
-  const product = raw.product || raw.Produk || ''
-  const duration = raw.duration || raw.Durasi || ''
-  const startDate = raw.startDate || raw['Tanggal Mulai'] || ''
-  const endDate = raw.endDate || raw['Tanggal Selesai'] || ''
-  const notified = raw.notified || raw.Notified || false
-  const notificationSentAt = raw.notificationSentAt || raw['Notified At'] || ''
+function asText(value: unknown): string {
+  return value === null || value === undefined ? '' : String(value)
+}
 
-  const remainingDays = endDate ? calculateRemainingDays(new Date(endDate)) : 0
+function normalizeBuyer(raw: Record<string, unknown>): Buyer {
+  const id = asText(raw.id || raw.ID)
+  const name = asText(raw.name || raw.Nama)
+  const phone = asText(raw.phone || raw['No WhatsApp'])
+  const product = asText(raw.product || raw.Produk)
+  const duration = asText(raw.duration || raw.Durasi)
+  const startDate = asText(raw.startDate || raw['Tanggal Mulai'])
+  const endDate = asText(raw.endDate || raw['Tanggal Selesai'])
+  const notified = Boolean(raw.notified || raw.Notified)
+  const notificationSentAt = asText(raw.notificationSentAt || raw['Notified At'])
+
+  const expiry = toDate(endDate)
+  const remainingDays = expiry ? calculateRemainingDays(expiry) : 0
   const status = getSubscriptionStatus(remainingDays)
 
   return {
@@ -80,68 +72,61 @@ export default function AdminBuyerManager() {
 
   const durations = ['1 hari', '2 hari', '3 hari', '1 minggu', '1 bulan', '3 bulan', '6 bulan', '1 tahun']
 
-  useEffect(() => {
-    fetchBuyers()
-    loadProducts()
-  }, [])
-
-  const fetchBuyers = async () => {
+  const fetchBuyers = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/buyers')
+      const response = await fetch('/api/buyers', { cache: 'no-store' })
       const data = await response.json()
-      
-      if (data.success && data.data && data.data.length > 0) {
-        const normalized = data.data.map(normalizeBuyer)
-        setBuyers(normalized)
-        // Cache ke localStorage sebagai fallback
-        localStorage.setItem('langgoku_buyers', JSON.stringify(normalized))
-      } else {
-        // Fallback ke localStorage jika API gagal atau kosong
-        const savedBuyers = localStorage.getItem('langgoku_buyers')
-        if (savedBuyers) {
-          setBuyers(JSON.parse(savedBuyers))
-        }
-      }
+
+      const rows: Record<string, unknown>[] = data.success && Array.isArray(data.data) ? data.data : []
+      setBuyers(rows.map(normalizeBuyer))
     } catch (err) {
-      console.error('Error fetching buyers from API, using localStorage fallback:', err)
-      const savedBuyers = localStorage.getItem('langgoku_buyers')
-      if (savedBuyers) {
-        setBuyers(JSON.parse(savedBuyers))
-      }
+      console.error('Error fetching buyers:', err)
+      setBuyers([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
-      const response = await fetch('/api/products')
+      const response = await fetch('/api/products', { cache: 'no-store' })
       const data = await response.json()
-      if (data.success && data.data) {
-        setProducts(data.data.map((p: any) => p.name || p['Nama Produk'] || '').filter(Boolean))
+      if (data.success && Array.isArray(data.data)) {
+        setProducts(
+          data.data
+            .map((product: Record<string, unknown>) => asText(product.name || product['Nama Produk']))
+            .filter(Boolean)
+        )
       }
     } catch (err) {
       console.error('Error loading products:', err)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchBuyers()
+    void loadProducts()
+  }, [fetchBuyers, loadProducts])
 
   const calculateEndDate = (startDate: string, duration: string) => {
-    const start = new Date(startDate)
+    const start = toDate(startDate)
+    if (!start) return ''
+
     if (duration.includes('hari')) {
-      const days = parseInt(duration)
-      start.setDate(start.getDate() + days)
+      start.setDate(start.getDate() + (parseInt(duration) || 0))
     } else if (duration.includes('minggu')) {
-      const weeks = parseInt(duration)
-      start.setDate(start.getDate() + weeks * 7)
+      start.setDate(start.getDate() + (parseInt(duration) || 0) * 7)
     } else if (duration.includes('bulan')) {
-      const months = parseInt(duration)
-      start.setMonth(start.getMonth() + months)
+      start.setMonth(start.getMonth() + (parseInt(duration) || 0))
     } else if (duration.includes('tahun')) {
-      const years = parseInt(duration)
-      start.setFullYear(start.getFullYear() + years)
+      start.setFullYear(start.getFullYear() + (parseInt(duration) || 0))
     }
-    return start.toISOString().split('T')[0]
+
+    const year = start.getFullYear()
+    const month = String(start.getMonth() + 1).padStart(2, '0')
+    const day = String(start.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
   }
 
   const handleDurationChange = (duration: string) => {
@@ -185,7 +170,7 @@ export default function AdminBuyerManager() {
   const handleAddBuyer = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.name || !formData.phone || !formData.product) {
+    if (!formData.name || !formData.phone || !formData.product || !formData.startDate) {
       alert('Harap isi semua field yang wajib diisi (*)')
       return
     }
@@ -295,14 +280,15 @@ export default function AdminBuyerManager() {
       const whatsappUrl = `https://wa.me/${buyer.phone.replace(/\D/g, '')}?text=${message}`
       window.open(whatsappUrl, '_blank')
       
-      // Update the buyer as notified (local state + localStorage cache)
-      const updatedBuyers = buyers.map(b => 
-        b.id === buyer.id 
-          ? { ...b, notified: true, notificationSentAt: new Date().toISOString() }
-          : b
+      // Update the buyer as notified in the current view. The sheet schema does
+      // not store the notification timestamp, so this stays client-side.
+      setBuyers((previous) =>
+        previous.map((item) =>
+          item.id === buyer.id
+            ? { ...item, notified: true, notificationSentAt: new Date().toISOString() }
+            : item
+        )
       )
-      setBuyers(updatedBuyers)
-      localStorage.setItem('langgoku_buyers', JSON.stringify(updatedBuyers))
     } catch (error) {
       console.error('Error sending reminder:', error)
       alert('Gagal mengirim pengingat')

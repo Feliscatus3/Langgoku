@@ -1,88 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGoogleSheetsData, getVariantAttributes, getAttributeOptions, getVariantCombinations } from '@/lib/googleSheets'
+import { getProductsWithVariants } from '@/lib/googleSheets'
+import { isAdminRequest } from '@/lib/auth'
 
-// Cache for variant data to avoid repeated fetches
-let variantDataCache: Map<string, any> = new Map()
-let cacheTimestamp = 0
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+export const dynamic = 'force-dynamic'
 
-async function getCachedVariantData(productId: string) {
-  const now = Date.now()
-  if (now - cacheTimestamp > CACHE_TTL) {
-    variantDataCache.clear()
-    cacheTimestamp = now
-  }
-  
-  if (variantDataCache.has(productId)) {
-    return variantDataCache.get(productId)!
-  }
-  
-  // Fetch variant attributes for this product
-  const attributes = await getVariantAttributes(productId)
-  const activeAttributes = attributes.filter((a: any) => a.status === 'active')
-
-  // Fetch options for each attribute
-  let allOptions: any[] = []
-  for (const attr of activeAttributes) {
-    const options = await getAttributeOptions(attr.id)
-    const activeOptions = options.filter((o: any) => o.status === 'active')
-    allOptions.push(...activeOptions)
-  }
-
-  // Fetch variant combinations for this product
-  const combinations = await getVariantCombinations(productId)
-  const activeCombinations = combinations.filter((c: any) => c.status === 'active')
-
-  const variantData = {
-    variantAttributes: activeAttributes,
-    attributeOptions: allOptions,
-    variantCombinations: activeCombinations
-  }
-  
-  variantDataCache.set(productId, variantData)
-  return variantData
+const PUBLIC_CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
 }
+const PRIVATE_CACHE_HEADERS = { 'Cache-Control': 'no-store' }
 
 export async function GET(request: NextRequest) {
   try {
-    const products = await getGoogleSheetsData()
-    
-    if (!products || products.length === 0) {
+    const wantsAll = request.nextUrl.searchParams.get('all') === '1'
+    const isAdmin = wantsAll && isAdminRequest(request)
+    const headers = isAdmin ? PRIVATE_CACHE_HEADERS : PUBLIC_CACHE_HEADERS
+
+    const products = await getProductsWithVariants({
+      includeInactive: isAdmin,
+      noCache: isAdmin,
+    })
+
+    if (products.length === 0) {
       return NextResponse.json(
         {
           success: false,
           message: 'Data produk belum terhubung atau kosong',
           data: [],
         },
-        { 
-          status: 200,
-          headers: {
-            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'
-          }
-        }
+        { status: 200, headers }
       )
     }
 
-    // Fetch variant data for all products in parallel
-    const productsWithVariants = await Promise.all(
-      products.map(async (product: any) => {
-        const variantData = await getCachedVariantData(product.id)
-        return {
-          ...product,
-          ...variantData
-        }
-      })
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Produk berhasil diambil',
+        data: products,
+      },
+      { headers }
     )
-
-    return NextResponse.json({
-      success: true,
-      message: 'Produk berhasil diambil',
-      data: productsWithVariants,
-    }, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'
-      }
-    })
   } catch (error) {
     console.error('Error fetching products:', error)
     return NextResponse.json(
@@ -91,12 +47,7 @@ export async function GET(request: NextRequest) {
         message: 'Gagal mengambil data produk',
         data: [],
       },
-      { 
-        status: 200,
-        headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'
-        }
-      }
+      { status: 200, headers: PUBLIC_CACHE_HEADERS }
     )
   }
 }

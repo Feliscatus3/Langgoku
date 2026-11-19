@@ -1,14 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface AdminLoginProps {
   onLogin: (success: boolean) => void
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
-  const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -23,20 +21,20 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: username.trim(), password }),
       })
 
       const data = await response.json()
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         setError(data.message || 'Login gagal')
         onLogin(false)
         return
       }
 
-      localStorage.setItem('admin_token', 'authenticated')
       onLogin(true)
     } catch (err) {
+      console.error('Login error:', err)
       setError('Terjadi kesalahan saat login')
       onLogin(false)
     } finally {
@@ -74,6 +72,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="adminku"
+              autoComplete="username"
               className="input-field w-full"
               disabled={loading}
             />
@@ -89,6 +88,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete="current-password"
               className="input-field w-full"
               disabled={loading}
             />

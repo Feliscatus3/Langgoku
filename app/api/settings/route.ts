@@ -1,123 +1,108 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { appsScriptPost, isAppsScriptConfigured } from '@/lib/appsScriptClient'
+import { getStoreSettings, invalidateStoreSettings } from '@/lib/storeSettings'
+import { isAdminRequest } from '@/lib/auth'
 
-const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
+export const dynamic = 'force-dynamic'
+
+const NO_STORE = { 'Cache-Control': 'no-store' }
 
 export async function GET(request: NextRequest) {
   try {
-    if (!APPS_SCRIPT_URL) {
-      return NextResponse.json({
-        success: false,
-        message: 'GOOGLE_APPS_SCRIPT_URL not configured',
-        data: null
-      }, { status: 200 })
+    if (!isAppsScriptConfigured()) {
+      return NextResponse.json(
+        { success: false, message: 'GOOGLE_APPS_SCRIPT_URL not configured', data: null },
+        { status: 200, headers: NO_STORE }
+      )
     }
 
-    const url = `${APPS_SCRIPT_URL}?action=getSettings`
-    const response = await fetch(url, { 
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000)
-    })
+    const settings = await getStoreSettings()
 
-    const data = await response.json()
-
-    if (data.success && data.data) {
-      return NextResponse.json({
-        success: true,
-        data: data.data
-      })
+    if (!settings) {
+      return NextResponse.json({ success: true, data: null }, { headers: NO_STORE })
     }
 
-    return NextResponse.json({
-      success: true,
-      data: null
-    })
+    // The Sheet ID is only useful to the admin panel.
+    if (!isAdminRequest(request)) {
+      const publicSettings = { ...settings }
+      delete publicSettings.googleSheetId
+      return NextResponse.json({ success: true, data: publicSettings }, { headers: NO_STORE })
+    }
+
+    return NextResponse.json({ success: true, data: settings }, { headers: NO_STORE })
   } catch (error) {
     console.error('Error fetching settings:', error)
-    return NextResponse.json({
-      success: false,
-      message: 'Failed to fetch settings',
-      data: null
-    }, { status: 200 })
+    return NextResponse.json(
+      { success: false, message: 'Failed to fetch settings', data: null },
+      { status: 200, headers: NO_STORE }
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { 
-      googleSheetId, 
-      adminPhone, 
-      storeEmail, 
-      storeName, 
-      storeDescription,
-      defaultPaymentMethod,
-      notificationEnabled,
-      maintenanceMode,
-      announcementText,
-      announcementEnabled
-    } = body
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+  }
 
-    // Validate required fields
+  try {
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ success: false, message: 'Body tidak valid' }, { status: 400 })
+    }
+
+    const adminPhone = typeof body.adminPhone === 'string' ? body.adminPhone.trim() : ''
+    const storeEmail = typeof body.storeEmail === 'string' ? body.storeEmail.trim() : ''
+
     if (!adminPhone || !storeEmail) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Field wajib: adminPhone, storeEmail',
-        },
+        { success: false, message: 'Field wajib: adminPhone, storeEmail' },
         { status: 400 }
       )
     }
 
-    if (!APPS_SCRIPT_URL) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(storeEmail)) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'GOOGLE_APPS_SCRIPT_URL not configured',
-        },
+        { success: false, message: 'Format email toko tidak valid' },
+        { status: 400 }
+      )
+    }
+
+    if (!isAppsScriptConfigured()) {
+      return NextResponse.json(
+        { success: false, message: 'GOOGLE_APPS_SCRIPT_URL not configured' },
         { status: 500 }
       )
     }
 
-    // Save to Google Apps Script
-    const url = APPS_SCRIPT_URL
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'saveSettings',
-        googleSheetId: googleSheetId || '',
-        adminPhone,
-        storeEmail,
-        storeName: storeName || 'Langgoku',
-        storeDescription: storeDescription || '',
-        defaultPaymentMethod: defaultPaymentMethod || 'QRIS',
-        notificationEnabled: notificationEnabled !== false,
-        maintenanceMode: maintenanceMode === true,
-        announcementText: announcementText || '',
-        announcementEnabled: announcementEnabled === true,
-      }),
-      signal: AbortSignal.timeout(30000)
+    const result = await appsScriptPost({
+      action: 'saveSettings',
+      googleSheetId: typeof body.googleSheetId === 'string' ? body.googleSheetId : '',
+      adminPhone,
+      storeEmail,
+      storeName: typeof body.storeName === 'string' && body.storeName.trim() ? body.storeName.trim() : 'Langgoku',
+      storeDescription: typeof body.storeDescription === 'string' ? body.storeDescription : '',
+      defaultPaymentMethod:
+        typeof body.defaultPaymentMethod === 'string' ? body.defaultPaymentMethod : 'QRIS',
+      notificationEnabled: body.notificationEnabled !== false,
+      maintenanceMode: body.maintenanceMode === true,
+      announcementText: typeof body.announcementText === 'string' ? body.announcementText : '',
+      announcementEnabled: body.announcementEnabled === true,
     })
 
-    const result = await response.json()
-
-    if (result.success) {
-      return NextResponse.json({
-        success: true,
-        message: 'Pengaturan berhasil disimpan ke Google Sheets',
-        data: body
-      })
-    } else {
+    if (!result.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: result.message || 'Gagal menyimpan pengaturan',
-        },
+        { success: false, message: result.message || 'Gagal menyimpan pengaturan' },
         { status: 500 }
       )
     }
+
+    invalidateStoreSettings()
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pengaturan berhasil disimpan ke Google Sheets',
+      data: body,
+    })
   } catch (error) {
     console.error('Error saving settings:', error)
     return NextResponse.json(

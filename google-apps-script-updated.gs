@@ -24,11 +24,25 @@ const SHEETS = {
 // MAIN HANDLER FUNCTIONS
 // ==============================
 
+/**
+ * Optional shared secret. Set API_SECRET in Script properties to require it.
+ * When the property is empty the script stays backwards compatible.
+ */
+function isAuthorized(params) {
+  const required = PropertiesService.getScriptProperties().getProperty('API_SECRET');
+  if (!required) return true;
+  return Boolean(params) && params.secret === required;
+}
+
 function doGet(e) {
   const params = e ? e.parameter : {};
   const action = params.action || null;
-  
+
   try {
+    if (!isAuthorized(params)) {
+      return sendResponse({ success: false, message: 'Unauthorized' });
+    }
+
     switch (action) {
       case 'getProducts':
         return getProducts();
@@ -52,33 +66,17 @@ function doGet(e) {
         return testConnection();
       case 'getVariantAttributes':
         return getVariantAttributes(params.productId);
-      case 'addVariantAttribute':
-        return addVariantAttribute(params);
-      case 'updateVariantAttribute':
-        return updateVariantAttribute(params);
-      case 'deleteVariantAttribute':
-        return deleteVariantAttribute(params.id);
       case 'getAttributeOptions':
         return getAttributeOptions(params.attributeId);
-      case 'addAttributeOption':
-        return addAttributeOption(params);
-      case 'updateAttributeOption':
-        return updateAttributeOption(params);
-      case 'deleteAttributeOption':
-        return deleteAttributeOption(params.id);
       case 'getVariantCombinations':
         return getVariantCombinations(params.productId);
-      case 'addVariantCombination':
-        return addVariantCombination(params);
-      case 'updateVariantCombination':
-        return updateVariantCombination(params);
-      case 'deleteVariantCombination':
-        return deleteVariantCombination(params.id);
+      case 'getAllVariantData':
+        return getAllVariantData();
       default:
         return sendResponse({
           success: false,
           message: 'Action tidak dikenali',
-          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'getPromoCodes', 'validatePromoCode', 'getPromoAds', 'testConnection', 'getVariantAttributes', 'addVariantAttribute', 'updateVariantAttribute', 'deleteVariantAttribute', 'getAttributeOptions', 'addAttributeOption', 'updateAttributeOption', 'deleteAttributeOption', 'getVariantCombinations', 'addVariantCombination', 'updateVariantCombination', 'deleteVariantCombination']
+          availableActions: ['getProducts', 'getBuyers', 'getProduct', 'getBuyer', 'getStats', 'getSettings', 'getPromoCodes', 'validatePromoCode', 'getPromoAds', 'testConnection', 'getVariantAttributes', 'getAttributeOptions', 'getVariantCombinations', 'getAllVariantData']
         });
     }
   } catch (error) {
@@ -120,6 +118,10 @@ function doPost(e) {
         success: false,
         message: 'Action tidak ditemukan dalam request'
       });
+    }
+
+    if (!isAuthorized(params)) {
+      return sendResponse({ success: false, message: 'Unauthorized' });
     }
     
     console.log('doPost called with action:', action, 'params:', JSON.stringify(params));
@@ -253,26 +255,24 @@ function getProducts() {
   for (let i = 1; i < data.length; i++) {
     if (data[i][0]) {
       const product = objectToData(headers, data[i]);
-      
-      // Parse attributes, options, combinations from JSON strings
-      if (product.attributes) {
-        try { product.attributes = JSON.parse(product.attributes); } catch (e) { product.attributes = []; }
-      } else {
-        product.attributes = allAttributes.filter(a => a['Product ID'] === product.ID);
-      }
-      
-      if (product.options) {
-        try { product.options = JSON.parse(product.options); } catch (e) { product.options = []; }
-      } else {
-        product.options = allOptions.filter(o => product.attributes.some(a => a.ID === o['Attribute ID']));
-      }
-      
-      if (product.combinations) {
-        try { product.combinations = JSON.parse(product.combinations); } catch (e) { product.combinations = []; }
-      } else {
-        product.combinations = allCombinations.filter(c => c['Product ID'] === product.ID);
-      }
-      
+
+      // JSON columns are written by older app versions as "[]"; fall back to
+      // the dedicated variant sheets when they are empty.
+      const attributesJson = parseJsonArray(product.attributes);
+      product.attributes = attributesJson.length > 0
+        ? attributesJson
+        : allAttributes.filter(a => a['Product ID'] === product.ID);
+
+      const optionsJson = parseJsonArray(product.options);
+      product.options = optionsJson.length > 0
+        ? optionsJson
+        : allOptions.filter(o => product.attributes.some(a => a.ID === o['Attribute ID']));
+
+      const combinationsJson = parseJsonArray(product.combinations);
+      product.combinations = combinationsJson.length > 0
+        ? combinationsJson
+        : allCombinations.filter(c => c['Product ID'] === product.ID);
+
       products.push(product);
     }
   }
@@ -413,6 +413,7 @@ function updateProduct(product) {
       sheet.getRange(row, 4).setValue(product.duration || '');
       sheet.getRange(row, 5).setValue(parseNumber(product.stock));
       sheet.getRange(row, 6).setValue(product.description || '');
+      if (product.image !== undefined) sheet.getRange(row, 8).setValue(product.image || '');
       
       return sendResponse({ success: true, message: 'Produk berhasil diperbarui' });
     }
@@ -692,6 +693,22 @@ function getVariantCombinations(productId) {
   combinations.sort((a, b) => parseNumber(a['Urutan'] || 0) - parseNumber(b['Urutan'] || 0));
   
   return sendResponse({ success: true, data: combinations, count: combinations.length });
+}
+
+function getAllVariantData() {
+  const attributes = readSheetRows(getSheetByName(SHEETS.VARIANT_ATTRIBUTES));
+  const options = readSheetRows(getSheetByName(SHEETS.ATTRIBUTE_OPTIONS));
+  const combinations = readSheetRows(getSheetByName(SHEETS.VARIANT_COMBINATIONS));
+
+  return sendResponse({
+    success: true,
+    data: {
+      attributes: attributes,
+      options: options,
+      combinations: combinations
+    },
+    count: attributes.length + options.length + combinations.length
+  });
 }
 
 function addVariantCombination(combo) {
@@ -1129,7 +1146,7 @@ function addPromoCode(promo) {
     promo.minPurchase || 0,
     promo.maxDiscount || 0,
     promo.expiryDate || '',
-    'Aktif',
+    promo.status || 'Aktif',
     new Date().toLocaleString('id-ID')
   ];
   
@@ -1369,6 +1386,34 @@ function objectToData(headers, row) {
     }
   }
   return obj;
+}
+
+function readSheetRows(sheet) {
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+
+  const headers = data[0];
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      rows.push(objectToData(headers, data[i]));
+    }
+  }
+  return rows;
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string' || !value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
 }
 
 function parseNumber(value) {

@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { appsScriptGet } from '@/lib/appsScriptClient'
+import { addVariantAttributeToGoogleSheets } from '@/lib/googleSheets'
+import { isAdminRequest } from '@/lib/auth'
 
-const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
+export const dynamic = 'force-dynamic'
+
+function unauthorized() {
+  return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    if (!APPS_SCRIPT_URL) {
-      return NextResponse.json(
-        { success: false, message: 'GOOGLE_APPS_SCRIPT_URL not configured' },
-        { status: 500 }
-      )
-    }
-
-    const url = `${APPS_SCRIPT_URL}?action=getVariantAttributes&productId=${encodeURIComponent(params.id)}`
-    const response = await fetch(url, { signal: AbortSignal.timeout(30000) })
-    const result = await response.json()
-
-    return NextResponse.json(result)
+    const result = await appsScriptGet('getVariantAttributes', { productId: params.id }, { revalidate: 0 })
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('Error fetching variant attributes:', error)
     return NextResponse.json(
@@ -32,42 +29,26 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      return NextResponse.json(
-        { success: false, message: 'GOOGLE_APPS_SCRIPT_URL not configured' },
-        { status: 500 }
-      )
-    }
+  if (!isAdminRequest(request)) return unauthorized()
 
-    const body = await request.json()
-    const { name, status } = body
+  try {
+    const body = await request.json().catch(() => null)
+    const name = typeof body?.name === 'string' ? body.name.trim() : ''
+    const status = body?.status === 'inactive' ? 'inactive' : 'active'
 
     if (!name) {
-      return NextResponse.json(
-        { success: false, message: 'Field wajib: name' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, message: 'Field wajib: name' }, { status: 400 })
     }
 
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'addVariantAttribute',
-        productId: params.id,
-        name,
-        status: status || 'active'
-      }),
-      signal: AbortSignal.timeout(30000)
-    })
-
-    const result = await response.json()
-    return NextResponse.json(result)
+    await addVariantAttributeToGoogleSheets({ productId: params.id, name, status })
+    return NextResponse.json({ success: true, message: 'Atribut berhasil ditambahkan' })
   } catch (error) {
     console.error('Error adding variant attribute:', error)
     return NextResponse.json(
-      { success: false, message: 'Gagal menambahkan atribut varian' },
+      {
+        success: false,
+        message: 'Gagal menambahkan atribut varian: ' + (error instanceof Error ? error.message : 'Unknown'),
+      },
       { status: 500 }
     )
   }

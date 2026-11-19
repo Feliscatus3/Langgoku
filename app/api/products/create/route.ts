@@ -1,83 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { addProductToGoogleSheets } from '@/lib/googleSheets'
+import { isAdminRequest } from '@/lib/auth'
+import { parseNumber } from '@/lib/format'
+import { isValidImageSource, truncate } from '@/lib/validation'
 
-// Support both local and Vercel environment variables
-const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
-    const body = await request.json()
-    const { name, price, duration, stock, image, description, attributes, options, combinations } = body
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ success: false, message: 'Body tidak valid' }, { status: 400 })
+    }
 
-    console.log('[API] Create product request:', { name, price })
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    const price = parseNumber(body.price)
+    const image = typeof body.image === 'string' ? body.image.trim() : ''
+    const description = typeof body.description === 'string' ? body.description : ''
 
-    // Validasi required fields - only name and price are required for main product
-    // duration and stock are now managed by variant combinations
-    if (!name || price === undefined) {
+    if (!name) {
+      return NextResponse.json({ success: false, message: 'Field wajib: name' }, { status: 400 })
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      return NextResponse.json({ success: false, message: 'Harga tidak valid' }, { status: 400 })
+    }
+    if (!isValidImageSource(image)) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Field wajib: name, price',
-        },
+        { success: false, message: 'URL gambar harus diawali http(s):// atau /images/' },
         { status: 400 }
       )
     }
 
-    // Cek apakah GOOGLE_APPS_SCRIPT_URL sudah dikonfigurasi
-    if (!APPS_SCRIPT_URL) {
-      console.error('[API] GOOGLE_APPS_SCRIPT_URL not set in environment')
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'GOOGLE_APPS_SCRIPT_URL belum dikonfigurasi. Silakan tambahkan di Vercel project settings.',
-        },
-        { status: 500 }
-      )
-    }
-
-    console.log('[API] Calling Google Apps Script:', APPS_SCRIPT_URL)
-
-    // Kirim data ke Google Apps Script - action included in body
-    const url = APPS_SCRIPT_URL
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'addProduct',
-        name,
-        price,
-        duration: duration || '',
-        stock: stock || 0,
-        image,
-        description,
-        attributes,
-        options,
-        combinations,
-      }),
-      signal: AbortSignal.timeout(30000)
+    await addProductToGoogleSheets({
+      name: truncate(name, 200),
+      price,
+      duration: body.duration === undefined ? '' : truncate(String(body.duration).trim(), 50),
+      stock: body.stock === undefined ? 0 : parseNumber(body.stock),
+      image,
+      description: truncate(description, 5000),
+      attributes: Array.isArray(body.attributes) ? body.attributes : [],
+      options: Array.isArray(body.options) ? body.options : [],
+      combinations: Array.isArray(body.combinations) ? body.combinations : [],
     })
 
-    console.log('[API] Response status:', response.status)
-
-    const result = await response.json()
-    console.log('[API] Response data:', result)
-
-    if (result.success) {
-      return NextResponse.json({
-        success: true,
-        message: result.message || 'Produk berhasil ditambahkan',
-        data: result.data,
-      })
-    } else {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.message || 'Gagal menambahkan produk',
-        },
-        { status: 500 }
-      )
-    }
+    return NextResponse.json({ success: true, message: 'Produk berhasil ditambahkan' })
   } catch (error) {
     console.error('[API] Error creating product:', error)
     return NextResponse.json(

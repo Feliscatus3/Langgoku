@@ -3,155 +3,151 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatPrice } from '@/lib/googleSheets'
-
-interface CheckoutData {
-  productId: string
-  productName: string
-  productDuration: string
-  originalPrice: number
-  uniqueCode: string
-  finalPrice: number
-  buyerName: string
-  buyerPhone: string
-  combinationId?: string
-  variantName?: string
-}
-
-interface Settings {
-  adminPhone: string
-  storeEmail: string
-  storeName: string
-  storeDescription: string
-}
+import { formatPrice } from '@/lib/format'
+import { getUniqueCodeAmount } from '@/lib/checkout'
+import type { CheckoutData, PromoCode } from '@/types/product'
 
 interface PromoValidation {
   success: boolean
-  data?: {
-    'Kode Promo': string
-    Diskon: number
-    'Tipe Diskon': string
-    'Minimal Pembelian': number
-    'Maksimal Diskon': number
-  }
+  data?: PromoCode
   message?: string
+}
+
+interface StoreSettings {
+  adminPhone?: string
+  storeEmail?: string
+  storeName?: string
+}
+
+function isCheckoutData(value: unknown): value is CheckoutData {
+  if (!value || typeof value !== 'object') return false
+  const data = value as Partial<CheckoutData>
+  return (
+    typeof data.productId === 'string' &&
+    typeof data.productName === 'string' &&
+    typeof data.buyerName === 'string' &&
+    typeof data.buyerPhone === 'string' &&
+    typeof data.uniqueCode === 'string' &&
+    Number.isFinite(Number(data.originalPrice))
+  )
 }
 
 export default function CheckoutPage() {
   const router = useRouter()
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const [settings, setSettings] = useState<StoreSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [paymentStep, setPaymentStep] = useState<'select' | 'done'>('select')
-  const [settingsLoading, setSettingsLoading] = useState(true)
-  
+
   // Promo code state
   const [promoCode, setPromoCode] = useState('')
   const [promoApplied, setPromoApplied] = useState<PromoValidation | null>(null)
   const [applyingPromo, setApplyingPromo] = useState(false)
   const [promoError, setPromoError] = useState('')
-  
-  // Price after promo
   const [discountAmount, setDiscountAmount] = useState(0)
-  
+
   // Variant price validation
-  const [variantValidated, setVariantValidated] = useState(false)
   const [validatedPrice, setValidatedPrice] = useState<number | null>(null)
   const [priceMismatch, setPriceMismatch] = useState(false)
 
   useEffect(() => {
-    const data = sessionStorage.getItem('checkoutData')
-    if (!data) {
-      router.push('/')
+    const raw = sessionStorage.getItem('checkoutData')
+    if (!raw) {
+      router.replace('/')
       return
     }
-    setCheckoutData(JSON.parse(data))
-    loadSettings()
-  }, [router])
 
-  const loadSettings = async () => {
-    setSettingsLoading(true)
+    let parsed: unknown
     try {
-      const response = await fetch('/api/settings')
-      const data = await response.json()
-      console.log('Settings response:', data)
-      if (data.success && data.data) {
-        setSettings(data.data)
-        console.log('Admin phone from settings:', data.data.adminPhone)
-      }
-
-      // Validate variant price from backend if combinationId exists
-      if (checkoutData?.combinationId) {
-        await validateCombinationPrice(checkoutData.combinationId)
-      }
-    } catch (err) {
-      console.error('Error loading settings:', err)
-    } finally {
-      setLoading(false)
-      setSettingsLoading(false)
+      parsed = JSON.parse(raw)
+    } catch {
+      sessionStorage.removeItem('checkoutData')
+      router.replace('/')
+      return
     }
-  }
 
-  const validateCombinationPrice = async (combinationId: string) => {
-    try {
-      const response = await fetch(`/api/products/${checkoutData?.productId}/combinations/${combinationId}`)
-      const result = await response.json()
-      
-      if (result.success && result.data) {
-        const backendPrice = result.data.price
-        const frontendPrice = checkoutData?.originalPrice || 0
-        
-        setValidatedPrice(backendPrice)
-        setVariantValidated(true)
-        
-        // Check if price matches (allow small difference for unique code)
-        if (Math.abs(backendPrice - frontendPrice) > 100) {
-          setPriceMismatch(true)
-          console.warn('Price mismatch detected:', { backendPrice, frontendPrice })
+    if (!isCheckoutData(parsed)) {
+      sessionStorage.removeItem('checkoutData')
+      router.replace('/')
+      return
+    }
+
+    const validData = parsed
+    setCheckoutData(validData)
+
+    const loadPageData = async () => {
+      try {
+        const settingsResponse = await fetch('/api/settings', { cache: 'no-store' })
+        const settingsData = await settingsResponse.json()
+        if (settingsData.success && settingsData.data) {
+          setSettings(settingsData.data)
         }
+
+        if (validData.combinationId && validData.productId) {
+          const priceResponse = await fetch(
+            `/api/products/${encodeURIComponent(validData.productId)}/combinations/${encodeURIComponent(validData.combinationId)}`,
+            { cache: 'no-store' }
+          )
+          const priceResult = await priceResponse.json()
+
+          if (priceResult.success && priceResult.data) {
+            const backendPrice = Number(priceResult.data.price)
+            if (Number.isFinite(backendPrice)) {
+              setValidatedPrice(backendPrice)
+              if (Math.abs(backendPrice - validData.originalPrice) > 100) {
+                setPriceMismatch(true)
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading checkout data:', error)
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      console.error('Error validating combination price:', err)
     }
-  }
+
+    void loadPageData()
+  }, [router])
 
   const applyPromoCode = async () => {
     if (!promoCode.trim() || !checkoutData) return
-    
+
     setApplyingPromo(true)
     setPromoError('')
-    
+
     try {
-      const response = await fetch(`/api/promo-codes?code=${encodeURIComponent(promoCode)}`)
+      const basePrice = validatedPrice ?? checkoutData.originalPrice
+      const response = await fetch(`/api/promo-codes?code=${encodeURIComponent(promoCode.trim())}`, {
+        cache: 'no-store',
+      })
       const result = await response.json()
-      
-      if (result.success && result.data) {
-        const promo = result.data
-        let discount = 0
-        
-        // Calculate discount
-        if (promo['Tipe Diskon'] === 'percentage') {
-          discount = (checkoutData.originalPrice * promo.Diskon) / 100
-          // Apply max discount cap
-          if (promo['Maksimal Diskon'] && discount > promo['Maksimal Diskon']) {
-            discount = promo['Maksimal Diskon']
-          }
-        } else {
-          discount = promo.Diskon
-        }
-        
-        // Check min purchase
-        if (promo['Minimal Pembelian'] && checkoutData.originalPrice < promo['Minimal Pembelian']) {
-          setPromoError(`Minimal pembelian Rp ${promo['Minimal Pembelian'].toLocaleString('id-ID')}`)
-          return
-        }
-        
-        setDiscountAmount(discount)
-        setPromoApplied(result)
-      } else {
+
+      if (!result.success || !result.data) {
         setPromoError(result.message || 'Kode promo tidak valid')
+        return
       }
-    } catch (err) {
+
+      const promo = result.data as PromoCode
+      const minPurchase = Number(promo['Minimal Pembelian']) || 0
+      if (minPurchase > 0 && basePrice < minPurchase) {
+        setPromoError(`Minimal pembelian Rp ${minPurchase.toLocaleString('id-ID')}`)
+        return
+      }
+
+      let discount =
+        promo['Tipe Diskon'] === 'percentage'
+          ? (basePrice * Number(promo.Diskon || 0)) / 100
+          : Number(promo.Diskon || 0)
+
+      const maxDiscount = Number(promo['Maksimal Diskon']) || 0
+      if (maxDiscount > 0) discount = Math.min(discount, maxDiscount)
+      discount = Math.round(Math.max(0, Math.min(discount, basePrice)))
+
+      setDiscountAmount(discount)
+      setPromoApplied(result)
+    } catch (error) {
+      console.error('Error applying promo code:', error)
       setPromoError('Terjadi kesalahan')
     } finally {
       setApplyingPromo(false)
@@ -165,61 +161,52 @@ export default function CheckoutPage() {
     setPromoError('')
   }
 
-  const handleCopyCode = () => {
-    if (checkoutData?.uniqueCode) {
-      navigator.clipboard.writeText(checkoutData.uniqueCode)
+  const handleCopyCode = async () => {
+    if (!checkoutData?.uniqueCode) return
+    try {
+      await navigator.clipboard.writeText(checkoutData.uniqueCode)
+    } catch {
+      // Clipboard permissions are not guaranteed; the code is visible on screen.
     }
   }
 
-  const getWhatsAppNumber = () => {
-    // First priority: settings adminPhone from Google Sheets
-    if (settings?.adminPhone) {
-      return String(settings.adminPhone)
-    }
-    // Fallback: buyer phone (not ideal but better than nothing)
-    return String(checkoutData?.buyerPhone || '')
-  }
-
-  const getStoreName = () => {
-    return settings?.storeName || 'Langgoku'
-  }
-
-  // Compute product duration for display
-  const productDuration = checkoutData?.productDuration || (checkoutData?.variantName ? `${checkoutData.variantName} (${checkoutData.productDuration})` : 'Tidak ada durasi')
+  const getWhatsAppNumber = () => String(settings?.adminPhone || '').replace(/\D/g, '')
+  const getStoreName = () => settings?.storeName || 'Langgoku'
 
   const handleWhatsAppConfirmation = () => {
     if (!checkoutData) return
 
-    const waNumber = getWhatsAppNumber()
-    console.log('Using WhatsApp number:', waNumber)
-    
-    if (!waNumber) {
+    const adminNumber = getWhatsAppNumber()
+    if (!adminNumber) {
       alert('Nomor WhatsApp admin belum dikonfigurasi. Silakan hubungi admin melalui cara lain.')
       return
     }
 
-    // Use validated price from backend if available, otherwise use frontend price
     const basePrice = validatedPrice !== null ? validatedPrice : checkoutData.originalPrice
-    const finalPrice = basePrice - discountAmount
-    const promoInfo = promoApplied ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})` : ''
-    const uniqueCodeNum = parseInt(checkoutData.uniqueCode) || 0
-    
-    const variantInfo = checkoutData.variantName ? `\n🎯 Varian: ${checkoutData.variantName}` : ''
+    const total = Math.max(0, basePrice - discountAmount)
+    const uniqueCodeAmount =
+      checkoutData.uniqueCodeAmount ?? getUniqueCodeAmount(checkoutData.uniqueCode)
+    const promoInfo =
+      promoApplied && discountAmount > 0
+        ? `\n🎫 Promo: ${promoCode} (-${formatPrice(discountAmount)})`
+        : ''
+    const variantInfo = checkoutData.variantName
+      ? `\n🎯 Varian: ${checkoutData.variantName}`
+      : ''
 
     const message = `Halo Admin ${getStoreName()}, saya ingin membeli:
 
 📦 Produk: ${checkoutData.productName}${variantInfo}
-⏱️ Durasi: ${productDuration}
+⏱️ Durasi: ${checkoutData.productDuration || '-'}
 👤 Nama: ${checkoutData.buyerName}
 📱 WhatsApp: ${checkoutData.buyerPhone}
 💵 Harga Awal: ${formatPrice(basePrice)}${promoInfo}
 💰 Kode Pembayaran: ${checkoutData.uniqueCode}
-💳 Total Bayar: ${formatPrice(finalPrice + uniqueCodeNum)}
+💳 Total Bayar: ${formatPrice(total + uniqueCodeAmount)}
 
 Mohon info cara pembayarannya!`
-    
-    const cleanNumber = waNumber.replace(/\D/g, '')
-    window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`, '_blank')
+
+    window.open(`https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`, '_blank')
     setPaymentStep('done')
   }
 
@@ -235,7 +222,10 @@ Mohon info cara pembayarannya!`
   }
 
   const basePrice = validatedPrice !== null ? validatedPrice : checkoutData.originalPrice
-  const finalTotal = basePrice - discountAmount
+  const finalTotal = Math.max(0, basePrice - discountAmount)
+  const uniqueCodeAmount =
+    checkoutData.uniqueCodeAmount ?? getUniqueCodeAmount(checkoutData.uniqueCode)
+  const grandTotal = finalTotal + uniqueCodeAmount
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -249,23 +239,22 @@ Mohon info cara pembayarannya!`
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          
           {/* Order Summary */}
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <h2 className="text-xl font-bold mb-4">Ringkasan Pesanan</h2>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-4">
-<div className="bg-blue-50 p-4 rounded-xl">
-  <p className="text-sm text-gray-600">Produk</p>
-  <p className="text-xl font-bold">{checkoutData.productName}</p>
-  {checkoutData.variantName && (
-    <p className="text-sm text-purple-600 font-medium mt-1">
-      Varian: {checkoutData.variantName}
-    </p>
-  )}
-  <p className="text-gray-600">{productDuration}</p>
-</div>
+                <div className="bg-blue-50 p-4 rounded-xl">
+                  <p className="text-sm text-gray-600">Produk</p>
+                  <p className="text-xl font-bold">{checkoutData.productName}</p>
+                  {checkoutData.variantName && (
+                    <p className="text-sm text-purple-600 font-medium mt-1">
+                      Varian: {checkoutData.variantName}
+                    </p>
+                  )}
+                  <p className="text-gray-600">{checkoutData.productDuration || '-'}</p>
+                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-xl">
@@ -289,7 +278,10 @@ Mohon info cara pembayarannya!`
                   <p className="text-sm font-semibold text-amber-800">Kode Pembayaran</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-3xl font-bold text-amber-700">{checkoutData.uniqueCode}</span>
-                    <button onClick={handleCopyCode} className="px-3 py-1 bg-amber-500 text-white rounded-lg text-sm">
+                    <button
+                      onClick={handleCopyCode}
+                      className="px-3 py-1 bg-amber-500 text-white rounded-lg text-sm"
+                    >
                       Copy
                     </button>
                   </div>
@@ -298,12 +290,14 @@ Mohon info cara pembayarannya!`
 
                 <div className="bg-green-50 p-4 rounded-xl">
                   <p className="text-sm text-gray-600">Subtotal</p>
-                  <p className="text-lg font-semibold">{formatPrice(validatedPrice !== null ? validatedPrice : checkoutData.originalPrice)}</p>
+                  <p className="text-lg font-semibold">{formatPrice(basePrice)}</p>
                   {validatedPrice !== null && validatedPrice !== checkoutData.originalPrice && (
                     <p className="text-xs text-blue-600 mt-1">Harga divalidasi dari backend</p>
                   )}
                   {priceMismatch && (
-                    <p className="text-xs text-red-600 mt-1">⚠ Perbedaan harga terdeteksi - menggunakan harga backend</p>
+                    <p className="text-xs text-red-600 mt-1">
+                      ⚠ Perbedaan harga terdeteksi - menggunakan harga backend
+                    </p>
                   )}
                 </div>
 
@@ -323,9 +317,11 @@ Mohon info cara pembayarannya!`
 
                 <div className="bg-blue-50 p-4 rounded-xl">
                   <p className="text-sm text-gray-600">Total Bayar</p>
-                  <p className="text-3xl font-bold text-blue-600">{formatPrice(finalTotal)}</p>
-                  {discountAmount > 0 && (
-                    <p className="text-xs text-green-600 mt-1">Termasuk kode unik</p>
+                  <p className="text-3xl font-bold text-blue-600">{formatPrice(grandTotal)}</p>
+                  {uniqueCodeAmount > 0 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Termasuk kode unik {formatPrice(uniqueCodeAmount)}
+                    </p>
                   )}
                   {validatedPrice !== null && validatedPrice !== checkoutData.originalPrice && (
                     <p className="text-xs text-blue-600 mt-1">Harga divalidasi dari backend</p>
@@ -338,13 +334,13 @@ Mohon info cara pembayarannya!`
           {/* Promo Code Section */}
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <h2 className="text-xl font-bold mb-4">Kode Promo</h2>
-            
+
             {!promoApplied ? (
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
                   placeholder="Masukkan kode promo"
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -361,37 +357,33 @@ Mohon info cara pembayarannya!`
                 <div>
                   <p className="font-medium text-green-700">✓ {promoCode} Applied</p>
                   <p className="text-sm text-green-600">
-                    {promoApplied.data?.['Tipe Diskon'] === 'percentage' 
-                      ? `${promoApplied.data?.Diskon}% off` 
-                      : `Rp ${promoApplied.data?.Diskon?.toLocaleString('id-ID')} off`}
+                    {promoApplied.data?.['Tipe Diskon'] === 'percentage'
+                      ? `${promoApplied.data?.Diskon}% off`
+                      : `Rp ${Number(promoApplied.data?.Diskon || 0).toLocaleString('id-ID')} off`}
                   </p>
                 </div>
-                <button
-                  onClick={removePromo}
-                  className="text-red-500 hover:text-red-700"
-                >
+                <button onClick={removePromo} className="text-red-500 hover:text-red-700">
                   ✕
                 </button>
               </div>
             )}
-            
-            {promoError && (
-              <p className="mt-2 text-red-500 text-sm">{promoError}</p>
-            )}
+
+            {promoError && <p className="mt-2 text-red-500 text-sm">{promoError}</p>}
           </div>
 
           {/* Payment Info */}
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <h2 className="text-xl font-bold mb-4">Cara Pembayaran</h2>
             <p className="text-gray-600 mb-4">
-              Klik tombol "Hubungi Admin via WhatsApp" untuk mendapatkan informasi cara pembayaran. 
-              Admin akan memberikan nomor rekening atau panduan pembayaran.
+              Klik tombol &quot;Hubungi Admin via WhatsApp&quot; untuk mendapatkan informasi cara
+              pembayaran. Admin akan memberikan nomor rekening atau panduan pembayaran.
             </p>
-            
+
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
               <p className="text-yellow-800 text-sm">
-                <strong>Catatan:</strong> Setiap pesanan memiliki kode unik ({checkoutData.uniqueCode}) yang harus ditambahkan ke nominal pembayaran.
-                Hubungi admin untuk info lebih lanjut.
+                <strong>Catatan:</strong> Setiap pesanan memiliki kode unik (
+                {checkoutData.uniqueCode}) yang harus ditambahkan ke nominal pembayaran. Hubungi admin
+                untuk info lebih lanjut.
               </p>
             </div>
           </div>
@@ -402,14 +394,17 @@ Mohon info cara pembayarannya!`
             className="w-full py-4 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-all flex items-center justify-center gap-2"
           >
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 00.672.038l2.384-1.002a.863.863 0 01.798-.098c1.462.45 2.38.918 2.38.918.438-.086.952-.328 1.542-.912 1.462-1.456 2.448-4.354 2.448-4.354s-.774-.898-2.032-2.331c-.918-1.048-1.962-1.248-2.532-1.374-.532-.118-1.346-.166-2.432-.038-.628.074-2.292.378-4.358 1.706L4.37 4.657A.484.484 0 014.17 4.31l-.552.062-.236.552.688.178.002-.002.002.002.656-.096.002.002.002-.002.314.096c.094.088.232.194.374.306l.002-.002.002-.002.002.002-.096.656-.002.002.002.096a.485.485 0 01-.346.348l2.402.998a.864.864 0 01.097.798c-.002 0-.468.918-.918 2.38 0 0-.012.217-.062.346l.002-.002-.002-.002zM5.748 8.5c.584 0 1.058.474 1.058 1.058 0 .584-.474 1.058-1.058 1.058-.584 0-1.058-.474-1.058-1.058 0-.584.474-1.058 1.058-1.058zm5.772 0c.584 0 1.058.474 1.058 1.058 0 .584-.474 1.058-1.058 1.058-.584 0-1.058-.474-1.058-1.058 0-.584.474-1.058 1.058-1.058zm4.592 2.636c-1.458 0-2.774.378-3.996 1.082-1.278.736-2.244 1.702-2.996 2.996C3.28 16.18 2.902 17.494 2.902 18.952c0 1.578.628 3.016 1.634 4.096 1.004 1.078 2.38 1.706 3.952 1.706 1.576 0 2.948-.628 4.034-1.706 1.088-1.078 1.716-2.518 1.716-4.096 0-1.458-.378-2.774-1.082-3.996-.736-1.278-1.702-2.244-2.996-2.996-1.222-.704-2.538-1.082-3.996-1.082z"/>
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+              <path d="M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 0 5.463 0 12.045c0 2.124.555 4.196 1.61 6.024L0 24l6.104-1.6a12.02 12.02 0 005.94 1.52h.005c6.582 0 12.045-5.463 12.045-12.045 0-3.213-1.265-6.221-3.574-8.426zM12.05 21.785h-.004a9.96 9.96 0 01-5.073-1.39l-.364-.216-3.622.95.967-3.53-.237-.377a9.958 9.958 0 01-1.527-5.177c0-5.507 4.48-9.987 9.99-9.987 2.667 0 5.174 1.04 7.06 2.928a9.926 9.926 0 012.922 7.068c0 5.507-4.48 9.986-9.987 9.986z" />
             </svg>
             Hubungi Admin via WhatsApp
           </button>
 
           {paymentStep === 'done' && (
             <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-              <p className="text-green-700 font-medium">✓ Pesanan diterima! Silakan hubungi admin melalui WhatsApp.</p>
+              <p className="text-green-700 font-medium">
+                ✓ Pesanan diterima! Silakan hubungi admin melalui WhatsApp.
+              </p>
             </div>
           )}
 

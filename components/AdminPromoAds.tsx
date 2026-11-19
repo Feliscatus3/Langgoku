@@ -1,16 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
-interface PromoAd {
-  ID: string
-  'URL Gambar': string
-  Judul: string
-  Deskripsi: string
-  'URL Link': string
-  Aktif: boolean
-  'Tanggal Dibuat': string
-}
+import { useCallback, useEffect, useState } from 'react'
+import type { PromoAd } from '@/types/product'
 
 // Toast component
 function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
@@ -87,23 +78,23 @@ export default function AdminPromoAds() {
     isActive: true
   })
 
-  useEffect(() => {
-    loadPromoAds()
-  }, [])
-
-  const loadPromoAds = async () => {
+  const loadPromoAds = useCallback(async () => {
     try {
-      const response = await fetch('/api/promo-ads')
+      const response = await fetch('/api/promo-ads', { cache: 'no-store' })
       const data = await response.json()
       if (data.success) {
-        setPromoAds(data.data || [])
+        setPromoAds(Array.isArray(data.data) ? data.data : [])
       }
     } catch (err) {
       console.error('Error loading promo ads:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void loadPromoAds()
+  }, [loadPromoAds])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -185,10 +176,13 @@ export default function AdminPromoAds() {
       const result = await response.json()
 
       if (result.success) {
-        loadPromoAds()
+        await loadPromoAds()
+      } else {
+        setToast({ message: result.message || 'Gagal mengubah status iklan', type: 'error' })
       }
     } catch (err) {
       console.error('Error toggling ad status:', err)
+      setToast({ message: 'Gagal mengubah status iklan', type: 'error' })
     }
   }
 
@@ -344,8 +338,10 @@ export default function AdminPromoAds() {
               {/* Image Preview */}
               <div className="aspect-[4/5] bg-gray-100 relative">
                 {ad['URL Gambar'] ? (
-                  <img 
-                    src={ad['URL Gambar']} 
+                  // Admin-supplied external URL, so a plain <img> is intentional.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={ad['URL Gambar']}
                     alt={ad.Judul || 'Iklan promo'}
                     className="w-full h-full object-cover"
                   />

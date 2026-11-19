@@ -62,14 +62,26 @@ export default function Navbar() {
         {/* Mobile Menu */}
         {isOpen && (
           <div className="md:hidden py-4 border-t border-blue-500 space-y-2 bg-blue-700">
-            <Link href="/products" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
+            <Link
+              href="/products"
+              onClick={() => setIsOpen(false)}
+              className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium"
+            >
               Produk
             </Link>
-            <Link href="/about" className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium">
+            <Link
+              href="/about"
+              onClick={() => setIsOpen(false)}
+              className="block py-3 px-4 text-white hover:bg-white/10 rounded-lg transition-colors duration-300 font-medium"
+            >
               Tentang
             </Link>
 
-            <Link href="/admin" className="block py-3 px-4 text-white hover:bg-amber-500 rounded-lg transition-colors duration-300 font-medium bg-blue-600">
+            <Link
+              href="/admin"
+              onClick={() => setIsOpen(false)}
+              className="block py-3 px-4 text-white hover:bg-amber-500 rounded-lg transition-colors duration-300 font-medium bg-blue-600"
+            >
               Panel Admin
             </Link>
           </div>

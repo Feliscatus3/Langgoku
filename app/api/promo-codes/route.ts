@@ -1,138 +1,158 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { appsScriptGet, appsScriptPost, isAppsScriptConfigured } from '@/lib/appsScriptClient'
+import { isAdminRequest } from '@/lib/auth'
 
-const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL
+export const dynamic = 'force-dynamic'
 
-// GET - Get all promo codes or validate a code
+const NO_STORE = { 'Cache-Control': 'no-store' }
+
+function unauthorized() {
+  return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+}
+
+function notConfigured() {
+  return NextResponse.json(
+    { success: false, message: 'Google Apps Script URL not configured' },
+    { status: 500 }
+  )
+}
+
+// GET - validate a single code (public) or list all codes (admin only)
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const code = searchParams.get('code')
+  const code = request.nextUrl.searchParams.get('code')
 
   try {
-    if (!APPS_SCRIPT_URL) {
-      return NextResponse.json({ success: false, message: 'Google Apps Script URL not configured' }, { status: 500 })
-    }
+    if (!isAppsScriptConfigured()) return notConfigured()
 
-    // If validating a specific code
     if (code) {
-      const url = `${APPS_SCRIPT_URL}?action=validatePromoCode&code=${encodeURIComponent(code)}`
-      const response = await fetch(url, { next: { revalidate: 60 } })
-      const data = await response.json()
-      return NextResponse.json(data)
+      const data = await appsScriptGet('validatePromoCode', { code }, { revalidate: 0 })
+      return NextResponse.json(data, { headers: NO_STORE })
     }
 
-    // Otherwise get all promo codes
-    const url = `${APPS_SCRIPT_URL}?action=getPromoCodes`
-    const response = await fetch(url, { next: { revalidate: 60 } })
-    const data = await response.json()
-    return NextResponse.json(data)
+    if (!isAdminRequest(request)) return unauthorized()
 
+    const data = await appsScriptGet('getPromoCodes', {}, { revalidate: 0 })
+    return NextResponse.json(data, { headers: NO_STORE })
   } catch (error) {
     console.error('[PromoCodes] Error:', error)
-    return NextResponse.json({ success: false, message: 'Failed to fetch promo codes' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: 'Failed to fetch promo codes' },
+      { status: 500 }
+    )
   }
 }
 
-// POST - Add new promo code
 export async function POST(request: NextRequest) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
-    const body = await request.json()
-    const { code, discount, discountType, description, usageLimit, minPurchase, maxDiscount, expiryDate } = body
+    const body = await request.json().catch(() => null)
+    const code = typeof body?.code === 'string' ? body.code.trim().toUpperCase() : ''
+    const discount = Number(body?.discount)
+    const discountType = body?.discountType === 'fixed' ? 'fixed' : 'percentage'
 
-    if (!code || discount === undefined) {
-      return NextResponse.json({ success: false, message: 'Kode promo dan diskon diperlukan' }, { status: 400 })
+    if (!code) {
+      return NextResponse.json(
+        { success: false, message: 'Kode promo diperlukan' },
+        { status: 400 }
+      )
+    }
+    if (!Number.isFinite(discount) || discount <= 0) {
+      return NextResponse.json(
+        { success: false, message: 'Diskon harus lebih dari 0' },
+        { status: 400 }
+      )
+    }
+    if (discountType === 'percentage' && discount > 100) {
+      return NextResponse.json(
+        { success: false, message: 'Diskon persen maksimal 100' },
+        { status: 400 }
+      )
     }
 
-    if (!APPS_SCRIPT_URL) {
-      return NextResponse.json({ success: false, message: 'Google Apps Script URL not configured' }, { status: 500 })
-    }
+    if (!isAppsScriptConfigured()) return notConfigured()
 
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'addPromoCode',
-        code,
-        discount,
-        discountType: discountType || 'percentage',
-        description: description || '',
-        usageLimit: usageLimit || 0,
-        minPurchase: minPurchase || 0,
-        maxDiscount: maxDiscount || 0,
-        expiryDate: expiryDate || ''
-      })
+    const data = await appsScriptPost({
+      action: 'addPromoCode',
+      code,
+      discount,
+      discountType,
+      description: typeof body?.description === 'string' ? body.description : '',
+      usageLimit: Number(body?.usageLimit) || 0,
+      minPurchase: Number(body?.minPurchase) || 0,
+      maxDiscount: Number(body?.maxDiscount) || 0,
+      expiryDate: typeof body?.expiryDate === 'string' ? body.expiryDate : '',
+      status: body?.status === 'Nonaktif' ? 'Nonaktif' : 'Aktif',
     })
 
-    const data = await response.json()
     return NextResponse.json(data)
-
   } catch (error) {
     console.error('[PromoCodes] Add Error:', error)
-    return NextResponse.json({ success: false, message: 'Failed to add promo code' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: 'Failed to add promo code' },
+      { status: 500 }
+    )
   }
 }
 
-// PUT - Update promo code
 export async function PUT(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-    const body = await request.json()
+  if (!isAdminRequest(request)) return unauthorized()
 
+  try {
+    const id = request.nextUrl.searchParams.get('id')
     if (!id) {
       return NextResponse.json({ success: false, message: 'ID diperlukan' }, { status: 400 })
     }
 
-    if (!APPS_SCRIPT_URL) {
-      return NextResponse.json({ success: false, message: 'Google Apps Script URL not configured' }, { status: 500 })
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ success: false, message: 'Body tidak valid' }, { status: 400 })
     }
 
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'updatePromoCode',
-        id,
-        ...body
-      })
+    if (!isAppsScriptConfigured()) return notConfigured()
+
+    const data = await appsScriptPost({
+      action: 'updatePromoCode',
+      id,
+      code: typeof body.code === 'string' ? body.code.trim().toUpperCase() : undefined,
+      discount: body.discount === undefined ? undefined : Number(body.discount),
+      discountType: body.discountType === 'fixed' ? 'fixed' : body.discountType === 'percentage' ? 'percentage' : undefined,
+      description: typeof body.description === 'string' ? body.description : undefined,
+      usageLimit: body.usageLimit === undefined ? undefined : Number(body.usageLimit) || 0,
+      minPurchase: body.minPurchase === undefined ? undefined : Number(body.minPurchase) || 0,
+      maxDiscount: body.maxDiscount === undefined ? undefined : Number(body.maxDiscount) || 0,
+      expiryDate: typeof body.expiryDate === 'string' ? body.expiryDate : undefined,
+      status: body.status === 'Nonaktif' ? 'Nonaktif' : body.status === 'Aktif' ? 'Aktif' : undefined,
     })
 
-    const data = await response.json()
     return NextResponse.json(data)
-
   } catch (error) {
     console.error('[PromoCodes] Update Error:', error)
-    return NextResponse.json({ success: false, message: 'Failed to update promo code' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: 'Failed to update promo code' },
+      { status: 500 }
+    )
   }
 }
 
-// DELETE - Delete promo code
 export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+  if (!isAdminRequest(request)) return unauthorized()
 
+  try {
+    const id = request.nextUrl.searchParams.get('id')
     if (!id) {
       return NextResponse.json({ success: false, message: 'ID diperlukan' }, { status: 400 })
     }
 
-    if (!APPS_SCRIPT_URL) {
-      return NextResponse.json({ success: false, message: 'Google Apps Script URL not configured' }, { status: 500 })
-    }
+    if (!isAppsScriptConfigured()) return notConfigured()
 
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'deletePromoCode',
-        id
-      })
-    })
-
-    const data = await response.json()
+    const data = await appsScriptPost({ action: 'deletePromoCode', id })
     return NextResponse.json(data)
-
   } catch (error) {
     console.error('[PromoCodes] Delete Error:', error)
-    return NextResponse.json({ success: false, message: 'Failed to delete promo code' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: 'Failed to delete promo code' },
+      { status: 500 }
+    )
   }
 }

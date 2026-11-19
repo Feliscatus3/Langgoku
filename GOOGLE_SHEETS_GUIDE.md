@@ -328,7 +328,7 @@ function recordBuyer(buyerData) {
 }
 ```
 
-See `google-apps-script.js` untuk full code.
+See `google-apps-script-updated.gs` untuk full code.
 
 ---
 

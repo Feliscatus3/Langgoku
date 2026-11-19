@@ -1,108 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  DOKU_CHECKOUT_TARGET,
+  createCheckoutSignature,
+  dokuTimestamp,
+  formatPhoneForDoku,
+  generateRequestId,
+  getDokuBaseUrl,
+  getDokuClientId,
+  getDokuPaymentMethods,
+  isDokuConfigured,
+} from '@/lib/doku'
 
-// DOKU Configuration
-const DOKU_BASE_URL = 'https://api-sandbox.doku.com'
-const DOKU_CLIENT_ID = 'BRN-0264-1774613436846'
-const DOKU_SECRET_KEY = 'SK-caPgjJtZb9xay5wJgSrP'
+export const dynamic = 'force-dynamic'
 
-// Generate signature for DOKU
-function generateSignature(body: string, timestamp: string): string {
-  const crypto = require('crypto')
-  const signature = crypto
-    .createHmac('sha256', DOKU_SECRET_KEY)
-    .update(body + timestamp)
-    .digest('base64')
-  return signature
-}
-
-function generateRequestId(): string {
-  return `REQ_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-}
-
-function formatPhoneForDoku(phone: string): string {
-  let formatted = phone.replace(/\D/g, '')
-  if (formatted.startsWith('0')) {
-    formatted = formatted.substring(1)
-  }
-  if (!formatted.startsWith('62')) {
-    formatted = '62' + formatted
-  }
-  return formatted
-}
-
-// Map our payment method to DOKU payment method types
-function getDokuPaymentMethods(paymentMethod: string): string[] {
-  const methodMap: Record<string, string[]> = {
-    'VIRTUAL_ACCOUNT_BCA': ['VIRTUAL_ACCOUNT_BCA'],
-    'VIRTUAL_ACCOUNT_BRI': ['VIRTUAL_ACCOUNT_BRI'],
-    'VIRTUAL_ACCOUNT_MANDIRI': ['VIRTUAL_ACCOUNT_BANK_MANDIRI'],
-    'VIRTUAL_ACCOUNT_BSI': ['VIRTUAL_ACCOUNT_BANK_SYARIAH_MANDIRI'],
-    'VIRTUAL_ACCOUNT_BNI': ['VIRTUAL_ACCOUNT_BNI'],
-    'VIRTUAL_ACCOUNT_PERMATA': ['VIRTUAL_ACCOUNT_BANK_PERMATA'],
-    'VIRTUAL_ACCOUNT_DANAMON': ['VIRTUAL_ACCOUNT_BANK_DANAMON'],
-    'VIRTUAL_ACCOUNT_CIMB': ['VIRTUAL_ACCOUNT_BANK_CIMB'],
-    'VIRTUAL_ACCOUNT_BTN': ['VIRTUAL_ACCOUNT_BTN'],
-    'E_WALLET_DANA': ['EMONEY_DANA'],
-    'E_WALLET_OVO': ['EMONEY_OVO'],
-    'E_WALLET_SHOPEEPAY': ['EMONEY_SHOPEEPAY'],
-    'E_WALLET_LINKAJA': ['EMONEY_DANA'],
-    'QRIS': ['QRIS'],
-    'CREDIT_CARD': ['CREDIT_CARD'],
-    'DIRECT_DEBIT_BRI': ['DIRECT_DEBIT_BRI'],
-    'RETAIL_ALFAMART': ['ONLINE_TO_OFFLINE_ALFA'],
-    'RETAIL_INDOMARET': ['ONLINE_TO_OFFLINE_ALFA'],
-    'PAYLATER_AKULAKU': ['PEER_TO_PEER_AKULAKU'],
-    'PAYLATER_KREDIVO': ['PEER_TO_PEER_KREDIVO'],
-    'PAYLATER_INDODANA': ['PEER_TO_PEER_INDODANA'],
-  }
-  // Default to QRIS + VA BCA if method not found
-  return methodMap[paymentMethod] || ['QRIS', 'VIRTUAL_ACCOUNT_BCA']
+function getBaseUrl(request: NextRequest): string {
+  return (process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin).replace(/\/$/, '')
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { 
-      orderId, 
-      amount, 
-      buyerName, 
-      buyerPhone, 
-      productName,
-      uniqueCode,
-      paymentMethod,
-    } = body
-
-    if (!orderId || !amount || !buyerName || !buyerPhone) {
+    if (!isDokuConfigured()) {
       return NextResponse.json(
-        { success: false, message: 'Missing required fields' },
+        {
+          success: false,
+          message: 'Pembayaran DOKU belum dikonfigurasi. Hubungi admin via WhatsApp.',
+        },
+        { status: 503 }
+      )
+    }
+
+    const body = await request.json().catch(() => null)
+    const orderId = typeof body?.orderId === 'string' ? body.orderId.trim() : ''
+    const amount = Math.round(Number(body?.amount))
+    const buyerName = typeof body?.buyerName === 'string' ? body.buyerName.trim() : ''
+    const buyerPhone = typeof body?.buyerPhone === 'string' ? body.buyerPhone.trim() : ''
+    const productName = typeof body?.productName === 'string' ? body.productName.trim() : ''
+    const uniqueCode = typeof body?.uniqueCode === 'string' ? body.uniqueCode.trim() : ''
+    const paymentMethod = typeof body?.paymentMethod === 'string' ? body.paymentMethod : 'QRIS'
+
+    if (!orderId || !buyerName || !buyerPhone || !Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json(
+        { success: false, message: 'Missing or invalid required fields' },
         { status: 400 }
       )
     }
 
     const requestId = generateRequestId()
-    const timestamp = new Date().toISOString()
+    const timestamp = dokuTimestamp()
     const formattedPhone = formatPhoneForDoku(buyerPhone)
     const paymentMethods = getDokuPaymentMethods(paymentMethod)
 
-    // Build DOKU request body according to their API format
     const dokuBody = {
       order: {
         invoice_number: orderId,
-        amount: amount,
+        amount,
         currency: 'IDR',
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/checkout`,
+        callback_url: `${getBaseUrl(request)}/checkout`,
         line_items: [
           {
             id: '001',
-            name: productName,
+            name: productName || orderId,
             quantity: 1,
             price: amount,
-          }
-        ]
+          },
+        ],
       },
       payment: {
         payment_due_date: 60,
-        payment_method_types: paymentMethods
+        payment_method_types: paymentMethods,
       },
       customer: {
         name: buyerName,
@@ -111,114 +76,55 @@ export async function POST(request: NextRequest) {
       billing_address: {
         first_name: buyerName,
         phone: formattedPhone,
-        country_code: 'IDN'
-      }
+        country_code: 'IDN',
+      },
     }
 
     const dokuBodyString = JSON.stringify(dokuBody)
-    const signature = generateSignature(dokuBodyString, timestamp)
-
-    console.log('[DOKU] Sending payment request:', {
-      endpoint: `${DOKU_BASE_URL}/checkout/v1/payment`,
-      orderId,
-      amount,
-      paymentMethods,
+    const signature = createCheckoutSignature(
       requestId,
-    })
+      timestamp,
+      DOKU_CHECKOUT_TARGET,
+      dokuBodyString
+    )
 
-    // Call DOKU API
-    const dokuResponse = await fetch(`${DOKU_BASE_URL}/checkout/v1/payment`, {
+    const response = await fetch(`${getDokuBaseUrl()}${DOKU_CHECKOUT_TARGET}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Client-Id': DOKU_CLIENT_ID,
+        'Client-Id': getDokuClientId(),
         'Request-Id': requestId,
         'Request-Timestamp': timestamp,
-        'Signature': signature,
+        Signature: signature,
       },
       body: dokuBodyString,
+      signal: AbortSignal.timeout(30_000),
+      cache: 'no-store',
     })
 
-    const dokuResult = await dokuResponse.json()
-    console.log('[DOKU] Response:', dokuResult)
+    const result = (await response.json().catch(() => null)) as
+      | { payment?: { url?: string }; message?: string }
+      | null
 
-    // Check if DOKU returned a payment URL
-    if (dokuResult.payment && dokuResult.payment.url) {
-      return NextResponse.json({
-        success: true,
-        message: 'Pembayaran berhasil dibuat',
-        data: {
-          orderId,
-          requestId,
-          paymentLink: dokuResult.payment.url,
-          amount,
-          buyerName,
-          productName,
-          uniqueCode,
-          paymentMethod,
-          status: 'pending',
-          createdAt: timestamp,
-        }
-      })
+    const paymentUrl = result?.payment?.url
+    if (!response.ok || !paymentUrl) {
+      console.error('[DOKU] Payment creation failed:', response.status, result)
+      return NextResponse.json(
+        {
+          success: false,
+          message: result?.message || 'Gagal membuat pembayaran DOKU',
+        },
+        { status: 502 }
+      )
     }
-
-    // If no payment URL, check for other response
-    if (dokuResult.payment && dokuResult.payment.token) {
-      // Token-based payment (for some methods)
-      const paymentLink = `${DOKU_BASE_URL}/checkout/v1/payment/token/${dokuResult.payment.token}`
-      return NextResponse.json({
-        success: true,
-        message: 'Pembayaran berhasil dibuat',
-        data: {
-          orderId,
-          requestId,
-          paymentLink,
-          amount,
-          buyerName,
-          productName,
-          uniqueCode,
-          paymentMethod,
-          status: 'pending',
-          createdAt: timestamp,
-        }
-      })
-    }
-
-    // If DOKU returns error or no valid response, return the response for debugging
-    console.log('[DOKU] Full response:', JSON.stringify(dokuResult))
-    
-    // Try to extract any redirect URL from response
-    const redirectUrl = dokuResult?.payment?.url || dokuResult?.payment?.redirectUrl
-    
-    if (redirectUrl) {
-      return NextResponse.json({
-        success: true,
-        message: 'Pembayaran berhasil dibuat',
-        data: {
-          orderId,
-          requestId,
-          paymentLink: redirectUrl,
-          amount,
-          buyerName,
-          productName,
-          uniqueCode,
-          paymentMethod,
-          status: 'pending',
-        }
-      })
-    }
-
-    // Fallback: create a simulated payment page URL
-    // This will help in testing even without real DOKU response
-    const simulatedLink = `https://sandbox.doku.com/checkout/${orderId}?amount=${amount}&channel=${paymentMethod}&client=${DOKU_CLIENT_ID}`
 
     return NextResponse.json({
       success: true,
-      message: `Link pembayaran dibuat (${paymentMethod}). Note: ${dokuResult?.message || 'Using simulation'}`,
+      message: 'Pembayaran berhasil dibuat',
       data: {
         orderId,
         requestId,
-        paymentLink: simulatedLink,
+        paymentLink: paymentUrl,
         amount,
         buyerName,
         productName,
@@ -226,16 +132,14 @@ export async function POST(request: NextRequest) {
         paymentMethod,
         status: 'pending',
         createdAt: timestamp,
-        debug: dokuResult,
-      }
+      },
     })
-
   } catch (error) {
     console.error('[DOKU] Error:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        message: 'Payment error: ' + (error instanceof Error ? error.message : 'Unknown') 
+      {
+        success: false,
+        message: 'Payment error: ' + (error instanceof Error ? error.message : 'Unknown'),
       },
       { status: 500 }
     )
@@ -243,11 +147,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const orderId = searchParams.get('orderId')
+  const orderId = request.nextUrl.searchParams.get('orderId')
+  if (!orderId) {
+    return NextResponse.json(
+      { success: false, message: 'orderId diperlukan' },
+      { status: 400 }
+    )
+  }
 
   return NextResponse.json({
     success: true,
-    data: { orderId, status: 'pending' }
+    data: { orderId, status: 'pending' },
   })
 }

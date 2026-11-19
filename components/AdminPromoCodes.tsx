@@ -1,21 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
-interface PromoCode {
-  ID: string
-  'Kode Promo': string
-  Diskon: number
-  'Tipe Diskon': string
-  Deskripsi: string
-  'Batas Penggunaan': number
-  'Penggunaan Saat Ini': number
-  'Minimal Pembelian': number
-  'Maksimal Diskon': number
-  'Tanggal Kadaluarsa': string
-  Status: string
-  'Tanggal Dibuat': string
-}
+import { useCallback, useEffect, useState } from 'react'
+import { formatDate } from '@/lib/format'
+import type { PromoCode } from '@/types/product'
 
 export default function AdminPromoCodes() {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([])
@@ -38,29 +25,43 @@ export default function AdminPromoCodes() {
     status: 'Aktif'
   })
 
-  useEffect(() => {
-    loadPromoCodes()
-  }, [])
-
-  const loadPromoCodes = async () => {
+  const loadPromoCodes = useCallback(async () => {
     try {
-      const response = await fetch('/api/promo-codes')
+      const response = await fetch('/api/promo-codes', { cache: 'no-store' })
       const data = await response.json()
       if (data.success) {
-        setPromoCodes(data.data || [])
+        setPromoCodes(Array.isArray(data.data) ? data.data : [])
       }
     } catch (err) {
       console.error('Error loading promo codes:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void loadPromoCodes()
+  }, [loadPromoCodes])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSaving(true)
     setError(null)
     setSuccess(null)
+
+    if (!formData.code.trim()) {
+      setError('Kode promo wajib diisi')
+      return
+    }
+    if (!Number.isFinite(formData.discount) || formData.discount <= 0) {
+      setError('Diskon harus lebih dari 0')
+      return
+    }
+    if (formData.discountType === 'percentage' && formData.discount > 100) {
+      setError('Diskon persen maksimal 100')
+      return
+    }
+
+    setSaving(true)
 
     try {
       const url = editingPromo 
@@ -371,7 +372,7 @@ export default function AdminPromoCodes() {
                         : '∞'}
                     </td>
                     <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
-                      {promo['Tanggal Kadaluarsa'] ? new Date(promo['Tanggal Kadaluarsa']).toLocaleDateString('id-ID') : '-'}
+                      {formatDate(promo['Tanggal Kadaluarsa'])}
                     </td>
                     <td className="px-3 md:px-4 py-2 md:py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${

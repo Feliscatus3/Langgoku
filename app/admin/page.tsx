@@ -1,32 +1,47 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import AdminDashboard from '@/components/AdminDashboard'
 import AdminLogin from '@/components/AdminLogin'
 
 export default function AdminPage() {
-  const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (token) {
-      setIsAuthenticated(true)
+    let active = true
+
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/api/admin/login', { cache: 'no-store' })
+        const data = await response.json()
+        if (active) setIsAuthenticated(Boolean(data.authenticated))
+      } catch (error) {
+        console.error('Error checking admin session:', error)
+        if (active) setIsAuthenticated(false)
+      } finally {
+        if (active) setLoading(false)
+      }
     }
-    setLoading(false)
+
+    void checkSession()
+    return () => {
+      active = false
+    }
   }, [])
 
   const handleLogin = (success: boolean) => {
-    if (success) {
-      setIsAuthenticated(true)
-    }
+    setIsAuthenticated(success)
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token')
-    setIsAuthenticated(false)
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/login', { method: 'DELETE' })
+    } catch (error) {
+      console.error('Error logging out:', error)
+    } finally {
+      setIsAuthenticated(false)
+    }
   }
 
   if (loading) {

@@ -1,42 +1,5 @@
 import ProductCard from './ProductCard'
-
-interface VariantAttribute {
-  id: string
-  productId: string
-  name: string
-  sortOrder: number
-  status: 'active' | 'inactive'
-}
-
-interface AttributeOption {
-  id: string
-  attributeId: string
-  name: string
-  sortOrder: number
-  status: 'active' | 'inactive'
-}
-
-interface VariantCombination {
-  id: string
-  productId: string
-  price: number
-  status: 'active' | 'inactive'
-  stock: number
-  sortOrder: number
-  options: Record<string, string>
-}
-
-interface Product {
-  id: string
-  name: string
-  price: number
-  duration: string
-  stock: number
-  image?: string
-  variantAttributes?: VariantAttribute[]
-  attributeOptions?: AttributeOption[]
-  variantCombinations?: VariantCombination[]
-}
+import type { Product } from '@/types/product'
 
 interface ProductGridProps {
   products: Product[]

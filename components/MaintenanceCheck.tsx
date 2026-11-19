@@ -7,68 +7,72 @@ interface Settings {
   maintenanceMode: boolean
 }
 
+const CACHE_TTL_MS = 60_000
+let maintenanceCache: { at: number; enabled: boolean } | null = null
+
 export default function MaintenanceCheck({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isChecking, setIsChecking] = useState(true)
   const [isMaintenance, setIsMaintenance] = useState(false)
 
   useEffect(() => {
-    // Skip check for admin pages and API routes and maintenance page itself
+    // Skip check for admin pages, API routes, the maintenance page itself,
+    // and asset requests.
     if (
-      pathname.startsWith('/admin') || 
-      pathname.startsWith('/api') || 
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/api') ||
       pathname.startsWith('/maintenance') ||
       pathname.startsWith('/_next') ||
       pathname.includes('.')
     ) {
-      setIsChecking(false)
       return
     }
 
+    let active = true
+
     const checkMaintenance = async () => {
       try {
-        // Add timestamp to avoid caching
+        if (maintenanceCache && Date.now() - maintenanceCache.at < CACHE_TTL_MS) {
+          if (active && maintenanceCache.enabled) {
+            setIsMaintenance(true)
+            router.replace('/maintenance')
+          }
+          return
+        }
+
         const response = await fetch(`/api/settings?_=${Date.now()}`, {
           cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache' }
+          headers: { 'Cache-Control': 'no-cache' },
         })
         const data = await response.json()
-        
-        console.log('Maintenance check:', data)
-        
+
+        if (!active) return
+
         if (data.success && data.data) {
           const settings = data.data as Settings
+          maintenanceCache = { at: Date.now(), enabled: Boolean(settings.maintenanceMode) }
+
           if (settings.maintenanceMode) {
-            console.log('Maintenance mode is ON, redirecting...')
             setIsMaintenance(true)
-            // Use replace to avoid history stack issues
-            if (pathname !== '/maintenance') {
-              router.replace('/maintenance')
-            }
-          } else {
-            setIsMaintenance(false)
+            router.replace('/maintenance')
+            return
           }
         }
+
+        setIsMaintenance(false)
       } catch (err) {
         console.error('Error checking maintenance mode:', err)
-      } finally {
-        setIsChecking(false)
       }
     }
 
-    checkMaintenance()
+    void checkMaintenance()
+
+    return () => {
+      active = false
+    }
   }, [pathname, router])
 
-  if (isChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-      </div>
-    )
-  }
-
-  // If maintenance mode is active and we're not on maintenance page
+  // Only replace the page once maintenance has actually been confirmed.
   if (isMaintenance && pathname !== '/maintenance') {
     return (
       <div className="min-h-screen flex items-center justify-center">
